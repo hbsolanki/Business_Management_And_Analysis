@@ -1,4 +1,39 @@
-export default function OwnerRegistration() {
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import csrfToken from "../../CSRFToken.js";
+
+function OwnerRegistration() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({});
+
+  const handleChange = (e) => {
+    const name = e.target.name;
+    const value = e.target.value;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post("/API/owner/registration/", formData, {
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+      });
+      // const accessToken = response.data.access_token;
+      // localStorage.setItem("token", accessToken);
+      console.log(response);
+      const accessToken = response.data.token;
+      localStorage.setItem("token", accessToken);
+
+      navigate(`/owner/home`);
+    } catch (err) {
+      console.log(err.message);
+    }
+  };
+
   return (
     <>
       <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
@@ -14,11 +49,7 @@ export default function OwnerRegistration() {
         </div>
 
         <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          <form
-            className="space-y-6"
-            action="/API/owner/registration"
-            method="post"
-          >
+          <form className="space-y-6" onSubmit={handleSubmit} method="post">
             <div>
               <label
                 htmlFor="name"
@@ -31,6 +62,7 @@ export default function OwnerRegistration() {
                   id="name"
                   name="name"
                   type="text"
+                  onChange={handleChange}
                   required
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                 />
@@ -51,6 +83,7 @@ export default function OwnerRegistration() {
                   id="email"
                   name="email"
                   type="email"
+                  onChange={handleChange}
                   required
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                 />
@@ -70,6 +103,7 @@ export default function OwnerRegistration() {
                   name="mobile_number"
                   type="number"
                   autoComplete="mobile"
+                  onChange={handleChange}
                   required
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                 />
@@ -81,13 +115,14 @@ export default function OwnerRegistration() {
                 htmlFor="password"
                 className="block text-sm font-medium leading-6 text-gray-900"
               >
-                password
+                Password
               </label>
               <div className="mt-2">
                 <input
                   id="password"
                   name="password"
                   type="password"
+                  onChange={handleChange}
                   required
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                 />
@@ -108,3 +143,5 @@ export default function OwnerRegistration() {
     </>
   );
 }
+
+export default OwnerRegistration;

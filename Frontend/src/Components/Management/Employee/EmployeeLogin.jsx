@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Logo from "../../assets/VISIONARY.png";
+import Logo from "../../../assets/VISIONARY.png";
 
-function OwnerLogin() {
+function EmployeeLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
   const [csrfToken, setCsrfToken] = useState(null);
+  const [employeeData, setEmployeeData] = useState([]);
 
   // Fetch CSRF token on component mount
   useEffect(() => {
@@ -30,7 +31,7 @@ function OwnerLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("/API/owner/login/", formData, {
+      const response = await axios.post("/API/employee/login/page/", formData, {
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": csrfToken, // Use fetched CSRF token
@@ -38,10 +39,13 @@ function OwnerLogin() {
       });
 
       const accessToken = response.data.token;
+      const workpage = response.data.workpage;
+
       localStorage.setItem("token", accessToken);
-      navigate(`/owner/home`);
+      console.log(response.data);
+      navigate(`${workpage}`);
     } catch (err) {
-      alert(err);
+      alert("Invalid credentials");
     }
   };
 
@@ -51,7 +55,7 @@ function OwnerLogin() {
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <img className="mx-auto h-10 w-auto" src={Logo} alt="Your Company" />
           <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Owner Login
+            Login Into You Account
           </h2>
         </div>
 
@@ -122,4 +126,4 @@ function OwnerLogin() {
   );
 }
 
-export default OwnerLogin;
+export default EmployeeLogin;

@@ -17,7 +17,6 @@ function OwnerDashboard() {
           },
         });
         const data = response.data;
-        console.log(data);
         setOwnerData(data);
       } catch (error) {
         alert(error);
@@ -30,7 +29,7 @@ function OwnerDashboard() {
     <div className="container mx-auto p-4">
       {ownerData ? (
         <div className="bg-white shadow-lg rounded-lg p-6 max-w-lg mx-auto">
-          <h1 className="text-xl font-bold mb-4">
+          <h1 className="text-2xl font-bold mb-4">
             Welcome, <span className="text-blue-600">{ownerData.name}</span>
           </h1>
           <p className="text-gray-600">

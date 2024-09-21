@@ -17,55 +17,64 @@ function BusinessCard({ id }) {
           },
         });
         const data = response.data;
-        console.log(data);
-
         setBusinessData(data);
       } catch (error) {
         alert(error);
       }
     }
     getData();
-  }, []);
+  }, [id]);
 
   return (
     <>
       {businessData ? (
-        <div className="business-card-container">
-          <div className="business-card">
-            <h2 className="business-name">{businessData.name}</h2>
-            <p className="business-description">{businessData.description}</p>
-            <div className="business-info">
-              <p>
-                <strong>Assets:</strong> {businessData.assets}
-              </p>
-              <p>
-                <strong>Profit:</strong> {businessData.profit}
-              </p>
-            </div>
-            <br />
-            <div className="management-links">
-              <h3>Manage Your Business</h3>
-              <ul>
-                <li>
-                  <Link to={`/employee/${businessData.employee}`}>
-                    Employee Management
-                  </Link>
-                </li>
-                <li>
-                  <Link to={`/product/${businessData.product}`}>
-                    Product Management
-                  </Link>
-                </li>
-                <li>
-                  <Link to={`/inventory/${businessData.inventory}`}>
-                    Inventory Management
-                  </Link>
-                </li>
-                <li>
-                  <Link to={`/sale/${businessData.sale}`}>Sale Management</Link>
-                </li>
-              </ul>
-            </div>
+        <div className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-2">{businessData.name}</h2>
+          <p className="text-gray-700 mb-4">{businessData.description}</p>
+          <div className="mb-4">
+            <p>
+              <strong>Assets:</strong> {businessData.assets}
+            </p>
+            <p>
+              <strong>Profit:</strong> {businessData.profit}
+            </p>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Manage Your Business</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link
+                  to={`/employee/${businessData.employee}`}
+                  className="text-blue-500 hover:underline"
+                >
+                  Employee Management
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={`/product/${businessData.product}`}
+                  className="text-blue-500 hover:underline"
+                >
+                  Product Management
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={`/inventory/${businessData.inventory}`}
+                  className="text-blue-500 hover:underline"
+                >
+                  Inventory Management
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={`/sale/${businessData.sale}`}
+                  className="text-blue-500 hover:underline"
+                >
+                  Sale Management
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
       ) : (

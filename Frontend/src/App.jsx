@@ -17,10 +17,13 @@ import NewSale from "./Components/Management/Sale/NewSale";
 //Employee
 import Employee from "./Components/Management/Employee/Employee";
 import NewEmployee from "./Components/Management/Employee/NewEmployee";
+import EditEmployee from "./Components/Management/Employee/EditEmployee";
+import EmployeeLogin from "./Components/Management/Employee/EmployeeLogin";
 
 //Product
 import Product from "./Components/Management/Product/Product";
 import NewProduct from "./Components/Management/Product/NewProduct";
+import EditProduct from "./Components/Management/Product/EditProduct";
 
 //Inventary
 import Inventory from "./Components/Management/Inventory/Inventory";
@@ -47,10 +50,14 @@ function App() {
           {/* Employee */}
           <Route path="/employee/:eid" element={<Employee />} />
           <Route path="/employee/:eid/new" element={<NewEmployee />} />
+          <Route path="/employee/:eid/:oeid/edit" element={<EditEmployee />} />
+          <Route path="/employee/login/page" element={<EmployeeLogin />} />
 
           {/* Product */}
           <Route path="/product/:pid" element={<Product />} />
           <Route path="/product/:pid/new" element={<NewProduct />} />
+          <Route path="/product/:pid/:opid/edit" element={<EditProduct />} />
+
           {/* inventory */}
           <Route path="/inventory/:iid" element={<Inventory />} />
           <Route path="/inventory/:iid/new" element={<NewInventory />} />

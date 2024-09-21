@@ -20,12 +20,13 @@ function NewSale() {
           },
         });
         const data = saleResponse.data;
-        console.log(data);
+        console.log(data.productsid);
         setSaleData(data);
         const productResponse = await axios.get(
           `/API/product/${data.productsid}/`,
           {
             headers: {
+              "Content-Type": "application/json",
               Authorization: `${token}`,
             },
           }
@@ -53,7 +54,7 @@ function NewSale() {
           "Content-Type": "application/json",
         },
       });
-
+      console.log(response.data);
       navigate(`/sale/${sid}`);
     } catch (err) {
       console.log(err.message);
@@ -66,11 +67,6 @@ function NewSale() {
         <>
           <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-              <img
-                className="mx-auto h-10 w-auto"
-                src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600"
-                alt="Your Company"
-              />
               <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
                 Sale
               </h2>
@@ -102,6 +98,40 @@ function NewSale() {
                     </>
                   );
                 })}
+                <div>
+                  <label
+                    htmlFor="marketing"
+                    className="block text-sm font-medium leading-6 text-gray-900"
+                  >
+                    Marketing Cost
+                  </label>
+                  <div className="mt-2">
+                    <input
+                      id="marketing"
+                      name="marketing"
+                      type="number"
+                      onChange={handleChange}
+                      className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    htmlFor="othercost"
+                    className="block text-sm font-medium leading-6 text-gray-900"
+                  >
+                    Other Cost
+                  </label>
+                  <div className="mt-2">
+                    <input
+                      id="othercost"
+                      name="othercost"
+                      type="number"
+                      onChange={handleChange}
+                      className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    />
+                  </div>
+                </div>
                 <div>
                   <button
                     type="submit"

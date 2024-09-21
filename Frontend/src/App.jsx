@@ -29,6 +29,9 @@ import EditProduct from "./Components/Management/Product/EditProduct";
 import Inventory from "./Components/Management/Inventory/Inventory";
 import NewInventory from "./Components/Management/Inventory/NewInventory";
 
+// Analysis
+import Analysis from "./Components/Analysis/pages/Analysis";
+
 //Owner
 function App() {
   return (
@@ -61,6 +64,8 @@ function App() {
           {/* inventory */}
           <Route path="/inventory/:iid" element={<Inventory />} />
           <Route path="/inventory/:iid/new" element={<NewInventory />} />
+
+          <Route path="/analysis/:bid/" element={<Analysis />} />
 
           {/* 404 Page Not Found */}
           <Route path="*" element={<PageNotFound />} />

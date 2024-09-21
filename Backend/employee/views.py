@@ -52,6 +52,11 @@ def new_employee(request,eid):
     workpage=data.get("workpage","")
     password=data.get("password","")
     description=data.get('description',"")
+    image_url=""
+    
+    if not image_url :
+        image_url=""
+        # Add image_url to body_data if present
     d={
             "name": name,
             "email": email,
@@ -60,8 +65,11 @@ def new_employee(request,eid):
             "mobile": mobile,
             "description": description ,
             "workpage":workpage,
-            "password":password
+            "password":password,
+            "image_url":image_url
+
         }
+    
     employee=conn.Visionary.Employee.insert_one(d)
     Employees["allEmployee"].append(employee.inserted_id)
     conn.Visionary.Employees.update_one({"_id":ObjectId(eid)},{"$set":{"allEmployee":Employees["allEmployee"]}})

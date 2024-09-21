@@ -69,7 +69,7 @@ def new_sale(request, sid):
     marketing = int(data.get('marketing'))
     othercost = int(data.get('othercost'))
     employess_salary=total_employee_salary()
-    grossprofit=totalRevenueFromProduct-totalCostFromProduct-marketing-othercost-employess_salary
+    grossprofit=totalRevenueFromProduct-marketing-othercost-employess_salary
     
     tax_amount =taxrate_calculation(grossprofit)
     net_profit = grossprofit - tax_amount
@@ -83,9 +83,10 @@ def new_sale(request, sid):
         "marketing": marketing,
         "othercost": othercost,
         "taxes":tax_amount,
+        "turnover":totalCostFromProduct+totalRevenueFromProduct,
         "employess_salary":employess_salary,
         "grossprofit":grossprofit,
-        "newprofit":net_profit,
+        "netprofit":net_profit,
         "date": datetime.now(ist),
     }
     

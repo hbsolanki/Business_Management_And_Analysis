@@ -10,7 +10,6 @@ ist = pytz.timezone('Asia/Kolkata')
 
 
 def saleInfo(request, sid):
-    # print(sid)
     Sales = conn.Visionary.Sales.find_one({"_id": ObjectId(sid)})
     Sales["_id"] = str(Sales["_id"])
     Sales["productsid"] = str(Sales["productsid"])
@@ -18,7 +17,7 @@ def saleInfo(request, sid):
         Sales["saleInfo"][i]=conn.Visionary.Sale.find_one({"_id": Sales["saleInfo"][i]})
         
         Sales["saleInfo"][i]["_id"]=str(Sales["saleInfo"][i]["_id"])
-
+    
     return JsonResponse(Sales)
 
 def taxrate_calculation(income):

@@ -38,7 +38,6 @@ function Product() {
           Authorization: `${token}`,
         },
       });
-      // Refresh the product list after deletion
       setProductData((prev) =>
         prev.filter((product) => product._id !== productId)
       );
@@ -49,46 +48,75 @@ function Product() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Link
-        to={`/product/${pid}/new`}
-        className="focus:outline-none text-white bg-orange-500 hover:bg-orange-600 focus:ring-4 focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 mb-8 mt-6"
-      >
-        Add New Product
-      </Link>
+      {/* Header Section */}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-gray-800">Product List</h2>
+        <Link
+          to={`/product/${pid}/new`}
+          className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
+        >
+          Add New Product
+        </Link>
+      </div>
 
+      {/* Loading Indicator */}
       {loading ? (
         <div className="flex justify-center items-center">
-          <p>Loading...</p>
+          <svg
+            className="animate-spin h-8 w-8 text-blue-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v8H4z"
+            ></path>
+          </svg>
         </div>
       ) : productData.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {productData.map((product) => (
             <article
-              key={product._id} // Use product._id as the key
-              className="bg-white shadow-lg rounded-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow duration-300"
+              key={product._id}
+              className="bg-white shadow-lg rounded-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300"
             >
+              {/* Product Details */}
               <div className="group relative">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-gray-900 mb-1">
                   {product.name}
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  {product.description}
+                  {product.description || "No description available."}
                 </p>
               </div>
-              <div className="flex justify-between text-sm text-gray-800 mb-4">
-                <span>Cost: {product.price}</span>
-                <span>Revenue: {product.revenue}</span>
+
+              {/* Pricing Info */}
+              <div className="flex justify-between text-sm text-gray-700 mb-4">
+                <span className="font-medium">Cost: ₹{product.price}</span>
+                <span className="font-medium">Revenue: ₹{product.revenue}</span>
               </div>
+
+              {/* Action Buttons */}
               <div className="flex justify-between">
                 <Link
                   to={`/product/${pid}/${product._id}/edit`}
-                  className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded"
+                  className="text-blue-600 border border-blue-500 hover:bg-blue-500 hover:text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
                 >
                   Edit
                 </Link>
                 <button
-                  onClick={() => handleProductDelete(product._id)} // Pass the product ID
-                  className="bg-transparent hover:bg-red-500 text-red-700 font-semibold hover:text-white py-2 px-4 border border-red-500 hover:border-transparent rounded"
+                  onClick={() => handleProductDelete(product._id)}
+                  className="text-red-600 border border-red-500 hover:bg-red-500 hover:text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
                 >
                   Delete
                 </button>

@@ -5,6 +5,7 @@ import axios from "axios";
 function Inventory() {
   let { iid } = useParams();
   const [inventoryData, setInventoryData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function getData() {
@@ -17,19 +18,19 @@ function Inventory() {
           },
         });
         const data = response.data;
-        console.log(data);
         setInventoryData(data);
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false);
       }
     }
     getData();
   }, [iid]);
 
   const renderProductDetails = (product) => {
-    // Extract product details from the stock object except _id and date
     const productDetails = Object.entries(product).filter(
-      ([key, value]) => key !== "_id" && key !== "date"
+      ([key]) => key !== "_id" && key !== "date"
     );
 
     return productDetails.map(([productName, quantity], idx) => (
@@ -41,34 +42,60 @@ function Inventory() {
 
   return (
     <>
-      <Link
-        to={`/inventory/${iid}/new`}
-        className="focus:outline-none text-white bg-orange-500 hover:bg-orange-600 focus:ring-4 focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 m-8 dark:bg-orange-400 dark:hover:bg-orange-500 dark:focus:ring-orange-700 mt-6"
-      >
-        New Inventory
-      </Link>
+      {loading ? (
+        <div className="flex justify-center items-center h-screen">
+          <svg
+            className="animate-spin h-8 w-8 text-blue-500"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v8H4z"
+            ></path>
+          </svg>
+        </div>
+      ) : (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-3xl font-bold text-gray-800">Inventory</h2>
+            <Link
+              to={`/inventory/${iid}/new`}
+              className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
+            >
+              New Inventory
+            </Link>
+          </div>
 
-      {/* Display Inventory Data */}
-      {inventoryData ? (
-        <div className="max-w-3xl mx-auto p-4">
-          <h2 className="text-xl font-bold mb-4">Inventory</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {inventoryData.stock.map((stockEntry, idx) => (
               <article
                 key={idx}
-                className="border-2 p-4 border-gray-300 rounded-lg"
+                className="border border-gray-300 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
               >
-                <h3 className="text-lg font-semibold">Stock Entry</h3>
-                <p>Date: {new Date(stockEntry.date).toLocaleString()}</p>
-
-                {/* Render each product and its quantity */}
-                {renderProductDetails(stockEntry)}
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Stock Entry
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Date: {new Date(stockEntry.date).toLocaleString()}
+                </p>
+                <div className="text-sm text-gray-700">
+                  {renderProductDetails(stockEntry)}
+                </div>
               </article>
             ))}
           </div>
         </div>
-      ) : (
-        <p>Loading...</p>
       )}
     </>
   );

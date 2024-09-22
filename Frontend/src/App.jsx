@@ -32,12 +32,17 @@ import NewInventory from "./Components/Management/Inventory/NewInventory";
 // Analysis
 import Analysis from "./Components/Analysis/pages/Analysis";
 
+// Public Private Route
+import PublicRoute from "./Components/Auth/PublicRoute";
+import PrivateRoute from "./Components/Auth/PrivateRoute";
+
 //Owner
 function App() {
   return (
     <>
       <Router>
         <Routes>
+          <Route element={<PublicRoute />}></Route>
           {/* Home */}
           <Route path="/" element={<Home />} />
           {/* Owner */}

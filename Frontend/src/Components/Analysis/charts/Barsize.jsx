@@ -24,32 +24,36 @@
 import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 
-export default function Barsize() {
+export default function Barsize({ Data }) {
+  let mainObject = {
+    scaleType: "band",
+    data: [],
+  };
+  let object1 = {
+    data: [],
+    label: "Selling Price",
+    barLabel: (params) => `${params.value}`, // Display value on each bar
+  };
+  let object2 = {
+    data: [],
+    label: "Manufacturing Cost",
+    barLabel: (params) => `${params.value}`,
+  };
+  let object3 = {
+    data: [],
+    label: "Profit ",
+    barLabel: (params) => `${params.value}`,
+  };
+  Data.map((product) => {
+    mainObject.data.push(product["name"]);
+    object1.data.push(product["price"]);
+    object2.data.push(product["cogs"]);
+    object3.data.push(product["revenue"]);
+  });
   return (
     <BarChart
-      xAxis={[
-        {
-          scaleType: "band",
-          data: ["Abhibh", "Bich", "Co", "Dajyn8jnjun", "E", "F", "G", "H"],
-        },
-      ]}
-      series={[
-        { 
-          data: [10000, 12000, 80000, 16000, 140000, 130000, 55000, 60000], 
-          label: 'Selling Price', 
-          barLabel: (params) => `${params.value}` // Display value on each bar
-        },
-        { 
-          data: [6000, 7000, 45000, 9000, 80000, 70000, 30000, 35000], 
-          label: 'Manufacturing Cost', 
-          barLabel: (params) => `${params.value}`
-        },
-        { 
-          data: [4000, 5000, 35000, 7000, 60000, 60000, 25000, 25000], 
-          label: 'Profit ', 
-          barLabel: (params) => `${params.value}`
-        },
-      ]}
+      xAxis={[mainObject]}
+      series={[object1, object2, object3]}
       width={1000}
       height={400}
     />

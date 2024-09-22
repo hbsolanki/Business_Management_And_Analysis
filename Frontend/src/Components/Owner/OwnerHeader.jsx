@@ -1,7 +1,28 @@
 import IMG1 from "../../assets/VISIONARY.png";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
-function Header() {
+function OwnerHeader({ ownerData }) {
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      // Optionally call your FastAPI logout endpoint
+      // await axios.post("/API/logout", null, {
+      //   headers: {
+      //     Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      //   },
+      // });
+
+      // Clear token from localStorage (or sessionStorage)
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user_data");
+      localStorage.removeItem("token");
+      // Redirect to login or home page
+      navigate("/");
+    } catch (error) {
+      alert("Error logging out:", error);
+    }
+  };
   return (
     <>
       <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50">
@@ -13,26 +34,34 @@ function Header() {
             </div>
             {/* Navigation Links */}
             <div className="hidden sm:flex space-x-6">
-              <div className="hidden md:flex space-x-6">
-                <a
-                  href="/owner/registration"
+              {" "}
+              <Link
+                href={`/owner/home`}
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+              >
+                Home
+              </Link>
+              {ownerData.businessid ? (
+                <Link
+                  to={`/analysis/${ownerData.businessid}`}
                   className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                 >
-                  Owner Registration
-                </a>
-                <a
-                  href="/owner/login"
+                  Analysis
+                </Link>
+              ) : (
+                <Link
+                  to={`/owner/business/new`}
                   className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                 >
-                  Owner Login
-                </a>
-                <a
-                  href="/employee/login/page"
-                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-                >
-                  Employee Login
-                </a>
-              </div>
+                  Create Business
+                </Link>
+              )}
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+              >
+                Logout
+              </button>
             </div>
             {/* Mobile Menu */}
             <div className="sm:hidden flex items-center">
@@ -63,4 +92,4 @@ function Header() {
   );
 }
 
-export default Header;
+export default OwnerHeader;

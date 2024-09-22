@@ -1,7 +1,18 @@
-import IMG1 from "../../assets/VISIONARY.png";
-import { Link } from "react-router-dom";
+import IMG1 from "../../../assets/VISIONARY.png";
+function AnalysisHeader() {
+  const handleScrollToSection = (e, item) => {
+    e.preventDefault();
+    const element = document.getElementById(item);
+    const headerOffset = 70; // Adjust this based on your sticky header's height
+    const elementPosition = element.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
-function Header() {
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <>
       <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50">
@@ -13,26 +24,29 @@ function Header() {
             </div>
             {/* Navigation Links */}
             <div className="hidden sm:flex space-x-6">
-              <div className="hidden md:flex space-x-6">
+              {" "}
+              <a
+                href={`/owner/home`}
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+              >
+                Home
+              </a>
+              {[
+                "Turnover",
+                "NetProfit",
+                "ProductAnalysis",
+                "SellingAnalysis",
+                "StockAnalysis",
+              ].map((item) => (
                 <a
-                  href="/owner/registration"
+                  href={`#${item}`}
+                  key={item}
                   className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                  onClick={(e) => handleScrollToSection(e, item)}
                 >
-                  Owner Registration
+                  {item}
                 </a>
-                <a
-                  href="/owner/login"
-                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-                >
-                  Owner Login
-                </a>
-                <a
-                  href="/employee/login/page"
-                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-                >
-                  Employee Login
-                </a>
-              </div>
+              ))}
             </div>
             {/* Mobile Menu */}
             <div className="sm:hidden flex items-center">
@@ -63,4 +77,4 @@ function Header() {
   );
 }
 
-export default Header;
+export default AnalysisHeader;

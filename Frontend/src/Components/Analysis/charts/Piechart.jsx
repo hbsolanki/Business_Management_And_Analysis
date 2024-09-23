@@ -65,7 +65,7 @@ export default function Piechart({ Data }) {
   const data = [
     { id: 0, value: Data["manaufacturing_cost"], label: "Manufacturing Cost" },
     { id: 1, value: Data["marketing_expenses"], label: "Marketing Expenses" },
-    { id: 2, value: Data["manaufacturing_cost"], label: "Salary Expenses" },
+    { id: 2, value: Data["salary_expenses"], label: "Salary Expenses" },
     { id: 3, value: Data["other_expenses"], label: "Other Expenses" },
     { id: 4, value: Data["tax"], label: "Tax" },
     { id: 5, value: Data["net_profit"], label: "Net Profit" },

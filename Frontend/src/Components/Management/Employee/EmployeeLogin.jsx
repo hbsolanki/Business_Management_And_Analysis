@@ -43,7 +43,7 @@ function EmployeeLogin() {
 
       localStorage.setItem("token", accessToken);
       console.log(response.data);
-      navigate(`${workpage}`);
+      navigate(`/owner/home`);
     } catch (err) {
       alert("Invalid credentials");
     }
@@ -53,7 +53,6 @@ function EmployeeLogin() {
     <>
       <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <img className="mx-auto h-10 w-auto" src={Logo} alt="Your Company" />
           <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
             Login Into You Account
           </h2>
@@ -89,14 +88,6 @@ function EmployeeLogin() {
                 >
                   Password
                 </label>
-                <div className="text-sm">
-                  <a
-                    href="#"
-                    className="font-semibold text-gray-600 hover:text-gray-500"
-                  >
-                    Forgot password?
-                  </a>
-                </div>
               </div>
               <div className="mt-2">
                 <input

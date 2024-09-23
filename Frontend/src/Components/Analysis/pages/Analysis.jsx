@@ -6,7 +6,6 @@ import Barsize from "../charts/Barsize";
 import ProductSell from "../charts/ProductSell";
 import Productmnf from "../charts/Productmnf";
 import ProductStock from "../charts/ProductStock";
-import IMG1 from "../../../assets/VISIONARY.png";
 import axios from "axios";
 
 import { useParams } from "react-router-dom";
@@ -27,33 +26,54 @@ function Analysis() {
       try {
         const responseData1 = await axios.get(`/API/analysis/${bid}/turnover/`);
         setTurnoverData(responseData1.data);
-
+      } catch (err) {
+        console.log(err);
+      }
+      try {
         const responseData2 = await axios.get(
           `/API/analysis/${bid}/product/stock/`
         );
         setProductStockData(responseData2.data);
-
+      } catch (err) {
+        console.log(err);
+      }
+      try {
         const responseData3 = await axios.get(
           `/API/analysis/${bid}/product/details/`
         );
         setProductDetailsData(responseData3.data);
-
+      } catch (err) {
+        console.log(err);
+      }
+      try {
         const responseData4 = await axios.get(
           `/API/analysis/${bid}/turnover/tenmonth/`
         );
         setTurnoverTenmonthData(responseData4.data);
+      } catch (err) {
+        console.log(err);
+      }
+      try {
         const responseData5 = await axios.get(
           `/API/analysis/${bid}/netprofit/tenmonth/`
         );
         setNetprofitTenmonthData(responseData5.data);
-
+      } catch (err) {
+        console.log(err);
+      }
+      try {
         const responseData6 = await axios.get(
           `/API/analysis/${bid}/product/Manufacturing/per/month/`
         );
         setProductManufacturingpermonth(responseData6.data);
+      } catch (err) {
+        console.log(err);
+      }
+      try {
         const responseData7 = await axios.get(
           `/API/analysis/${bid}/product/sold/per/month/`
         );
+
         setProductSoldpermonth(responseData7.data);
       } catch (err) {
         console.log(err);
@@ -101,14 +121,14 @@ function Analysis() {
             <hr className="border-solid border-gray-950 border-x-8" />
 
             {/* Company NetProfit */}
+            <h1
+              id="NetProfit"
+              className="text-3xl font-bold text-neutral-950 mt-6"
+            >
+              Company NetProfit
+            </h1>
             {netprofitTenmonthData ? (
               <>
-                <h1
-                  id="NetProfit"
-                  className="text-3xl font-bold text-neutral-950 mt-6"
-                >
-                  Company NetProfit
-                </h1>
                 <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden">
                   <Linechart Data={netprofitTenmonthData} />
                   <p className="mt-4 text-center text-gray-800 text-lg font-semibold">

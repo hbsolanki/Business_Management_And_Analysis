@@ -2,13 +2,22 @@ import IMG1 from "../../assets/VISIONARY.png";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-function OwnerHeader({ ownerData }) {
+function EmployeeHeader({ employeeData }) {
   const navigate = useNavigate();
   const handleLogout = async () => {
     try {
+      // Optionally call your FastAPI logout endpoint
+      // await axios.post("/API/logout", null, {
+      //   headers: {
+      //     Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      //   },
+      // });
+
+      // Clear token from localStorage (or sessionStorage)
       localStorage.removeItem("access_token");
       localStorage.removeItem("user_data");
       localStorage.removeItem("token");
+      // Redirect to login or home page
       navigate("/");
     } catch (error) {
       alert("Error logging out:", error);
@@ -32,21 +41,16 @@ function OwnerHeader({ ownerData }) {
               >
                 Home
               </Link>
-              {ownerData.businessid ? (
+              {employeeData.workpage ? (
                 <Link
-                  to={`/analysis/${ownerData.businessid}`}
+                  to={`/${employeeData.workpage}`}
                   className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                 >
-                  Analysis
+                  Workpage
                 </Link>
               ) : (
-                <Link
-                  to={`/owner/business/new`}
-                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-                >
-                  Create Business
-                </Link>
-              )}
+                ""
+              )}{" "}
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
@@ -83,4 +87,4 @@ function OwnerHeader({ ownerData }) {
   );
 }
 
-export default OwnerHeader;
+export default EmployeeHeader;

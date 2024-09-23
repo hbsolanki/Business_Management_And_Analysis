@@ -8,14 +8,12 @@ function OwnerLogin() {
   const [formData, setFormData] = useState({});
   const [csrfToken, setCsrfToken] = useState(null);
 
-  // Fetch CSRF token on component mount
   useEffect(() => {
     async function fetchCsrfToken() {
       try {
         const response = await axios.get("/get-csrf-token/");
         setCsrfToken(response.data.csrfToken);
       } catch (error) {
-        // Display the error message in an alert
         window.alert(`Error fetching CSRF token: ${error.message}`);
       }
     }

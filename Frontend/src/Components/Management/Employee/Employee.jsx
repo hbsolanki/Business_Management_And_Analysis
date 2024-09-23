@@ -102,7 +102,14 @@ function Employee() {
                 <p className="text-gray-700 mt-2 font-medium">
                   Salary: ₹{employee.salary}
                 </p>
-                <p className="text-gray-600 mt-1">Mobile: {employee.mobile}</p>
+                {employee.mobile != 0 ? (
+                  <p className="text-gray-600 mt-1">
+                    Mobile: {employee.mobile}
+                  </p>
+                ) : (
+                  ""
+                )}
+
                 <p className="text-gray-600 mt-2">
                   Description:{" "}
                   {employee.description

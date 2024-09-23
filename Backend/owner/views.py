@@ -17,16 +17,17 @@ def owner_registration(request):
             businessid = data.get('businessid', "")
             mobile_number = data.get('mobile_number')
             password = data.get("password")  # type: ignore
+            
 
             conn.Visionary.Owner.insert_one({
                 "name": name,
                 "email": email,
                 "businessid": businessid,
                 "mobile_number": mobile_number,
-                "password": password
+                "password": password,
+                "type":"owner"
             })
 
-            # Generate a token (for demonstration purposes; use a proper method in production)
             access_token_expires=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
             access_token = create_access_token(
                 data={"sub": email},
@@ -52,7 +53,6 @@ def owner_login(request):
     user=conn.Visionary.Owner.find_one({"email":email,"password":password})
 
     if user is not None:
-        # Generate a token (for demonstration purposes; use a proper method in production)
         access_token_expires=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": email},
@@ -72,7 +72,6 @@ def owner_home(request):
     if email:
         owner = conn.Visionary.Owner.find_one({"email": email})
         if owner:
-            # Exclude the ObjectId field to avoid serialization issues
             owner['_id'] = str(owner['_id'])
             if owner['businessid']:
                 owner['businessid'] = str(owner['businessid'])

@@ -7,7 +7,9 @@ urlpatterns = [
     path("one/<str:eid>/",views.employee_one,name="employee_one"),
     path("<str:eid>/<str:oeid>/edit/",views.employee_one_edit,name="employee_one_edit"),
     path("<str:eid>/<str:oeid>/delete/",views.employee_delete,name="employee_delete"),
-    path("login/page/",views.login_employee,name="login_employee")
+    path("login/page/",views.login_employee,name="login_employee"),
+    path("data/one/",views.employee_data,name="employee_data"),
+
 
 ]
 

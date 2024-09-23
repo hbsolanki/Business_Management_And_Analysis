@@ -42,35 +42,41 @@ function App() {
     <>
       <Router>
         <Routes>
-          <Route element={<PublicRoute />}></Route>
-          {/* Home */}
-          <Route path="/" element={<Home />} />
-          {/* Owner */}
-          <Route path="/owner/registration" element={<OwnerRegistration />} />
-          <Route path="/owner/login" element={<OwnerLogin />} />
-          <Route path="/owner/home" element={<Owner />} />
-          {/* Business */}
-          <Route path="/owner/business/new" element={<CreateBusiness />} />
-          {/* Sale */}
-          <Route path="/sale/:sid" element={<Sale />} />
-          <Route path="/sale/:sid/new" element={<NewSale />} />
+          <Route element={<PublicRoute />}>
+            {/* Home */}
+            <Route path="/" element={<Home />} />
+            {/* Owner */}
+            <Route path="/owner/registration" element={<OwnerRegistration />} />
+            <Route path="/owner/login" element={<OwnerLogin />} />
+            <Route path="/employee/login/page" element={<EmployeeLogin />} />
+          </Route>
+          <Route element={<PrivateRoute />}>
+            <Route path="/owner/home" element={<Owner />} />
+            {/* Business */}
+            <Route path="/owner/business/new" element={<CreateBusiness />} />
+            {/* Sale */}
+            <Route path="/sale/:sid" element={<Sale />} />
+            <Route path="/sale/:sid/new" element={<NewSale />} />
 
-          {/* Employee */}
-          <Route path="/employee/:eid" element={<Employee />} />
-          <Route path="/employee/:eid/new" element={<NewEmployee />} />
-          <Route path="/employee/:eid/:oeid/edit" element={<EditEmployee />} />
-          <Route path="/employee/login/page" element={<EmployeeLogin />} />
+            {/* Employee */}
+            <Route path="/employee/:eid" element={<Employee />} />
+            <Route path="/employee/:eid/new" element={<NewEmployee />} />
+            <Route
+              path="/employee/:eid/:oeid/edit"
+              element={<EditEmployee />}
+            />
 
-          {/* Product */}
-          <Route path="/product/:pid" element={<Product />} />
-          <Route path="/product/:pid/new" element={<NewProduct />} />
-          <Route path="/product/:pid/:opid/edit" element={<EditProduct />} />
+            {/* Product */}
+            <Route path="/product/:pid" element={<Product />} />
+            <Route path="/product/:pid/new" element={<NewProduct />} />
+            <Route path="/product/:pid/:opid/edit" element={<EditProduct />} />
 
-          {/* inventory */}
-          <Route path="/inventory/:iid" element={<Inventory />} />
-          <Route path="/inventory/:iid/new" element={<NewInventory />} />
+            {/* inventory */}
+            <Route path="/inventory/:iid" element={<Inventory />} />
+            <Route path="/inventory/:iid/new" element={<NewInventory />} />
 
-          <Route path="/analysis/:bid/" element={<Analysis />} />
+            <Route path="/analysis/:bid/" element={<Analysis />} />
+          </Route>
 
           {/* 404 Page Not Found */}
           <Route path="*" element={<PageNotFound />} />

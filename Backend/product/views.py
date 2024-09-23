@@ -51,18 +51,15 @@ def product_one(request,pid):
 
 
 def product_one_edit(request, pid):
-    # Parse the request body (assuming JSON data)
     body_unicode = request.body.decode('utf-8')
     body_data = json.loads(body_unicode)
 
-    # Perform the update operation
     updated_product = conn.Visionary.Product.find_one_and_update(
         {"_id": ObjectId(pid)},
         {"$set": body_data},
-        return_document=True  # Ensures the updated document is returned
+        return_document=True  
     )
 
-    # Convert the ObjectId to a string for JSON response
     if updated_product:
         updated_product["_id"] = str(updated_product["_id"])
 

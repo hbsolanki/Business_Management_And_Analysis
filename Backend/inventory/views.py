@@ -31,9 +31,8 @@ def new_inventory(request,iid):
     body_unicode = request.body.decode('utf-8')
     body_data = json.loads(body_unicode)
     body_data["date"]=datetime.now(ist)
-    # Perform the update operation
     Inventory = conn.Visionary.Inventory.insert_one(
-        body_data, # Ensures the updated document is returned
+        body_data, 
     )
     Inventorys["stock"].append(Inventory.inserted_id)
     conn.Visionary.Inventorys.find_one_and_update({"_id": ObjectId(iid)},{"$set":{"stock":Inventorys["stock"]}})

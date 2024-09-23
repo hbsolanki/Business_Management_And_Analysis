@@ -56,7 +56,6 @@ def new_employee(request,eid):
     
     if not image_url :
         image_url=""
-        # Add image_url to body_data if present
     d={
             "name": name,
             "email": email,
@@ -84,7 +83,6 @@ def login_employee(request):
     Employee=conn.Visionary.Employee.find_one({"email":email,"password":password})
    
     if Employee is not None:
-        # Generate a token (for demonstration purposes; use a proper method in production)
         access_token_expires=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": email},
@@ -107,12 +105,10 @@ def employee_one_edit(request, eid, oeid):
         body_data = {}
         image_url = None
 
-        # Handle form data from request.POST
         body_data.update(request.POST.dict())
 
-        # Handle image upload, if present
         if 'image' in request.FILES:
-            image = request.FILES['image']  # Get the uploaded image file
+            image = request.FILES['image']  
             print(image)
    
             try:
@@ -122,19 +118,16 @@ def employee_one_edit(request, eid, oeid):
             except Exception as e:
                 return JsonResponse({'error': 'Image upload failed', 'details': str(e)}, status=500)
 
-        # Add image_url to body_data if present
         if image_url:
             body_data['image_url'] = image_url
 
         try:
-            # Perform the update operation in MongoDB
             updated_employee = conn.Visionary.Employee.find_one_and_update(
                 {"_id": ObjectId(oeid)},
                 {"$set": body_data},
-                return_document=True  # Ensures the updated document is returned
+                return_document=True  
             )
 
-            # Ensure the updated document is returned correctly
             if updated_employee:
                 updated_employee["_id"] = str(updated_employee["_id"])
                 return JsonResponse(updated_employee, status=200)
@@ -161,3 +154,16 @@ def employee_delete(request,eid,oeid):
         return JsonResponse({'status': 'success', 'message': 'Delete successful'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Product not found'}, status=404)
+    
+
+def employee_data(request):
+    auth_header = request.headers.get('Authorization')
+    email = get_current_user(auth_header)
+
+    if email:
+        Employee = conn.Visionary.Employee.find_one({"email": email})
+        if Employee:
+            Employee['_id'] = str(Employee['_id'])
+            
+            return JsonResponse(Employee)
+    return JsonResponse({"error": "Owner not found"}, status=404)

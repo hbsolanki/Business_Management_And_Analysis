@@ -6,18 +6,9 @@ function OwnerHeader({ ownerData }) {
   const navigate = useNavigate();
   const handleLogout = async () => {
     try {
-      // Optionally call your FastAPI logout endpoint
-      // await axios.post("/API/logout", null, {
-      //   headers: {
-      //     Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      //   },
-      // });
-
-      // Clear token from localStorage (or sessionStorage)
       localStorage.removeItem("access_token");
       localStorage.removeItem("user_data");
       localStorage.removeItem("token");
-      // Redirect to login or home page
       navigate("/");
     } catch (error) {
       alert("Error logging out:", error);

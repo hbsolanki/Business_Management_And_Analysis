@@ -35,6 +35,7 @@ def business_registration(request):
         Sales=conn.Visionary.Sales.insert_one({
             "saleInfo": [], 
             "productsid": Products.inserted_id ,
+            "employeesid":Employees.inserted_id
         })
         Inventorys=conn.Visionary.Inventorys.insert_one({
             "stock": [],
@@ -53,10 +54,8 @@ def business_registration(request):
             "sale":Sales.inserted_id ,
             "description": description,
         })
-        # Extract the ObjectId of the newly created business
         business_id = business.inserted_id
 
-        # Update the Owner document by setting the businessid to the inserted ObjectId
         conn.Visionary.Owner.update_one({"email": email}, {"$set": {"businessid": business_id}})
 
 

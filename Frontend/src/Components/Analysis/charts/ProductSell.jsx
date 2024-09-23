@@ -2,7 +2,6 @@ import * as React from "react";
 import { LineChart } from "@mui/x-charts/LineChart";
 
 export default function ProductSell({ Data }) {
-  console.log(Data);
   let data = [];
   for (let product in Data) {
     data.push({ data: Data[product], label: product });

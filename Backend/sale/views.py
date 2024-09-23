@@ -10,9 +10,14 @@ ist = pytz.timezone('Asia/Kolkata')
 
 
 def saleInfo(request, sid):
-    Sales = conn.Visionary.Sales.find_one({"_id": ObjectId(sid)})
+    print(sid)
+    # Business=conn.Visionary.Business.find_one({"_id":ObjectId(sid)})
+    # print(Business)
+    Sales = conn.Visionary.Sales.find_one({"_id":ObjectId(sid)})
+    print(Sales)
     Sales["_id"] = str(Sales["_id"])
     Sales["productsid"] = str(Sales["productsid"])
+    Sales["employeesid"]=str(Sales["employeesid"])
     for i in range(len(Sales["saleInfo"])):
         Sales["saleInfo"][i]=conn.Visionary.Sale.find_one({"_id": Sales["saleInfo"][i]})
         
@@ -67,7 +72,7 @@ def new_sale(request, sid):
     # Additional sale info
     marketing = int(data.get('marketing'))
     othercost = int(data.get('othercost'))
-    employess_salary=total_employee_salary()
+    employess_salary=total_employee_salary(Sales["employeesid"])
     grossprofit=totalRevenueFromProduct-marketing-othercost-employess_salary
     
     tax_amount =taxrate_calculation(grossprofit)
@@ -89,24 +94,24 @@ def new_sale(request, sid):
         "date": datetime.now(ist),
     }
     
-    # Insert sale into the Sale collection
     Sale = conn.Visionary.Sale.insert_one(sale)
     
-    # Update saleInfo in the Sales document
     Sales["saleInfo"].append(Sale.inserted_id)
     conn.Visionary.Sales.find_one_and_update(
         {"_id": ObjectId(sid)},
         {"$set": {"saleInfo": Sales["saleInfo"]}}
     )
     
-    # Return confirmation response
     return JsonResponse({"message": "Sale stored successfully"}, safe=False)
 
 
-def total_employee_salary():
+def total_employee_salary(eid):
     totalSalary=0
-    AllEmployee=conn.Visionary.Employee.find({})
-    for employee in AllEmployee:
+    Employees=conn.Visionary.Employees.find_one({"_id":eid})
+
+    
+    for oeid in Employees["allEmployee"]:
+        employee=conn.Visionary.Employee.find_one({"_id":oeid})
         totalSalary+=int(employee["salary"])
 
     return totalSalary

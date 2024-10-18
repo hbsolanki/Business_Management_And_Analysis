@@ -1,7 +1,13 @@
 import IMG1 from "../../assets/VISIONARY.png";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 
 function Header() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
   return (
     <>
       <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50">
@@ -9,7 +15,7 @@ function Header() {
           <div className="flex justify-between items-center py-4">
             {/* Logo/Brand Name */}
             <div className="text-2xl font-bold text-gray-800">
-              <img src={IMG1} alt="" height={70} width={70} />
+              <img src={IMG1} alt="Logo" height={70} width={70} />
             </div>
             {/* Navigation Links */}
             <div className="hidden sm:flex space-x-6">
@@ -37,7 +43,8 @@ function Header() {
             {/* Mobile Menu */}
             <div className="sm:hidden flex items-center">
               <button
-                className="text-gray-600 hover:text-gray-800 focus:outline-none focus:text-gray-800"
+                onClick={toggleMenu}
+                className="text-gray-600 hover:text-gray-800 focus:outline-none"
                 aria-label="Menu"
               >
                 <svg
@@ -57,6 +64,29 @@ function Header() {
               </button>
             </div>
           </div>
+          {/* Mobile Dropdown Menu */}
+          {isOpen && (
+            <div className="sm:hidden bg-white shadow-md mt-2 rounded-md">
+              <a
+                href="/owner/registration"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              >
+                Owner Registration
+              </a>
+              <a
+                href="/owner/login"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              >
+                Owner Login
+              </a>
+              <a
+                href="/employee/login/page"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              >
+                Employee Login
+              </a>
+            </div>
+          )}
         </div>
       </nav>
     </>

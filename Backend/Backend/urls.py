@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.middleware.csrf import get_token
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponse
+def home(request):
+    return HttpResponse("Welcome to the home page!")
 
 urlpatterns = [
     path('', home, name='home'),
@@ -16,5 +18,3 @@ urlpatterns = [
 ]
 
 
-def home(request):
-    return HttpResponse("Welcome to the home page!")

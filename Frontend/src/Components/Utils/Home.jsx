@@ -1,5 +1,6 @@
 import Footer from "./Footer";
 import Header from "./Header";
+import BG from "../../assets/HomeBG.webp";
 
 export default function Home() {
   return (
@@ -11,7 +12,7 @@ export default function Home() {
       <div
         className="relative hero-section bg-cover bg-center h-screen text-white flex"
         style={{
-          backgroundImage: `url(https://ibu.ca/wp-content/uploads/2024/01/m29.webp)`,
+          backgroundImage: `url(${BG})`,
         }}
       >
         <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-50"></div>

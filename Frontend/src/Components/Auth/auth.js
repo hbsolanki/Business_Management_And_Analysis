@@ -31,3 +31,17 @@ export const isAuthenticatedGetUsername = () => {
   }
   return false;
 };
+
+export const decodedTokenAndGetInfo = () => {
+  const token = getToken();
+  if (token) {
+    try {
+      const decodedToken = jwtDecode(token);
+
+      return decodedToken;
+    } catch (error) {
+      return false;
+    }
+  }
+  return false;
+};

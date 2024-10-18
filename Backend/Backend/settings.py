@@ -130,3 +130,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
+
+
+# settings.py
+SECRET_KEY = 'this_is_my_secret'  # Replace with your actual secret key

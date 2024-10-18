@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Logo from "../../../assets/VISIONARY.png";
-
+import Header from "../../Utils/Header";
 function EmployeeLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
   const [csrfToken, setCsrfToken] = useState(null);
-  const [employeeData, setEmployeeData] = useState([]);
-
   // Fetch CSRF token on component mount
   useEffect(() => {
     async function fetchCsrfToken() {
@@ -39,11 +36,11 @@ function EmployeeLogin() {
       });
 
       const accessToken = response.data.token;
-      const workpage = response.data.workpage;
+      const oeid = response.data.oeid;
 
       localStorage.setItem("token", accessToken);
       console.log(response.data);
-      navigate(`/owner/home`);
+      navigate(`/employee/dashboard/${oeid}`);
     } catch (err) {
       alert("Invalid credentials");
     }
@@ -51,6 +48,7 @@ function EmployeeLogin() {
 
   return (
     <>
+      <Header />
       <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">

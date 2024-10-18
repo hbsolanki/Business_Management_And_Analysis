@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from Database.db import conn
 from bson import ObjectId
 import json
-from Auth.Auth import ACCESS_TOKEN_EXPIRE_MINUTES,create_access_token,authenticate_user,get_current_user
+from Auth.Auth import ACCESS_TOKEN_EXPIRE_MINUTES,create_access_token,get_current_user
 from datetime import timedelta
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -85,10 +85,10 @@ def login_employee(request):
     if Employee is not None:
         access_token_expires=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": email},
+            data={"sub": email,"type":"emp"},
             expires_delta=access_token_expires
         )
-        return JsonResponse({'token': access_token,"workpage":Employee["workpage"]}, status=status.HTTP_200_OK)
+        return JsonResponse({'token': access_token,"oeid":str(Employee["_id"])}, status=status.HTTP_200_OK)
     else:
         return JsonResponse({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
     

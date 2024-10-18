@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import OwnerHeader from "./OwnerHeader";
-import EmployeeHeader from "./EmployeeHeader";
+import EmployeeHeader from "../Management/Employee/EmployeeHeader";
+import { decodedTokenAndGetInfo } from "../Auth/auth";
 
 function Owner() {
   const [ownerData, setOwnerData] = useState(null);

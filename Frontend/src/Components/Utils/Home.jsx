@@ -1,18 +1,21 @@
 import Footer from "./Footer";
-import istockphoto from "../../assets/home1.jpg";
-import logo from "../../assets/VISIONARY.png";
 import Header from "./Header";
+
 export default function Home() {
   return (
     <div className="home-page">
       {/* Navbar */}
       <Header />
+
       {/* Hero Section */}
       <div
-        className="relative hero-section bg-cover bg-center h-screen text-white"
-        style={{ backgroundImage: `url(${istockphoto})` }}
+        className="relative hero-section bg-cover bg-center h-screen text-white flex"
+        style={{
+          backgroundImage: `url(https://ibu.ca/wp-content/uploads/2024/01/m29.webp)`,
+        }}
       >
         <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-50"></div>
+
         <div className="relative z-10 text-center mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-tight">
             Empowering Business Through Data-Driven Insights

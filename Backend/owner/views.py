@@ -6,6 +6,8 @@ from Database.db import conn  # Update this import if necessary
 from Auth.Auth import ACCESS_TOKEN_EXPIRE_MINUTES,create_access_token,authenticate_user,get_current_user
 from datetime import timedelta
 
+
+
 @csrf_exempt 
 def owner_registration(request):
     if request.method == 'POST':
@@ -30,7 +32,7 @@ def owner_registration(request):
 
             access_token_expires=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
             access_token = create_access_token(
-                data={"sub": email},
+                data={"sub": email,"type":"owner"},
                 expires_delta=access_token_expires
             )
             return JsonResponse({'status': 'success', 'message': 'Registration successful', 'token': access_token})
@@ -55,7 +57,7 @@ def owner_login(request):
     if user is not None:
         access_token_expires=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": email},
+            data={"sub": email,"type":"owner"},
             expires_delta=access_token_expires
         )
         print(access_token)

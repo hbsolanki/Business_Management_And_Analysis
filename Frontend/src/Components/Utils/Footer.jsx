@@ -1,4 +1,3 @@
-import { Typography } from "@material-tailwind/react";
 const currentYear = new Date().getFullYear();
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
@@ -24,7 +23,7 @@ function Footer() {
             <div className="col-span-1 ml-20">
               <h2 className="mt-3 text-xl font-bold">Contact Us</h2>
               <p className="mt-2 text-sm">Ahmedabad</p>
-              <p className="text-sm">Phone : +91 9724013899</p>
+              <p className="text-sm">Phone : +91 8160062665</p>
               <p className="text-sm">Email : info@bizvissionary.biz</p>
             </div>
             {/* Column 3 */}
@@ -33,7 +32,8 @@ function Footer() {
               <ul className="flex space-x-4 mt-4">
                 <li>
                   <a
-                    href="https://www.facebook.com/harsh.vaghela.1272010/"
+                    href="https://www.facebook.com/profile.php?id=100094027732677"
+                    target="_blank"
                     className="footer5 flex items-center justify-center w-12 h-12 bg-black text-white rounded-full text-lg"
                   >
                     <i className="fab fa-facebook-f"></i>
@@ -41,7 +41,8 @@ function Footer() {
                 </li>
                 <li>
                   <a
-                    href="https://www.linkedin.com/in/harsh-vaghela-5b1344298/"
+                    href="https://www.linkedin.com/in/hbsolanki/"
+                    target="_blank"
                     className="footer5 flex items-center justify-center w-12 h-12 bg-black text-white rounded-full text-lg"
                   >
                     <i className="fab fa-linkedin"></i>
@@ -49,7 +50,8 @@ function Footer() {
                 </li>
                 <li>
                   <a
-                    href="https://www.instagram.com/vaghela_harsh_4840/"
+                    href="https://www.instagram.com/hbsolanki_24/"
+                    target="_blank"
                     className="footer5 flex items-center justify-center w-12 h-12 bg-black text-white rounded-full text-lg"
                   >
                     <i className="fab fa-instagram"></i>
@@ -65,7 +67,7 @@ function Footer() {
       <section className="footer1 bg-gray-800 h-12">
         <div className="container mx-auto px-4 text-center py-3">
           <p className="text-white text-sm">
-            ©️ 2024 BizVisionary. All Rights Reserved.
+            ©️ {currentYear} BizVisionary. All Rights Reserved.
           </p>
         </div>
       </section>

@@ -19,6 +19,7 @@ import Employee from "./Components/Management/Employee/Employee";
 import NewEmployee from "./Components/Management/Employee/NewEmployee";
 import EditEmployee from "./Components/Management/Employee/EditEmployee";
 import EmployeeLogin from "./Components/Management/Employee/EmployeeLogin";
+import EmployeeDashboard from "./Components/Management/Employee/EmployeeDashboard";
 
 //Product
 import Product from "./Components/Management/Product/Product";
@@ -35,6 +36,9 @@ import Analysis from "./Components/Analysis/pages/Analysis";
 // Public Private Route
 import PublicRoute from "./Components/Auth/PublicRoute";
 import PrivateRoute from "./Components/Auth/PrivateRoute";
+import OwnerRoute from "./Components/Auth/OwnerRoute";
+import EmployeeRoutes from "./Components/Auth/EmployeeRoutes";
+import SelfEditEmployee from "./Components/Management/Employee/SelfEditEmployee";
 
 //Owner
 function App() {
@@ -51,20 +55,29 @@ function App() {
             <Route path="/employee/login/page" element={<EmployeeLogin />} />
           </Route>
           <Route element={<PrivateRoute />}>
-            <Route path="/owner/home" element={<Owner />} />
-            {/* Business */}
-            <Route path="/owner/business/new" element={<CreateBusiness />} />
+            <Route element={<OwnerRoute />}>
+              <Route path="/owner/home" element={<Owner />} />
+              {/* Business */}
+              <Route path="/owner/business/new" element={<CreateBusiness />} />
+              <Route path="/analysis/:bid/" element={<Analysis />} />
+            </Route>
+
             {/* Sale */}
             <Route path="/sale/:sid" element={<Sale />} />
             <Route path="/sale/:sid/new" element={<NewSale />} />
 
             {/* Employee */}
+            <Route
+              path="/employee/dashboard/:eid"
+              element={<EmployeeDashboard />}
+            />
             <Route path="/employee/:eid" element={<Employee />} />
             <Route path="/employee/:eid/new" element={<NewEmployee />} />
             <Route
               path="/employee/:eid/:oeid/edit"
               element={<EditEmployee />}
             />
+            <Route path="/employee/:oeid/edit" element={<SelfEditEmployee />} />
 
             {/* Product */}
             <Route path="/product/:pid" element={<Product />} />
@@ -74,8 +87,6 @@ function App() {
             {/* inventory */}
             <Route path="/inventory/:iid" element={<Inventory />} />
             <Route path="/inventory/:iid/new" element={<NewInventory />} />
-
-            <Route path="/analysis/:bid/" element={<Analysis />} />
           </Route>
 
           {/* 404 Page Not Found */}

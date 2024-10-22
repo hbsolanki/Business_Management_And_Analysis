@@ -1,7 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import csrfToken from "../../CSRFToken.js";
 import Logo from "../../assets/VISIONARY.png";
 import Header from "../Utils/Header";
 import { getGlobalVariable } from "../../globalVariables";

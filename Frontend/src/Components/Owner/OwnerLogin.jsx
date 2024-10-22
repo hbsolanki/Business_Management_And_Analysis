@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Logo from "../../assets/VISIONARY.png";
 import Header from "../Utils/Header";
 import { getGlobalVariable } from "../../globalVariables";
 const Backend = getGlobalVariable();
@@ -9,19 +8,6 @@ const Backend = getGlobalVariable();
 function OwnerLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
-  const [csrfToken, setCsrfToken] = useState(null);
-
-  useEffect(() => {
-    async function fetchCsrfToken() {
-      try {
-        const response = await axios.get("/get-csrf-token/");
-        setCsrfToken(response.data.csrfToken);
-      } catch (error) {
-        window.alert(`Error fetching CSRF token: ${error.message}`);
-      }
-    }
-    fetchCsrfToken();
-  }, []);
 
   const handleChange = (e) => {
     let { name, value } = e.target;

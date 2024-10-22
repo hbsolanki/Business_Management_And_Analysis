@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import OwnerHeader from "./OwnerHeader";
 import EmployeeHeader from "../Management/Employee/EmployeeHeader";
 import { decodedTokenAndGetInfo } from "../Auth/auth";
+import { getGlobalVariable } from "../../globalVariables";
+const Backend = getGlobalVariable();
 
 function Owner() {
   const [ownerData, setOwnerData] = useState(null);
@@ -15,7 +17,7 @@ function Owner() {
       let token = localStorage.getItem("token");
 
       try {
-        const response = await axios.get(`/API/owner/home/`, {
+        const response = await axios.get(`${Backend}/API/owner/home/`, {
           headers: {
             Authorization: `${token}`,
           },
@@ -24,7 +26,7 @@ function Owner() {
         setOwnerData(data);
         if (data.businessid) {
           const response2 = await axios.get(
-            `/API/owner/business/data/${data.businessid}/`,
+            `${Backend}/API/owner/business/data/${data.businessid}/`,
             {
               headers: {
                 Authorization: `${token}`,
@@ -36,11 +38,14 @@ function Owner() {
         }
       } catch (error) {
         try {
-          const response = await axios.get(`/API/employee/data/one/`, {
-            headers: {
-              Authorization: `${token}`,
-            },
-          });
+          const response = await axios.get(
+            `${Backend}/API/employee/data/one/`,
+            {
+              headers: {
+                Authorization: `${token}`,
+              },
+            }
+          );
           const data = response.data;
           console.log(data);
           setEmployeeData(data);

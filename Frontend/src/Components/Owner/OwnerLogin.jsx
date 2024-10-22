@@ -3,6 +3,9 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Logo from "../../assets/VISIONARY.png";
 import Header from "../Utils/Header";
+import { getGlobalVariable } from "../../globalVariables";
+const Backend = getGlobalVariable();
+
 function OwnerLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
@@ -28,12 +31,15 @@ function OwnerLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("/API/owner/login/", formData, {
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken, // Use fetched CSRF token
-        },
-      });
+      const response = await axios.post(
+        `${Backend}/API/owner/login/`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const accessToken = response.data.token;
       localStorage.setItem("token", accessToken);

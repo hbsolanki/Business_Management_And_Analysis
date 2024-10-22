@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import csrfToken from "../../CSRFToken.js";
 import Logo from "../../assets/VISIONARY.png";
 import Header from "../Utils/Header";
+import { getGlobalVariable } from "../../globalVariables";
+const Backend = getGlobalVariable();
 
 function OwnerRegistration() {
   const navigate = useNavigate();
@@ -55,12 +57,15 @@ function OwnerRegistration() {
     }
 
     try {
-      const response = await axios.post("/API/owner/registration/", formData, {
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
-      });
+      const response = await axios.post(
+        `${Backend}/API/owner/registration/`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const accessToken = response.data.token;
       localStorage.setItem("token", accessToken);

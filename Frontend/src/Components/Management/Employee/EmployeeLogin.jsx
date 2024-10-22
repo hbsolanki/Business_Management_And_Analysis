@@ -1,24 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Header from "../../Utils/Header";
 function EmployeeLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
-  const [csrfToken, setCsrfToken] = useState(null);
-  // Fetch CSRF token on component mount
-  useEffect(() => {
-    async function fetchCsrfToken() {
-      try {
-        const response = await axios.get("/get-csrf-token/");
-        setCsrfToken(response.data.csrfToken);
-      } catch (error) {
-        // Display the error message in an alert
-        window.alert(`Error fetching CSRF token: ${error.message}`);
-      }
-    }
-    fetchCsrfToken();
-  }, []);
 
   const handleChange = (e) => {
     let { name, value } = e.target;
@@ -31,7 +17,6 @@ function EmployeeLogin() {
       const response = await axios.post("/API/employee/login/page/", formData, {
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken, // Use fetched CSRF token
         },
       });
 

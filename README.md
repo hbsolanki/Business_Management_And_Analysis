@@ -30,3 +30,12 @@ To run this project locally, follow these steps:
 1. Clone the repository:
    ```bash
    git clone https://github.com/hbsolanki/Business_Management_And_Analysis.git
+
+2. Install Packages
+   Frontend : npm install
+   Backend : source myenv/bin/activate; pip install -r requirements.txt
+
+3. Start server
+   Frontend :  npm run dev
+   Backend : python manage.py runserver
+

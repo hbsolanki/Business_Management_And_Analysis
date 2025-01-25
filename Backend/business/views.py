@@ -26,21 +26,34 @@ def business_registration(request):
         debt["totalEMI"]=data.get("totalEMI",0)
         debt["persentage"]=data.get("persentage",0)
 
-        Employees=conn.Visionary.Employees.insert_one({
-            "allEmployee": [], 
-        })
+        
         Products=conn.Visionary.Products.insert_one({
             "allProduct": [], 
+        })
+        
+        Inventorys=conn.Visionary.Inventorys.insert_one({
+            "stock": [],
+            "productStock":[],
+            "productsid": Products.inserted_id , 
+        })
+
+        Employees=conn.Visionary.Employees.insert_one({
+            "allEmployee": [], 
+            "pid":Products.inserted_id,
+            "iid": Inventorys.inserted_id,
+            "sid":"" 
         })
         Sales=conn.Visionary.Sales.insert_one({
             "saleInfo": [], 
             "productsid": Products.inserted_id ,
-            "employeesid":Employees.inserted_id
+            "employeesid":Employees.inserted_id,
+            "inventorysid":Inventorys.inserted_id
         })
-        Inventorys=conn.Visionary.Inventorys.insert_one({
-            "stock": [],
-            "productsid": Products.inserted_id , 
-        })
+
+        conn.Visionary.Employees.update_one(
+            {"_id": Employees.inserted_id},
+            {"$set": {"sid": Sales.inserted_id}}
+        )
 
         business=conn.Visionary.Business.insert_one({
             "name": name,
@@ -75,7 +88,6 @@ def business_data(request, id):
     try:
     
         business=conn.Visionary.Business.find_one({"_id":ObjectId(id)})
-        # print(business.get("product","A"))
         business["_id"]=str(business["_id"])
         if business["product"]:
             business["product"]=str(business["product"])
@@ -94,5 +106,32 @@ def business_data(request, id):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
-    
+@api_view(["PUT"])
+def business_edit(request, id):
+    auth_header = request.headers.get('Authorization')
+    email=get_current_user(auth_header)
+
+    try:
+        if email:
+            data = request.data
+            updated_data = {}
+            if 'name' in data:
+                updated_data['name'] = data['name']
+            if "assets" in data:
+                updated_data['assets']=data["assets"]
+            if "haveEquity" in data:
+                updated_data["haveEquity"]=data["haveEquity"]
+            if "description" in data:
+                updated_data["description"]=data["description"]
+
+            conn.Visionary.Business.update_one(
+                        {"_id": ObjectId(id)},
+                        {"$set": updated_data}
+                    )
+
+            return JsonResponse({"status": "success", "message": "Owner details updated successfully."})
+
+        return JsonResponse({"error": "Owner not found or unauthorized access."}, status=404)
+
+    except Exception as e:
+        return JsonResponse({"status": "error","message":str(e)},status=500)

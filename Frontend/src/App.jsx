@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // Utils
-import Home from "./Components/Utils/Home";
+import Home from "./Components/Utils/Home/Home";
 import PageNotFound from "./Components/Utils/PageNotFound";
 
 //Owner
@@ -9,6 +9,8 @@ import OwnerRegistration from "./Components/Owner/OwnerRegistration";
 import OwnerLogin from "./Components/Owner/OwnerLogin";
 import Owner from "./Components/Owner/Owner";
 import CreateBusiness from "./Components/Business/CreateBusiness";
+import EditBusiness from "./Components/Business/EditBusiness";
+import OwnerEdit from "./Components/Owner/OwnerEdit";
 
 // Sale
 import Sale from "./Components/Management/Sale/Sale";
@@ -40,10 +42,12 @@ import OwnerRoute from "./Components/Auth/OwnerRoute";
 import EmployeeRoutes from "./Components/Auth/EmployeeRoutes";
 import SelfEditEmployee from "./Components/Management/Employee/SelfEditEmployee";
 
-//Owner
+import { Toaster } from "react-hot-toast";
+
 function App() {
   return (
     <>
+      <Toaster position="top-center" />
       <Router>
         <Routes>
           <Route element={<PublicRoute />}>
@@ -57,8 +61,13 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route element={<OwnerRoute />}>
               <Route path="/owner/home" element={<Owner />} />
+              <Route path="/owner/edit" element={<OwnerEdit />} />
               {/* Business */}
               <Route path="/owner/business/new" element={<CreateBusiness />} />
+              <Route
+                path="/owner/business/edit/:bid"
+                element={<EditBusiness />}
+              />
               <Route path="/analysis/:bid/" element={<Analysis />} />
             </Route>
 

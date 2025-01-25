@@ -5,13 +5,13 @@ function Footer() {
   return (
     <>
       {/* Footer Section */}
-      <section className="footer1 mt-4 bg-gray-600 text-white py-6">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+      <section className="footer1 mt-6 bg-gray-600 text-white py-8">
+        <div className="container mx-auto px-6 lg:px-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
             {/* Column 1 */}
-            <div className="col-span-1 ml-10">
-              <h3 className="mt-3 text-xl font-bold">About Us</h3>
-              <p className="text-sm mt-2">
+            <div>
+              <h3 className="text-2xl font-semibold">About Us</h3>
+              <p className="text-sm mt-4 leading-relaxed">
                 We know that good management and smart analysis are essential
                 for succeeding in today’s complicated business world. Our
                 customized solutions help businesses make the best use of their
@@ -20,39 +20,44 @@ function Footer() {
               </p>
             </div>
             {/* Column 2 */}
-            <div className="col-span-1 ml-20">
-              <h2 className="mt-3 text-xl font-bold">Contact Us</h2>
-              <p className="mt-2 text-sm">Ahmedabad</p>
-              <p className="text-sm">Phone : +91 8160062665</p>
-              <p className="text-sm">Email : info@bizvissionary.biz</p>
+            <div>
+              <h3 className="text-2xl font-semibold">Contact Us</h3>
+              <div className="mt-4 space-y-2">
+                <p className="text-sm">Ahmedabad</p>
+                <p className="text-sm">Phone: +91 8160062665</p>
+                <p className="text-sm">Email: info@bizvissionary.biz</p>
+              </div>
             </div>
             {/* Column 3 */}
-            <div className="col-span-1 ml-10">
-              <h3 className="mt-3 text-xl font-bold">Social Media</h3>
-              <ul className="flex space-x-4 mt-4">
+            <div>
+              <h3 className="text-2xl font-semibold">Social Media</h3>
+              <ul className="flex justify-center md:justify-start space-x-6 mt-6">
                 <li>
                   <a
-                    href="https://www.facebook.com/profile.php?id=100094027732677"
+                    href="https://www.facebook.com/bizvisionary011"
                     target="_blank"
-                    className="footer5 flex items-center justify-center w-12 h-12 bg-black text-white rounded-full text-lg"
+                    rel="noopener noreferrer"
+                    className="footer5 flex items-center justify-center w-10 h-10 bg-black text-white rounded-full hover:bg-blue-600 transition-colors"
                   >
                     <i className="fab fa-facebook-f"></i>
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://www.linkedin.com/in/hbsolanki/"
+                    href="https://www.linkedin.com/in/bizvisionary011/"
                     target="_blank"
-                    className="footer5 flex items-center justify-center w-12 h-12 bg-black text-white rounded-full text-lg"
+                    rel="noopener noreferrer"
+                    className="footer5 flex items-center justify-center w-10 h-10 bg-black text-white rounded-full hover:bg-blue-700 transition-colors"
                   >
                     <i className="fab fa-linkedin"></i>
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://www.instagram.com/hbsolanki_24/"
+                    href="https://www.instagram.com/bizvisionary011/"
                     target="_blank"
-                    className="footer5 flex items-center justify-center w-12 h-12 bg-black text-white rounded-full text-lg"
+                    rel="noopener noreferrer"
+                    className="footer5 flex items-center justify-center w-10 h-10 bg-black text-white rounded-full hover:bg-pink-500 transition-colors"
                   >
                     <i className="fab fa-instagram"></i>
                   </a>
@@ -64,8 +69,8 @@ function Footer() {
       </section>
 
       {/* Footer Bottom Section */}
-      <section className="footer1 bg-gray-800 h-12">
-        <div className="container mx-auto px-4 text-center py-3">
+      <section className="footer1 bg-gray-800">
+        <div className="container mx-auto px-6 lg:px-16 text-center py-4">
           <p className="text-white text-sm">
             ©️ {currentYear} BizVisionary. All Rights Reserved.
           </p>

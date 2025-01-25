@@ -1,33 +1,89 @@
-export default function PageNotFound() {
+const currentYear = new Date().getFullYear();
+import "@fortawesome/fontawesome-free/css/all.min.css";
+
+function Footer() {
   return (
     <>
-      {/*
-        This example requires updating your template:
-
-        ```
-        <html class="h-full">
-        <body class="h-full">
-        ```
-      */}
-      <main className="grid min-h-full place-items-center bg-white px-6 py-24 sm:py-32 lg:px-8">
-        <div className="text-center">
-          <p className="text-base font-semibold text-blue-600">404</p>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-            Page not found
-          </h1>
-          <p className="mt-6 text-base leading-7 text-gray-600">
-            Sorry, we couldn’t find the page you’re looking for.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <a
-              href="/"
-              className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            >
-              Go back home
-            </a>
+      {/* Footer Section */}
+      <section className="mt-6 bg-gray-700 text-white py-8">
+        <div className="container mx-auto px-6 lg:px-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
+            {/* Column 1 */}
+            <div>
+              <h3 className="text-2xl font-semibold text-blue-400">About Us</h3>
+              <p className="text-sm mt-4 leading-relaxed text-gray-300">
+                We know that good management and smart analysis are essential
+                for succeeding in today’s complicated business world. Our
+                customized solutions help businesses make the best use of their
+                resources, streamline their processes, and use data to make
+                better decisions.
+              </p>
+            </div>
+            {/* Column 2 */}
+            <div>
+              <h3 className="text-2xl font-semibold text-blue-400">
+                Contact Us
+              </h3>
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-gray-300">Ahmedabad</p>
+                <p className="text-sm text-gray-300">Phone: +91 8160062665</p>
+                <p className="text-sm text-gray-300">
+                  Email: info@bizvissionary.biz
+                </p>
+              </div>
+            </div>
+            {/* Column 3 */}
+            <div>
+              <h3 className="text-2xl font-semibold text-blue-400">
+                Social Media
+              </h3>
+              <ul className="flex justify-center md:justify-start space-x-6 mt-6">
+                <li>
+                  <a
+                    href="https://www.facebook.com/profile.php?id=100094027732677"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-10 h-10 bg-gray-800 text-white rounded-full hover:bg-blue-600 transition-colors"
+                  >
+                    <i className="fab fa-facebook-f"></i>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.linkedin.com/in/hbsolanki/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-10 h-10 bg-gray-800 text-white rounded-full hover:bg-blue-700 transition-colors"
+                  >
+                    <i className="fab fa-linkedin"></i>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.instagram.com/hbsolanki_24/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-10 h-10 bg-gray-800 text-white rounded-full hover:bg-pink-500 transition-colors"
+                  >
+                    <i className="fab fa-instagram"></i>
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* Footer Bottom Section */}
+      <section className="bg-black">
+        <div className="container mx-auto px-6 lg:px-16 text-center py-4">
+          <p className="text-gray-400 text-sm">
+            ©️ {currentYear} BizVisionary. All Rights Reserved.
+          </p>
+        </div>
+      </section>
     </>
   );
 }
+
+export default Footer;

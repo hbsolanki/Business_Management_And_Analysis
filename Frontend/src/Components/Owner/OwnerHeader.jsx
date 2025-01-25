@@ -1,19 +1,22 @@
 import IMG1 from "../../assets/VISIONARY.png";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useState } from "react";
+import GeneralModal from "../Utils/GeneralModal";
 
-function OwnerHeader({ ownerData }) {
+function OwnerHeader({ Businessid }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
   const navigate = useNavigate();
+
   const handleLogout = async () => {
     try {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_data");
-      localStorage.removeItem("token");
+      localStorage.clear();
       navigate("/");
     } catch (error) {
-      alert("Error logging out:", error);
+      alert("Error logging out:", error.message || error);
     }
   };
+
   return (
     <>
       <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50">
@@ -21,20 +24,19 @@ function OwnerHeader({ ownerData }) {
           <div className="flex justify-between items-center py-4">
             {/* Logo/Brand Name */}
             <div className="text-2xl font-bold text-gray-800">
-              <img src={IMG1} alt="" height={70} width={70} />
+              <img src={IMG1} alt="Logo" height={70} width={70} />
             </div>
-            {/* Navigation Links */}
+            {/* Navigation Links for Desktop */}
             <div className="hidden sm:flex space-x-6">
-              {" "}
               <Link
-                href={`/owner/home`}
+                to={"/"}
                 className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
               >
                 Home
               </Link>
-              {ownerData.businessid ? (
+              {Businessid ? (
                 <Link
-                  to={`/analysis/${ownerData.businessid}`}
+                  to={`/analysis/${Businessid}`}
                   className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                 >
                   Analysis
@@ -48,15 +50,17 @@ function OwnerHeader({ ownerData }) {
                 </Link>
               )}
               <button
-                onClick={handleLogout}
+                onClick={() => setIsModalOpen(true)} // Open the modal on logout click
                 className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
               >
                 Logout
               </button>
             </div>
-            {/* Mobile Menu */}
+
+            {/* Mobile Menu Button */}
             <div className="sm:hidden flex items-center">
               <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="text-gray-600 hover:text-gray-800 focus:outline-none focus:text-gray-800"
                 aria-label="Menu"
               >
@@ -77,8 +81,57 @@ function OwnerHeader({ ownerData }) {
               </button>
             </div>
           </div>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <div className="sm:hidden bg-gray-50 rounded-md shadow-lg">
+              <Link
+                to={"/"}
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+              {Businessid ? (
+                <Link
+                  to={`/analysis/${Businessid}`}
+                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Analysis
+                </Link>
+              ) : (
+                <Link
+                  to={`/owner/business/new`}
+                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Create Business
+                </Link>
+              )}
+              <button
+                onClick={() => {
+                  setIsModalOpen(true); // Open modal on logout
+                  setIsMobileMenuOpen(false);
+                }}
+                className="block w-full text-left px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </nav>
+      {/* General Modal for Logout Confirmation*/}
+      <GeneralModal
+        open={isModalOpen}
+        setOpen={setIsModalOpen}
+        title="Logout"
+        message="Are you sure you want to Logout? This action cannot be undone."
+        onConfirm={handleLogout}
+        confirmText="Logout"
+        cancelText="Cancel"
+      />
     </>
   );
 }

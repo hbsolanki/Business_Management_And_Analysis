@@ -29,17 +29,21 @@ cloudinary.config(
 def employeeInfo(request,eid):
     Employees=conn.Visionary.Employees.find_one({"_id": ObjectId(eid)})
     Employees["_id"]=str(Employees["_id"])
+    Employees["pid"]=str(Employees["pid"])
+    Employees["sid"]=str(Employees["sid"])
+    Employees["iid"]=str(Employees["iid"])
 
     for i in range(len(Employees["allEmployee"])):
         Employees["allEmployee"][i]=conn.Visionary.Employee.find_one({"_id": Employees["allEmployee"][i]})
         Employees["allEmployee"][i]["_id"]=str(Employees["allEmployee"][i]["_id"])
 
+
     return JsonResponse(Employees)
 
 
 def new_employee(request,eid):
-    auth_header = request.headers.get('Authorization')
-    email=get_current_user(auth_header)
+    # auth_header = request.headers.get('Authorization')
+    # email=get_current_user(auth_header)
 
     import json
     Employees=conn.Visionary.Employees.find_one({"_id":ObjectId(eid)})
@@ -100,7 +104,7 @@ def employee_one(request,eid):
     return JsonResponse(Employee)
 
 
-def employee_one_edit(request, eid, oeid):
+def employee_one_edit(request, oeid):
     if request.method == 'POST':
         body_data = {}
         image_url = None

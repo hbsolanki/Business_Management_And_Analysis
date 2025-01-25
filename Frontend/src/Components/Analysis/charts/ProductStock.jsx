@@ -29,6 +29,7 @@ export default function BasicBars({ Data }) {
       barLabel={({ value }) => value.toString()} // Display the value as label
       width={1000}
       height={400}
+      margin={{ left: 100 }}
     />
   );
 }

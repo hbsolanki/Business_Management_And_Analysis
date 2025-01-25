@@ -58,10 +58,28 @@
 // }
 
 // with percenteg
-import * as React from "react";
+import { useEffect, useState } from "react";
+
 import { PieChart } from "@mui/x-charts/PieChart";
 
-export default function Piechart({ Data }) {
+export default function Piechart({ Data, Height, t }) {
+  const [dimensions, setDimensions] = useState({
+    width: window.innerWidth > 768 ? t || 1000 : window.innerWidth - 20,
+    height: Height || (window.innerWidth > 768 ? 300 : 250),
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth > 768 ? t || 1000 : window.innerWidth - 20,
+        height: Height || (window.innerWidth > 768 ? 300 : 250),
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [Height, t]);
+
   const data = [
     { id: 0, value: Data["manaufacturing_cost"], label: "Manufacturing Cost" },
     { id: 1, value: Data["marketing_expenses"], label: "Marketing Expenses" },
@@ -80,21 +98,19 @@ export default function Piechart({ Data }) {
     label: `${item.label} (${((item.value / totalValue) * 100).toFixed(2)}%)`, // Include percentage in the label
     value: item.value, // Keep original value for proper chart display
   }));
+  let valueFormatter = (item) => `${item.value}%`;
 
   return (
     <PieChart
       series={[
         {
           data: percentageData,
-          label: {
-            // Use the label settings
-            position: "outside", // Position the labels outside the slices
-            formatter: (params) => params.label, // Show label with percentage
-          },
+          highlightScope: { fade: "global", highlight: "item" },
+          faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
+          valueFormatter,
         },
       ]}
-      width={1000}
-      height={400}
+      height={dimensions.height}
     />
   );
 }

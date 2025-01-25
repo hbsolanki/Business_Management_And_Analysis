@@ -10,7 +10,7 @@ from Database.db import conn
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT Secret key and Algorithm
-SECRET_KEY = "your_secret_key_here"  # Replace with a secure key in production
+SECRET_KEY = "this@my%top&secreeetttt^"  # Replace with a secure key in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 40
 
@@ -23,7 +23,7 @@ class Token(BaseModel):
 
 # Helper function to hash the password
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return pwd_context.hash(password) 
 
 # Helper function to verify the password
 def verify_password(plain_password: str, hashed_password: str) -> bool:

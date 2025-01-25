@@ -1,9 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Logo from "../../assets/VISIONARY.png";
 import Header from "../Utils/Header";
 import { getGlobalVariable } from "../../globalVariables";
+import toast from "react-hot-toast";
 const Backend = getGlobalVariable();
 
 function OwnerRegistration() {
@@ -68,10 +68,12 @@ function OwnerRegistration() {
 
       const accessToken = response.data.token;
       localStorage.setItem("token", accessToken);
+      localStorage.setItem("type", "owner");
 
+      toast.success("Successfully Registration!");
       navigate(`/owner/home`);
     } catch (err) {
-      console.log(err.message);
+      toast.error("Some Error...!");
     }
   };
 
@@ -173,7 +175,7 @@ function OwnerRegistration() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
+                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 Submit
               </button>

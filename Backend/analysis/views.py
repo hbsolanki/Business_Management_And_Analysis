@@ -92,13 +92,10 @@ def product_stock(request,bid):
         iid=Business["inventory"]
         Inventorys=conn.Visionary.Inventorys.find_one({"_id":iid})
 
-        latest_inventory = conn.Visionary.Inventory.find_one({"_id":Inventorys["stock"][-1]})
-        
         product_quantities = {}
-
-        for key, value in latest_inventory.items():
-            if key not in ["_id", "date"]:
-                product_quantities[key] = int(value) 
+        for product in Inventorys["productStock"]:
+            product_quantities[product["product"]] = product["quantity"]
+            
         return JsonResponse(product_quantities)
 
     except Exception as e:

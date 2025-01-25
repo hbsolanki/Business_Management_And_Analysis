@@ -2,6 +2,10 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Header from "../../Utils/Header";
+import { getGlobalVariable } from "../../../globalVariables";
+import { toast } from "react-hot-toast"; // Import react-hot-toast
+const Backend = getGlobalVariable();
+
 function EmployeeLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
@@ -14,20 +18,30 @@ function EmployeeLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("/API/employee/login/page/", formData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await axios.post(
+        `${Backend}/API/employee/login/page/`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const accessToken = response.data.token;
       const oeid = response.data.oeid;
 
       localStorage.setItem("token", accessToken);
+      localStorage.setItem("type", "employee");
       console.log(response.data);
+
+      // Show success toast
+      toast.success("Login successful!");
+
       navigate(`/employee/dashboard/${oeid}`);
     } catch (err) {
-      alert("Invalid credentials");
+      // Show error toast
+      toast.error("Invalid credentials, please try again!");
     }
   };
 
@@ -37,7 +51,7 @@ function EmployeeLogin() {
       <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Login Into You Account
+            Login Into Your Account
           </h2>
         </div>
 
@@ -88,7 +102,7 @@ function EmployeeLogin() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-gray:outline-gray-600"
+                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 Login
               </button>

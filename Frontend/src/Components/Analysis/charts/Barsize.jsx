@@ -1,30 +1,25 @@
-// import * as React from "react";
-// import { BarChart } from "@mui/x-charts/BarChart";
-
-// export default function Barsize() {
-//   return (
-//     <BarChart
-//       xAxis={[
-//         {
-//           scaleType: "band",
-//           data: ["Abhibh", "Bich", "Co", "Dajyn8jnjun", "E", "F", "G", "H"],
-//         },
-//       ]}
-//       series={[
-//         { data: [4, 3, 5, 6,4, 3, 5, 6] },
-//         { data: [1, 6, 3, 5,4, 3, 5, 6] },
-//         { data: [2, 5, 6, 4,4, 3, 5, 6] },
-//       ]}
-//       width={1000}
-//       height={300}
-//     />
-//   );
-// }
-
 import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 
 export default function Barsize({ Data }) {
+  const [dimensions, setDimensions] = React.useState({
+    width: window.innerWidth > 768 ? 1000 : window.innerWidth - 20,
+    height: window.innerWidth > 768 ? 400 : 300,
+  });
+
+  // Update dimensions on window resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth > 768 ? 1000 : window.innerWidth - 20,
+        height: window.innerWidth > 768 ? 400 : 300,
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   let mainObject = {
     scaleType: "band",
     data: [],
@@ -41,21 +36,24 @@ export default function Barsize({ Data }) {
   };
   let object3 = {
     data: [],
-    label: "Profit ",
+    label: "Profit",
     barLabel: (params) => `${params.value}`,
   };
+
   Data.map((product) => {
     mainObject.data.push(product["name"]);
     object1.data.push(product["price"]);
     object2.data.push(product["cogs"]);
     object3.data.push(product["revenue"]);
   });
+
   return (
     <BarChart
       xAxis={[mainObject]}
       series={[object1, object2, object3]}
-      width={1000}
-      height={400}
+      width={dimensions.width}
+      height={dimensions.height}
+      margin={{ left: 100 }}
     />
   );
 }

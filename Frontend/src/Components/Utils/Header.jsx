@@ -1,5 +1,6 @@
 import IMG1 from "../../assets/VISIONARY.png";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,9 +15,9 @@ function Header() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* Logo/Brand Name */}
-            <div className="text-2xl font-bold text-gray-800">
+            <Link to={"/"} className="text-2xl font-bold text-gray-800">
               <img src={IMG1} alt="Logo" height={70} width={70} />
-            </div>
+            </Link>
             {/* Navigation Links */}
             <div className="hidden sm:flex space-x-6">
               <div className="hidden md:flex space-x-6">

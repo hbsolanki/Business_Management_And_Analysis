@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { getGlobalVariable } from "../../../globalVariables";
+const Backend = getGlobalVariable();
 
 function NewInventory() {
   let { iid } = useParams();
@@ -14,23 +16,21 @@ function NewInventory() {
       let token = localStorage.getItem("token");
 
       try {
-        const response = await axios.get(`/API/inventory/${iid}/`, {
+        const response = await axios.get(`${Backend}/API/inventory/${iid}/`, {
           headers: {
             Authorization: `${token}`,
           },
         });
         const data = response.data;
-        console.log(data);
         setInventaryData(data);
         const productResponse = await axios.get(
-          `/API/product/${data.productsid}/`,
+          `${Backend}/API/product/${data.productsid}/`,
           {
             headers: {
               Authorization: `${token}`,
             },
           }
         );
-        console.log(productResponse.data);
         setProductData(productResponse.data.allProduct);
       } catch (error) {
         console.log(error);
@@ -49,7 +49,7 @@ function NewInventory() {
     e.preventDefault();
     try {
       const response = await axios.post(
-        `/API/inventory/${iid}/new/`,
+        `${Backend}/API/inventory/${iid}/new/`,
         formData,
         {
           headers: {
@@ -58,7 +58,7 @@ function NewInventory() {
         }
       );
 
-      navigate(`/inventory/${iid}`);
+      navigate(-1);
     } catch (err) {
       console.log(err.message);
     }
@@ -94,7 +94,7 @@ function NewInventory() {
                             type="number"
                             onChange={handleChange}
                             required
-                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                           />
                         </div>
                       </div>
@@ -104,7 +104,7 @@ function NewInventory() {
                 <div>
                   <button
                     type="submit"
-                    className="flex w-full justify-center rounded-md bg-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                   >
                     Submit
                   </button>
@@ -114,7 +114,9 @@ function NewInventory() {
           </div>
         </>
       ) : (
-        <p className="text-center text-gray-600">No Product found.</p>
+        <div className="flex min-h-full justify-center items-center mt-8">
+          <p className="text-center text-gray-600 text-lg">No Product found.</p>
+        </div>
       )}
     </>
   );

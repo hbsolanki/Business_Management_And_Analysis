@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axios from "axios";
+import OwnerHeader from "../../Owner/OwnerHeader";
+import EmployeeHeader from "../Employee/EmployeeHeader";
+import { getGlobalVariable } from "../../../globalVariables";
+
+const Backend = getGlobalVariable();
+const type = localStorage.getItem("type");
 
 function Inventory() {
   let { iid } = useParams();
   const [inventoryData, setInventoryData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchDate, setSearchDate] = useState("");
 
   useEffect(() => {
     async function getData() {
-      let token = localStorage.getItem("token");
-
+      const token = localStorage.getItem("token");
       try {
-        const response = await axios.get(`/API/inventory/${iid}/`, {
-          headers: {
-            Authorization: `${token}`,
-          },
+        const response = await axios.get(`${Backend}/API/inventory/${iid}/`, {
+          headers: { Authorization: `${token}` },
         });
-        const data = response.data;
-        setInventoryData(data);
+        setInventoryData(response.data);
+        console.log(response.data);
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching inventory data:", error);
       } finally {
         setLoading(false);
       }
@@ -29,7 +33,7 @@ function Inventory() {
   }, [iid]);
 
   const renderProductDetails = (product) => {
-    const productDetails = Object.entries(product).filter(
+    const productDetails = Object.entries(product || {}).filter(
       ([key]) => key !== "_id" && key !== "date"
     );
 
@@ -40,8 +44,26 @@ function Inventory() {
     ));
   };
 
+  const filteredStockEntries = inventoryData?.stock
+    .filter((entry) => entry.date.includes(searchDate))
+    .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sorting by date descending
+
   return (
     <>
+      <div className="container mx-auto p-4">
+        {/* Header */}
+        {type === "owner" ? (
+          <OwnerHeader Businessid={localStorage.getItem("bid")} />
+        ) : (
+          <EmployeeHeader
+            employeeData={{
+              id: localStorage.getItem("oeid"),
+              workpage: localStorage.getItem("workpage") || null,
+            }}
+          />
+        )}
+      </div>
+
       {loading ? (
         <div className="flex justify-center items-center h-screen">
           <svg
@@ -69,31 +91,70 @@ function Inventory() {
         <div className="max-w-4xl mx-auto p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-3xl font-bold text-gray-800">Inventory</h2>
-            <Link
-              to={`/inventory/${iid}/new`}
-              className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
-            >
-              New Inventory
-            </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {inventoryData.stock.map((stockEntry, idx) => (
-              <article
-                key={idx}
-                className="border border-gray-300 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              >
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Stock Entry
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Date: {new Date(stockEntry.date).toLocaleString()}
-                </p>
-                <div className="text-sm text-gray-700">
-                  {renderProductDetails(stockEntry)}
+          {/* Available Stock */}
+          <div className="mb-8">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+              Available Stock
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {inventoryData?.productStock?.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
+                >
+                  <p className="text-lg font-medium text-gray-800">
+                    {item.product}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Stock: {item.quantity}
+                  </p>
                 </div>
-              </article>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* Stock Entries */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={() => setSearchDate("")}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md"
+                >
+                  Clear
+                </button>
+              </div>
+              <Link
+                to={`/inventory/${iid}/new`}
+                className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
+              >
+                New Inventory
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredStockEntries?.map((stockEntry, idx) => (
+                <article
+                  key={stockEntry._id || idx}
+                  className="border border-gray-300 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
+                >
+                  <p className="text-sm text-gray-600 mb-4">
+                    Date: {new Date(stockEntry.date).toLocaleString()}
+                  </p>
+                  <div className="text-sm text-gray-700">
+                    {renderProductDetails(stockEntry)}
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       )}

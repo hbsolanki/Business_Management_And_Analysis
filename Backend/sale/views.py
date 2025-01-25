@@ -4,20 +4,18 @@ from bson.objectid import ObjectId
 from datetime import datetime
 import json
 import pytz
+from pytz import timezone
 
 # Get the IST timezone
 ist = pytz.timezone('Asia/Kolkata')
 
 
 def saleInfo(request, sid):
-    print(sid)
-    # Business=conn.Visionary.Business.find_one({"_id":ObjectId(sid)})
-    # print(Business)
     Sales = conn.Visionary.Sales.find_one({"_id":ObjectId(sid)})
-    print(Sales)
     Sales["_id"] = str(Sales["_id"])
     Sales["productsid"] = str(Sales["productsid"])
     Sales["employeesid"]=str(Sales["employeesid"])
+    Sales["inventorysid"]=str(Sales["inventorysid"])
     for i in range(len(Sales["saleInfo"])):
         Sales["saleInfo"][i]=conn.Visionary.Sale.find_one({"_id": Sales["saleInfo"][i]})
         
@@ -46,18 +44,39 @@ def taxrate_calculation(income):
 def new_sale(request, sid):
     # Load sale data
     Sales = conn.Visionary.Sales.find_one({"_id": ObjectId(sid)})
+    if not Sales:
+        return JsonResponse({"error": "Sale not found"}, status=404)
+    
     Products = conn.Visionary.Products.find_one({"_id": Sales["productsid"]})
+    if not Products:
+        return JsonResponse({"error": "Products not found"}, status=404)
+    
+    Inventorys = conn.Visionary.Inventorys.find_one({"_id": Sales["inventorysid"]})
+    if not Inventorys:
+        return JsonResponse({"error": "Inventory not found"}, status=404)
+
+    ProductsStocks = Inventorys.get("productStock", [])
     data = json.loads(request.body)
     
     totalRevenueFromProduct = 0
     totalCostFromProduct = 0
     allProductSale = []
-    
+
     # Calculate cost and revenue for each product
-    for i in range(len(Products["allProduct"])):
-        product = conn.Visionary.Product.find_one({"_id": Products["allProduct"][i]})
+    for product_id in Products["allProduct"]:
+        product = conn.Visionary.Product.find_one({"_id": ObjectId(product_id)})
+        if not product:
+            return JsonResponse({"error": f"Product {product_id} not found"}, status=404)
+
+        # Ensure the product name exists in the data and quantity is provided
         product["_id"] = str(product["_id"])
-        quantity = int(data[product["name"]])
+        quantity = int(data.get(product["name"], 0))
+
+        # Update the product stock quantities
+        for i in range(len(ProductsStocks)):
+            if ProductsStocks[i]["product"] == product["name"]:
+                ProductsStocks[i]["quantity"] -= quantity
+
         revenue = quantity * int(product["revenue"])
         cost = quantity * (int(product["price"]) - int(product["revenue"]))
         totalCostFromProduct += cost
@@ -68,34 +87,41 @@ def new_sale(request, sid):
             "cost": cost,
             "revenue": revenue
         })
-    
+
+    # Update the inventory stock after the sale
+    conn.Visionary.Inventorys.find_one_and_update(
+        {"_id": Sales["inventorysid"]},
+        {"$set": {"productStock": ProductsStocks}}
+    )
+
     # Additional sale info
-    marketing = int(data.get('marketing'))
-    othercost = int(data.get('othercost'))
-    employess_salary=total_employee_salary(Sales["employeesid"])
-    grossprofit=totalRevenueFromProduct-marketing-othercost-employess_salary
+    marketing = int(data.get('marketing', 0))
+    othercost = int(data.get('othercost', 0))
+    employess_salary = total_employee_salary(Sales["employeesid"])
+    grossprofit = totalRevenueFromProduct - marketing - othercost - employess_salary
     
-    tax_amount =taxrate_calculation(grossprofit)
+    tax_amount = taxrate_calculation(grossprofit)
     net_profit = grossprofit - tax_amount
     
-    
-    # Create a sale document
+    # Prepare sale document
     sale = {
         "allProductSale": allProductSale,
         "totalRevenueFromProduct": totalRevenueFromProduct,
         "COGS": totalCostFromProduct,
         "marketing": marketing,
         "othercost": othercost,
-        "taxes":tax_amount,
-        "turnover":totalCostFromProduct+totalRevenueFromProduct,
-        "employess_salary":employess_salary,
-        "grossprofit":grossprofit,
-        "netprofit":net_profit,
-        "date": datetime.now(ist),
+        "taxes": tax_amount,
+        "turnover": totalCostFromProduct + totalRevenueFromProduct,
+        "employess_salary": employess_salary,
+        "grossprofit": grossprofit,
+        "netprofit": net_profit,
+        "date": datetime.now(timezone('Asia/Kolkata')),
     }
     
+    # Insert the sale record into the database
     Sale = conn.Visionary.Sale.insert_one(sale)
     
+    # Add the sale ID to the Sales document's saleInfo array
     Sales["saleInfo"].append(Sale.inserted_id)
     conn.Visionary.Sales.find_one_and_update(
         {"_id": ObjectId(sid)},
@@ -103,6 +129,7 @@ def new_sale(request, sid):
     )
     
     return JsonResponse({"message": "Sale stored successfully"}, safe=False)
+
 
 
 def total_employee_salary(eid):

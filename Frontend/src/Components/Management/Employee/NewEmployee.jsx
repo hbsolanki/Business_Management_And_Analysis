@@ -1,11 +1,36 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { getGlobalVariable } from "../../../globalVariables";
+const Backend = getGlobalVariable();
 
 function NewEmployee() {
   let { eid } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
+  const [employeesData, setEmployeesData] = useState([]);
+
+  useEffect(() => {
+    async function getData() {
+      let token = localStorage.getItem("token");
+
+      try {
+        const employeeResponse = await axios.get(
+          `${Backend}/API/employee/${eid}/`,
+          {
+            headers: {
+              Authorization: `${token}`,
+            },
+          }
+        );
+
+        setEmployeesData(employeeResponse.data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    getData();
+  }, [eid]);
 
   const handleChange = (e) => {
     const name = e.target.name;
@@ -14,17 +39,38 @@ function NewEmployee() {
   };
 
   const handleSubmit = async (e) => {
-    let token = localStorage.getItem("token");
     e.preventDefault();
+
+    const token = localStorage.getItem("token");
+    let updatedFormData = { ...formData };
+
+    // Determine the correct workpage URL
+    switch (formData.workpage) {
+      case "product_management":
+        updatedFormData.workpage = `/product/${employeesData.pid}`;
+        break;
+      case "inventory_management":
+        updatedFormData.workpage = `/inventory/${employeesData.iid}`;
+        break;
+      case "sale_management":
+        updatedFormData.workpage = `/sale/${employeesData.sid}`;
+        break;
+      case "employee_management":
+        updatedFormData.workpage = `/employee/${eid}`;
+        break;
+      default:
+        updatedFormData.workpage = "";
+    }
+
     try {
-      const response = await axios.post(`/API/employee/${eid}/new/`, formData, {
+      await axios.post(`${Backend}/API/employee/${eid}/new/`, updatedFormData, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `${token}`,
         },
       });
 
-      navigate(`/employee/${eid}`);
+      navigate(-1);
     } catch (err) {
       console.log(err.message);
     }
@@ -55,7 +101,7 @@ function NewEmployee() {
                   type="text"
                   onChange={handleChange}
                   required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -74,7 +120,7 @@ function NewEmployee() {
                   type="email"
                   onChange={handleChange}
                   required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -92,7 +138,7 @@ function NewEmployee() {
                   name="password"
                   type="password"
                   onChange={handleChange}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -111,7 +157,7 @@ function NewEmployee() {
                   type="number"
                   onChange={handleChange}
                   required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -129,7 +175,7 @@ function NewEmployee() {
                   type="text"
                   onChange={handleChange}
                   required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -146,7 +192,7 @@ function NewEmployee() {
                   name="mobile"
                   type="number"
                   onChange={handleChange}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -164,7 +210,7 @@ function NewEmployee() {
                   name="description"
                   type="text"
                   onChange={handleChange}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 />
               </div>
             </div>
@@ -176,21 +222,29 @@ function NewEmployee() {
               >
                 Work Page
               </label>
-              <div className="mt-2">
-                <input
-                  id="workpage"
-                  name="workpage"
-                  type="text"
-                  onChange={handleChange}
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                />
-              </div>
+
+              <select
+                id="workpage"
+                name="workpage"
+                value={formData.workpage || "No"} // Ensure a default value
+                onChange={handleChange}
+                required={true}
+                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+              >
+                <option value="No">NO</option>
+                <option value="inventory_management">
+                  Inventory Management
+                </option>
+                <option value="sale_management">Sale Management</option>
+                <option value="employee_management">Employee Management</option>
+                <option value="product_management">Product Management</option>
+              </select>
             </div>
 
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 Add Employee
               </button>
@@ -201,4 +255,5 @@ function NewEmployee() {
     </>
   );
 }
+
 export default NewEmployee;

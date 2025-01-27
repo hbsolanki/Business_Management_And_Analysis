@@ -56,7 +56,7 @@ def new_employee(request,eid):
     workpage=data.get("workpage","")
     password=data.get("password","")
     description=data.get('description',"")
-    image_url=""
+    image_url="https://res.cloudinary.com/ddm8umfu7/image/upload/v1726760053/Profile_picture_q4tcgj.webp"
     
     if not image_url :
         image_url=""

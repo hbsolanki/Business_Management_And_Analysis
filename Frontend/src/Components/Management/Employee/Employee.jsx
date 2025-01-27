@@ -21,27 +21,33 @@ function Employee() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+
     async function getData() {
       let token = localStorage.getItem("token");
 
       try {
-        const employeeResponse = await axios.get(
-          `${Backend}/API/employee/${eid}/`,
-          {
-            headers: {
-              Authorization: `${token}`,
-            },
-          }
-        );
+        const response = await axios.get(`${Backend}/API/employee/${eid}/`, {
+          headers: {
+            Authorization: `${token}`,
+          },
+        });
 
-        setEmployeeData(employeeResponse.data.allEmployee);
-        setFilteredEmployees(employeeResponse.data.allEmployee);
-        console.log(employeeResponse.data);
+        if (isMounted) {
+          setEmployeeData(response.data.allEmployee);
+          setFilteredEmployees(response.data.allEmployee);
+          console.log(response.data);
+        }
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching employee data:", error);
       }
     }
+
     getData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [eid]);
 
   const handleSearch = (term) => {
@@ -54,7 +60,7 @@ function Employee() {
 
   useEffect(() => {
     let filtered = employeeData.filter((employee) =>
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase())
+      employee.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (salaryFilter.min || salaryFilter.max) {
@@ -85,7 +91,8 @@ function Employee() {
       setIsModalOpen(false); // Close modal after deletion
       navigate(0); // Refresh the page
     } catch (error) {
-      alert(error);
+      alert("Failed to delete employee. Please try again.");
+      console.error(error);
     }
   };
 
@@ -112,49 +119,58 @@ function Employee() {
           eid={eid}
         />
         {/* Employee List Component */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEmployees.map((employee) => (
-            <div
-              key={employee.id}
-              className="flex flex-col bg-white p-4 rounded-lg shadow-md hover:shadow-lg"
-            >
-              {/* Conditionally display employee details based on screen size */}
-              <h3 className="text-lg font-semibold">{employee.name}</h3>
-              {/* Show full details for both mobile and desktop */}
-              <div className="mt-4">
-                <p>
-                  <strong>Email:</strong> {employee.email}
-                </p>
-                <p>
-                  <strong>Phone:</strong> {employee.mobile}
-                </p>
-                <p>
-                  <strong>Salary:</strong> ₹{employee.salary}
-                </p>
-                <p>
-                  <strong>Description :</strong> {employee.description}
-                </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+          {filteredEmployees.length > 0 ? (
+            filteredEmployees.map((employee) => (
+              <div
+                key={employee._id || employee.id} // Use a unique key
+                className="flex flex-col bg-white p-4 rounded-lg shadow-md hover:shadow-lg"
+              >
+                {console.log(employee)}
+                <img
+                  src={employee.image_url || "https://via.placeholder.com/150"}
+                  alt={`${employee.name} profile picture`}
+                  className="w-full h-32 object-cover rounded-md"
+                />
+                <h3 className="text-lg font-semibold mt-2">{employee.name}</h3>
+                <div className="mt-2 text-sm">
+                  <p>
+                    <strong>Email:</strong> {employee.email}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong> {employee.mobile}
+                  </p>
+                  <p>
+                    <strong>Salary:</strong> ₹{employee.salary}
+                  </p>
+                  <p>
+                    <strong>Description:</strong> {employee.description}
+                  </p>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <Link
+                    to={`/employee/${eid}/${employee._id}/edit`}
+                    className="text-blue-500 font-medium text-sm"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setEmployeeToDelete(employee._id);
+                      setIsModalOpen(true); // Open modal to confirm deletion
+                    }}
+                    className="text-red-500 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-              {/* Edit & Delete buttons */}
-              <div className="mt-4 flex space-x-2">
-                <Link
-                  to={`/employee/${eid}/${employee.id}/edit`}
-                  className=" text-blue-500 font-medium  text-sm "
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => {
-                    setEmployeeToDelete(employee.id);
-                    setIsModalOpen(true); // Open modal to confirm deletion
-                  }}
-                  className="text-red-500 font-medium text-sm "
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-gray-500 col-span-full text-center">
+              No employees found.
+            </p>
+          )}
         </div>
       </div>
 

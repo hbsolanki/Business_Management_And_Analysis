@@ -13,11 +13,10 @@ function SelfEditEmployee() {
     description: "",
     email: "",
     mobile: "",
-
     address: "",
-
     password: "",
-    image: null, // Add image to formData state
+    imageFile: null, // Separate image file state
+    image_url: "", // Store image URL for preview
   });
 
   useEffect(() => {
@@ -41,11 +40,10 @@ function SelfEditEmployee() {
           description: data.description || "",
           email: data.email || "",
           mobile: data.mobile || "",
-          salary: data.salary || "",
           address: data.address || "",
-          workpage: data.workpage || "",
           password: data.password || "",
-          image: null, // Keep image field as null initially
+          imageFile: null, // No file on load
+          image_url: data.image_url || "", // Set the image URL for preview
         });
       } catch (error) {
         console.log(error);
@@ -55,9 +53,29 @@ function SelfEditEmployee() {
   }, [oeid]);
 
   const handleChange = (e) => {
-    const name = e.target.name;
-    const value = name === "image" ? e.target.files[0] : e.target.value; // Handle image file input
-    setFormData({ ...formData, [name]: value });
+    const { name, value, files } = e.target;
+
+    if (name === "image") {
+      const file = files[0];
+      setFormData({
+        ...formData,
+        imageFile: file,
+        image_url: URL.createObjectURL(file), // Create object URL for image preview
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
+  };
+
+  const handleImageRemove = () => {
+    setFormData({
+      ...formData,
+      imageFile: null,
+      image_url: "", // Clear image URL on removal
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -67,7 +85,9 @@ function SelfEditEmployee() {
     // Create FormData object to handle both text fields and image
     const formDataToSend = new FormData();
     for (const key in formData) {
-      formDataToSend.append(key, formData[key]);
+      if (formData[key]) {
+        formDataToSend.append(key, formData[key]);
+      }
     }
 
     try {
@@ -196,7 +216,24 @@ function SelfEditEmployee() {
                 />
               </div>
             </div>
+
             <div>
+              {formData.image_url && (
+                <div className="mt-4">
+                  <img
+                    src={formData.image_url}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-md border"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImageRemove}
+                    className="mt-2 text-sm text-red-500"
+                  >
+                    Remove Image
+                  </button>
+                </div>
+              )}
               <label
                 htmlFor="image"
                 className="block text-sm font-medium leading-6 text-gray-900"

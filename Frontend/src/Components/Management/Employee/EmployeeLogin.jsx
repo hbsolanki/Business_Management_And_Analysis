@@ -4,11 +4,13 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../Utils/Header";
 import { getGlobalVariable } from "../../../globalVariables";
 import { toast } from "react-hot-toast"; // Import react-hot-toast
+
 const Backend = getGlobalVariable();
 
 function EmployeeLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false); // State to manage loading
 
   const handleChange = (e) => {
     let { name, value } = e.target;
@@ -17,6 +19,7 @@ function EmployeeLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Set loading to true when form is submitted
     try {
       const response = await axios.post(
         `${Backend}/API/employee/login/page/`,
@@ -33,7 +36,6 @@ function EmployeeLogin() {
 
       localStorage.setItem("token", accessToken);
       localStorage.setItem("type", "employee");
-      console.log(response.data);
 
       // Show success toast
       toast.success("Login successful!");
@@ -42,6 +44,8 @@ function EmployeeLogin() {
     } catch (err) {
       // Show error toast
       toast.error("Invalid credentials, please try again!");
+    } finally {
+      setLoading(false); // Reset loading to false once request is finished
     }
   };
 
@@ -102,9 +106,40 @@ function EmployeeLogin() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                disabled={loading} // Disable the button when loading
+                className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
+                  ${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  }
+                `}
               >
-                Login
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      ></path>
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  "Login"
+                )}
               </button>
             </div>
           </form>

@@ -31,6 +31,7 @@ function EditEmployee() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [imagePreview, setImagePreview] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state
 
   const [formData, setFormData] = useState({
     name: "",
@@ -143,6 +144,7 @@ function EditEmployee() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsSubmitting(true); // Start submitting (loading)
 
     const token = localStorage.getItem("token");
     const updatedWorkpage =
@@ -176,124 +178,160 @@ function EditEmployee() {
     } catch (err) {
       console.error("Error submitting form:", err.message);
       setErrorMessage("Failed to update employee details. Please try again.");
+    } finally {
+      setIsSubmitting(false); // Stop submitting (loading)
     }
   };
 
   return (
     <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        <h2 className="mt-10 text-center text-2xl font-bold tracking-tight text-gray-900">
-          Edit Employee
-        </h2>
-      </div>
-
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        {loading ? (
+        {employeesData.length == 0 ? (
           <p className="text-center text-gray-500">Loading...</p>
         ) : (
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {errorMessage && (
-              <p className="text-red-500 text-sm">{errorMessage}</p>
-            )}
-
-            <InputField
-              id="name"
-              label="Name"
-              value={formData.name}
-              onChange={handleChange}
-            />
-
-            <InputField
-              id="email"
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-            />
-
-            <InputField
-              id="password"
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-
-            <div>
-              <label
-                htmlFor="workpage"
-                className="block text-sm font-medium text-gray-900"
-              >
-                Work Page
-              </label>
-              <select
-                id="workpage"
-                name="workpage"
-                value={formData.workpage}
-                onChange={handleChange}
-                required
-                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600"
-              >
-                <option value="other">Other</option>
-                <option value="product_management">Product Management</option>
-                <option value="inventory_management">
-                  Inventory Management
-                </option>
-                <option value="sale_management">Sale Management</option>
-                <option value="employee_management">Employee Management</option>
-              </select>
-            </div>
-
-            <InputField
-              id="salary"
-              label="Salary"
-              type="number"
-              value={formData.salary}
-              onChange={handleChange}
-            />
-
-            <div>
-              <label
-                htmlFor="image"
-                className="block text-sm font-medium text-gray-900"
-              >
-                Image
-              </label>
-              {imagePreview && (
-                <div className="mb-4">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-32 h-32 object-cover rounded-md border"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleImageRemove}
-                    className="mt-2 text-sm text-red-500"
-                  >
-                    Remove Image
-                  </button>
-                </div>
-              )}
-              <input
-                id="image"
-                name="image"
-                type="file"
-                accept="image/*"
-                onChange={handleChange}
-                className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50"
-              />
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              >
+          <>
+            <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+              <h2 className="mt-10 text-center text-2xl font-bold tracking-tight text-gray-900">
                 Edit Employee
-              </button>
+              </h2>
             </div>
-          </form>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {errorMessage && (
+                <p className="text-red-500 text-sm">{errorMessage}</p>
+              )}
+
+              <InputField
+                id="name"
+                label="Name"
+                value={formData.name}
+                onChange={handleChange}
+              />
+
+              <InputField
+                id="email"
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+              />
+
+              <InputField
+                id="password"
+                label="Password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+
+              <div>
+                <label
+                  htmlFor="workpage"
+                  className="block text-sm font-medium text-gray-900"
+                >
+                  Work Page
+                </label>
+                <select
+                  id="workpage"
+                  name="workpage"
+                  value={formData.workpage}
+                  onChange={handleChange}
+                  required
+                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600"
+                >
+                  <option value="other">Other</option>
+                  <option value="product_management">Product Management</option>
+                  <option value="inventory_management">
+                    Inventory Management
+                  </option>
+                  <option value="sale_management">Sale Management</option>
+                  <option value="employee_management">
+                    Employee Management
+                  </option>
+                </select>
+              </div>
+
+              <InputField
+                id="salary"
+                label="Salary"
+                type="number"
+                value={formData.salary}
+                onChange={handleChange}
+              />
+
+              <div>
+                <label
+                  htmlFor="image"
+                  className="block text-sm font-medium text-gray-900"
+                >
+                  Image
+                </label>
+                {imagePreview && (
+                  <div className="mb-4">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-32 h-32 object-cover rounded-md border"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleImageRemove}
+                      className="mt-2 text-sm text-red-500"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                )}
+                <input
+                  id="image"
+                  name="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleChange}
+                  className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50"
+                />
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
+                  ${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  }
+                `}
+                >
+                  {loading ? (
+                    <>
+                      <svg
+                        className="animate-spin h-5 w-5 mr-3 text-white"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8H4z"
+                        ></path>
+                      </svg>
+                      Loading...
+                    </>
+                  ) : (
+                    "Edit Employee"
+                  )}
+                </button>
+              </div>
+            </form>
+          </>
         )}
       </div>
     </div>

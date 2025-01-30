@@ -18,6 +18,7 @@ function SelfEditEmployee() {
     imageFile: null, // Separate image file state
     image_url: "", // Store image URL for preview
   });
+  const [loading, setLoading] = useState(false); // To track loading status
 
   useEffect(() => {
     async function getData() {
@@ -80,6 +81,8 @@ function SelfEditEmployee() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Start loading
+
     let token = localStorage.getItem("token");
 
     // Create FormData object to handle both text fields and image
@@ -104,10 +107,13 @@ function SelfEditEmployee() {
       navigate(-1);
     } catch (err) {
       console.log(err.message);
+    } finally {
+      setLoading(false); // Stop loading after request
     }
   };
 
-  if (!employeeData) return <p>Loading...</p>;
+  if (!employeeData)
+    return <p className="text-center text-gray-500">Loading...</p>;
 
   return (
     <>
@@ -273,9 +279,39 @@ function SelfEditEmployee() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
+                  ${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  }
+                `}
               >
-                Edit
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      ></path>
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  "Edit"
+                )}
               </button>
             </div>
           </form>

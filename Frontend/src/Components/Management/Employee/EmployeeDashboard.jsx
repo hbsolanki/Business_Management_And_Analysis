@@ -74,7 +74,7 @@ function EmployeeDashboard() {
           </div>
         </>
       ) : (
-        <p className="text-center text-gray-500">Loading employee data...</p>
+        <p className="text-center text-gray-500">Loading...</p>
       )}
     </>
   );

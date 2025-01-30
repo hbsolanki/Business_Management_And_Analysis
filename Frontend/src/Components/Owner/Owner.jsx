@@ -164,7 +164,7 @@ function Owner() {
           </div>
         </>
       ) : (
-        <p className="text-gray-600">No owner data found.</p>
+        <p className="text-center text-gray-500">Loading...</p>
       )}
     </div>
   );

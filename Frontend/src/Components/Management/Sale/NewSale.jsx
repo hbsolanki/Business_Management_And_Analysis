@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getGlobalVariable } from "../../../globalVariables";
+
 const Backend = getGlobalVariable();
 
 function NewSale() {
@@ -11,7 +12,8 @@ function NewSale() {
   const [inventoryStockData, setInventoryStockData] = useState([]);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
-  const [error, setError] = useState(""); // State to hold error message
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state
 
   useEffect(() => {
     async function getData() {
@@ -59,7 +61,6 @@ function NewSale() {
     const value = parseInt(e.target.value);
     const productName = e.target.id;
 
-    // If the field is not a product, do not apply stock validation
     if (name !== "marketing" && name !== "othercost") {
       const stockQuantity = getStockForProduct(productName);
 
@@ -68,7 +69,7 @@ function NewSale() {
           `You cannot add more than ${stockQuantity} units of ${productName}.`
         );
       } else {
-        setError(""); // Clear the error message if the value is valid
+        setError("");
       }
     }
 
@@ -78,23 +79,21 @@ function NewSale() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (error) {
-      alert(error); // If there's an error, stop the submission
+      alert(error);
       return;
     }
 
+    setIsSubmitting(true); // Show loading indicator
+
     try {
-      const response = await axios.post(
-        `${Backend}/API/sale/${sid}/new/`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      await axios.post(`${Backend}/API/sale/${sid}/new/`, formData, {
+        headers: { "Content-Type": "application/json" },
+      });
       navigate(-1);
     } catch (err) {
       console.log(err.message);
+    } finally {
+      setIsSubmitting(false); // Hide loading indicator after submission
     }
   };
 
@@ -186,12 +185,44 @@ function NewSale() {
                     />
                   </div>
                 </div>
+
                 <div>
                   <button
                     type="submit"
-                    className="flex w-full justify-center rounded-md bg-gray-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    disabled={isSubmitting}
+                    className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
+                  ${
+                    isSubmitting
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  }
+                `}
                   >
-                    Submit
+                    {isSubmitting ? (
+                      <>
+                        <svg
+                          className="animate-spin h-5 w-5 mr-3 text-white"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8H4z"
+                          ></path>
+                        </svg>
+                        Loading...
+                      </>
+                    ) : (
+                      "Submit"
+                    )}
                   </button>
                 </div>
               </form>

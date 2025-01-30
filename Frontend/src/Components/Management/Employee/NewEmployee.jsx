@@ -9,6 +9,7 @@ function NewEmployee() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
   const [employeesData, setEmployeesData] = useState([]);
+  const [loading, setLoading] = useState(false); // Track loading state
 
   useEffect(() => {
     async function getData() {
@@ -40,6 +41,7 @@ function NewEmployee() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Set loading state to true on form submission
 
     const token = localStorage.getItem("token");
     let updatedFormData = { ...formData };
@@ -70,9 +72,11 @@ function NewEmployee() {
         },
       });
 
-      navigate(-1);
+      navigate(-1); // Navigate back after successful submission
     } catch (err) {
       console.log(err.message);
+    } finally {
+      setLoading(false); // Reset loading state to false after the request
     }
   };
 
@@ -161,6 +165,7 @@ function NewEmployee() {
                 />
               </div>
             </div>
+
             <div>
               <label
                 htmlFor="address"
@@ -179,6 +184,7 @@ function NewEmployee() {
                 />
               </div>
             </div>
+
             <div>
               <label
                 htmlFor="mobile"
@@ -244,9 +250,40 @@ function NewEmployee() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                disabled={loading} // Disable the button while loading
+                className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
+                  ${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  }
+                `}
               >
-                Add Employee
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      ></path>
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  "Add Employee"
+                )}
               </button>
             </div>
           </form>

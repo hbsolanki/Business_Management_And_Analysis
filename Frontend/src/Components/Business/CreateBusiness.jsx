@@ -7,6 +7,7 @@ const Backend = getGlobalVariable();
 function CreateBusiness() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false); // Loading state
 
   const handleChange = (e) => {
     const name = e.target.name;
@@ -16,8 +17,9 @@ function CreateBusiness() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Set loading to true when submitting
+
     let token = localStorage.getItem("token");
-    console.log(token);
 
     try {
       const response = await axios.post(
@@ -29,10 +31,12 @@ function CreateBusiness() {
           },
         }
       );
-      navigate(-1);
+      navigate(-1); // Navigate after successful submission
     } catch (error) {
       alert(error);
       // navigate("/pagenotfound");
+    } finally {
+      setLoading(false); // Stop loading when request finishes
     }
   };
 
@@ -115,7 +119,6 @@ function CreateBusiness() {
                 <textarea
                   id="description"
                   name="description"
-                  type="description"
                   onChange={handleChange}
                   className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm sm:leading-6"
                 ></textarea>
@@ -125,9 +128,40 @@ function CreateBusiness() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                disabled={loading} // Disable button when loading
+                className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
+                  ${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  }
+                `}
               >
-                Submit
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      ></path>
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  "Submit"
+                )}
               </button>
             </div>
           </form>

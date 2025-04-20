@@ -5,41 +5,52 @@ from bson import ObjectId
 
 # Create your views here.
 
-def turnover(request,bid):
+def turnover(request, bid):
     try:
-        Business=conn.Visionary.Business.find_one({"_id":ObjectId(bid)})
-      
-        sid=Business["sale"]
+        # Fetch Business details
+        Business = conn.Visionary.Business.find_one({"_id": ObjectId(bid)})
+        
+        # Fetch Sales related to Business
+        sid = Business["sale"]
         Sales = conn.Visionary.Sales.find_one({"_id": ObjectId(sid)})
-        for i in range(len(Sales["saleInfo"])):
-            Sales["saleInfo"][i]=conn.Visionary.Sale.find_one({"_id": Sales["saleInfo"][i]})
+        
+        if Sales:
+            for i in range(len(Sales["saleInfo"])):
+                Sales["saleInfo"][i] = conn.Visionary.Sale.find_one({"_id": Sales["saleInfo"][i]})
+                Sales["saleInfo"][i]["_id"] = str(Sales["saleInfo"][i]["_id"])
             
-            Sales["saleInfo"][i]["_id"]=str(Sales["saleInfo"][i]["_id"])
+            # Sorting sales by date (descending order)
+            Sales["saleInfo"] = sorted(Sales["saleInfo"], key=lambda x: x["date"], reverse=True)
+            
+            # Check if there are any sales
+            latest_sale = Sales["saleInfo"][0] if Sales["saleInfo"] else {}
 
-        Sales["saleInfo"] = sorted(Sales["saleInfo"], key=lambda x: x["date"], reverse=True)
-      
-        latest_sale = Sales["saleInfo"][0]
-       
+            # Extracting financial details
+            manufacturing_cost = latest_sale.get("COGS", 0)
+            marketing_expenses = latest_sale.get("marketing", 0)
+            salary_expenses = latest_sale.get("employess_salary", 0)
+            other_expenses = latest_sale.get("othercost", 0)
+            tax = latest_sale.get("taxes", 0)
+            net_profit = latest_sale.get("netprofit", 0)
 
+            # Return response
+            data = {
+                "manufacturing_cost": manufacturing_cost,
+                "marketing_expenses": marketing_expenses,
+                "salary_expenses": salary_expenses,
+                "other_expenses": other_expenses,
+                "tax": tax,
+                "net_profit": net_profit
+            }
+            # print(data)
+            return JsonResponse(data)
 
-        manaufacturing_cost = latest_sale.get("COGS", 0)
-        marketing_expenses = latest_sale.get("marketing", 0)
-        salary_expenses = latest_sale.get("employess_salary", 0)
-        other_expenses = latest_sale.get("othercost", 0)
-        tax = latest_sale.get("taxes", 0)
-        net_profit = latest_sale.get("netprofit", 0)
-        d = {
-            "manaufacturing_cost": manaufacturing_cost,
-            "marketing_expenses": marketing_expenses,
-            "salary_expenses": salary_expenses,
-            "other_expenses": other_expenses,
-            "tax": tax,
-            "net_profit": net_profit
-        }
-        return JsonResponse(d)
+        else:
+            return JsonResponse({"error": "Sales data not found for this business"}, status=404)
 
     except Exception as e:
-        return JsonResponse({"error": "Unable to retrieve turnover data"}, status=500)
+        # Log exception details if necessary
+        return JsonResponse({"error": "Unable to retrieve turnover data", "details": str(e)}, status=500)
 
 def turnover_tenmonth(request, bid):
     try:

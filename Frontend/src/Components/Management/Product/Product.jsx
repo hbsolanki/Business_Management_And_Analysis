@@ -4,7 +4,17 @@ import axios from "axios";
 import OwnerHeader from "../../Owner/OwnerHeader";
 import EmployeeHeader from "../Employee/EmployeeHeader";
 import { getGlobalVariable } from "../../../globalVariables";
-import GeneralModal from "../../Utils/GeneralModal"; // Import GeneralModal
+import GeneralModal from "../../Utils/GeneralModal";
+
+// Icons
+import {
+  PencilSquareIcon,
+  TrashIcon,
+  CurrencyRupeeIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
 
 const Backend = getGlobalVariable();
 const type = localStorage.getItem("type");
@@ -15,7 +25,7 @@ function Product() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
-  const [expandedProductId, setExpandedProductId] = useState(null); // Track expanded product ID
+  const [expandedProductId, setExpandedProductId] = useState(null);
 
   useEffect(() => {
     async function getData() {
@@ -89,14 +99,15 @@ function Product() {
         )}
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header Section */}
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold text-gray-800">Product List</h2>
           <Link
             to={`/product/${pid}/new`}
-            className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
+            className="flex items-center gap-2 focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
           >
+            <PlusIcon className="h-5 w-5" />
             Add New Product
           </Link>
         </div>
@@ -147,39 +158,53 @@ function Product() {
                   {product.description?.length > 150 && (
                     <button
                       onClick={() => handleReadMore(product._id)}
-                      className="text-blue-600 hover:underline"
+                      className="text-blue-600 hover:underline flex items-center space-x-1"
                     >
-                      {expandedProductId === product._id
-                        ? "Read Less"
-                        : "Read More"}
+                      {expandedProductId === product._id ? (
+                        <>
+                          <ChevronUpIcon className="h-4 w-4" />
+                          <span>Read Less</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDownIcon className="h-4 w-4" />
+                          <span>Read More</span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
 
                 {/* Pricing Info */}
-                <div className="flex justify-between text-sm text-gray-700 mb-4">
-                  <span className="font-medium">Cost: ₹{product.price}</span>
-                  <span className="font-medium">
+                <div className="flex flex-col gap-1 text-sm text-gray-700 mb-4">
+                  <div className="flex items-center gap-1 font-medium">
+                    <CurrencyRupeeIcon className="h-4 w-4" />
+                    Cost: ₹{product.price}
+                  </div>
+                  <div className="flex items-center gap-1 font-medium">
+                    <CurrencyRupeeIcon className="h-4 w-4" />
                     Revenue: ₹{product.revenue}
-                  </span>
+                  </div>
                 </div>
 
                 {/* Action Links */}
-                <div className="flex space-x-2  mt-auto">
+                <div className="flex space-x-4 mt-auto">
                   <Link
                     to={`/product/${pid}/${product._id}/edit`}
-                    className="text-blue-600  transition duration-200"
+                    className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
                   >
-                    Edit
+                    <PencilSquareIcon className="h-5 w-5" />
+                    <span>Edit</span>
                   </Link>
                   <button
                     onClick={() => {
                       setProductToDelete(product._id);
                       setIsModalOpen(true);
                     }}
-                    className="text-red-600 transition duration-200"
+                    className="text-red-600 hover:text-red-800 flex items-center space-x-1"
                   >
-                    Delete
+                    <TrashIcon className="h-5 w-5" />
+                    <span>Delete</span>
                   </button>
                 </div>
               </article>

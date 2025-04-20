@@ -3,7 +3,7 @@ import BG from "../../../assets/HomeBG.webp";
 export default function HeroSection() {
   return (
     <div
-      className="relative bg-cover bg-center py-8 sm:py-12 rounded-xl mx-4 sm:mx-8 lg:mx-16 mt-8 shadow-lg hover:shadow-xl transition-shadow duration-300"
+      className="relative bg-cover bg-center py-8 sm:py-12 rounded-xl  shadow-lg hover:shadow-xl transition-shadow duration-300 md:mx-12 md:mt-12"
       style={{
         backgroundImage: `url(${BG})`,
       }}
@@ -13,7 +13,7 @@ export default function HeroSection() {
         <h1 className="text-4xl font-bold tracking-tight text-black sm:text-5xl lg:text-black">
           Empowering Business Through Data-Driven Insights
         </h1>
-        <p className="mt-6 text-lg leading-8 text-black sm:text-black lg:text-black">
+        <p className="mt-6 sm:mx-4 text-lg leading-8 text-black sm:text-black lg:text-black">
           Our platform helps you streamline operations, make informed decisions,
           and grow your business with advanced analytics and insights. Optimize
           every aspect of your business with real-time data.

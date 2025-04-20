@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import EmployeeHeader from "./EmployeeHeader";
 import { getGlobalVariable } from "../../../globalVariables";
+import {
+  FaEnvelope,
+  FaPhone,
+  FaHome,
+  FaUser,
+  FaMoneyBillAlt,
+} from "react-icons/fa"; // Importing icons from react-icons/fa
+
 const Backend = getGlobalVariable();
 
 function EmployeeDashboard() {
@@ -49,26 +57,41 @@ function EmployeeDashboard() {
                 <span className="text-blue-500">{employeeData.name}</span>
               </h1>
               <div className="bg-gray-100 p-4 rounded-md w-full mb-8">
-                <p className="text-gray-800 text-lg">
-                  <span className="font-semibold">Email:</span>{" "}
-                  {employeeData.email}
-                </p>
-                <p className="text-gray-800 text-lg">
-                  <span className="font-semibold">Mobile:</span>{" "}
-                  {employeeData.mobile}
-                </p>
-                <p className="text-gray-800 text-lg">
-                  <span className="font-semibold">Address:</span>{" "}
-                  {employeeData.address}
-                </p>
-                <p className="text-gray-800 text-lg">
-                  <span className="font-semibold">Description:</span>{" "}
-                  {employeeData.description}
-                </p>
-                <p className="text-gray-800 text-lg">
-                  <span className="font-semibold">Salary:</span> ₹
-                  {employeeData.salary}
-                </p>
+                <div className="flex items-center mb-4">
+                  <FaEnvelope className="text-blue-500 mr-4" size={24} />
+                  <p className="text-gray-800 text-lg">
+                    <span className="font-semibold">Email:</span>{" "}
+                    {employeeData.email}
+                  </p>
+                </div>
+                <div className="flex items-center mb-4">
+                  <FaPhone className="text-green-500 mr-4" size={24} />
+                  <p className="text-gray-800 text-lg">
+                    <span className="font-semibold">Mobile:</span>{" "}
+                    {employeeData.mobile}
+                  </p>
+                </div>
+                <div className="flex items-center mb-4">
+                  <FaHome className="text-yellow-500 mr-4" size={24} />
+                  <p className="text-gray-800 text-lg">
+                    <span className="font-semibold">Address:</span>{" "}
+                    {employeeData.address}
+                  </p>
+                </div>
+                <div className="flex items-center mb-4">
+                  <FaUser className="text-purple-500 mr-4" size={24} />
+                  <p className="text-gray-800 text-lg">
+                    <span className="font-semibold">Description:</span>{" "}
+                    {employeeData.description}
+                  </p>
+                </div>
+                <div className="flex items-center mb-4">
+                  <FaMoneyBillAlt className="text-red-500 mr-4" size={24} />
+                  <p className="text-gray-800 text-lg">
+                    <span className="font-semibold">Salary:</span> ₹
+                    {employeeData.salary}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

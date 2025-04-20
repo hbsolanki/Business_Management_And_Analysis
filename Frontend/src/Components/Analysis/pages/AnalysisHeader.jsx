@@ -15,7 +15,7 @@ function AnalysisHeader() {
 
   return (
     <>
-      <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50">
+      <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50 rounded-lg items-center">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* Logo/Brand Name */}

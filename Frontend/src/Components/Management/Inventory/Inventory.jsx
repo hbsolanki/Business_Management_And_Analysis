@@ -5,6 +5,17 @@ import OwnerHeader from "../../Owner/OwnerHeader";
 import EmployeeHeader from "../Employee/EmployeeHeader";
 import { getGlobalVariable } from "../../../globalVariables";
 
+// Icons
+import {
+  FaWarehouse,
+  FaBoxes,
+  FaPlusCircle,
+  FaCalendarAlt,
+  FaBoxOpen,
+  FaSearch,
+  FaTimesCircle,
+} from "react-icons/fa";
+
 const Backend = getGlobalVariable();
 const type = localStorage.getItem("type");
 
@@ -39,6 +50,7 @@ function Inventory() {
 
     return productDetails.map(([productName, quantity], idx) => (
       <p key={idx} className="mt-2">
+        <FaBoxOpen className="inline text-indigo-600 mr-2" />
         <span className="font-bold">{productName}</span>: {quantity}
       </p>
     ));
@@ -88,14 +100,18 @@ function Inventory() {
           </svg>
         </div>
       ) : (
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-bold text-gray-800">Inventory</h2>
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
+              <FaWarehouse className="text-blue-600" />
+              Inventory
+            </h2>
           </div>
 
           {/* Available Stock */}
           <div className="mb-8">
-            <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FaBoxes className="text-green-600" />
               Available Stock
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -104,7 +120,8 @@ function Inventory() {
                   key={idx}
                   className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
                 >
-                  <p className="text-lg font-medium text-gray-800">
+                  <p className="text-lg font-medium text-gray-800 flex items-center gap-2">
+                    <FaBoxOpen className="text-indigo-500" />
                     {item.product}
                   </p>
                   <p className="text-sm text-gray-600">
@@ -119,6 +136,7 @@ function Inventory() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center space-x-2">
+                <FaSearch className="text-gray-600" />
                 <input
                   type="date"
                   value={searchDate}
@@ -127,15 +145,17 @@ function Inventory() {
                 />
                 <button
                   onClick={() => setSearchDate("")}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md"
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md flex items-center gap-1"
                 >
+                  <FaTimesCircle />
                   Clear
                 </button>
               </div>
               <Link
                 to={`/inventory/${iid}/new`}
-                className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition"
+                className="focus:outline-none text-white bg-blue-500 hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 transition flex items-center gap-2"
               >
+                <FaPlusCircle />
                 New Inventory
               </Link>
             </div>
@@ -146,8 +166,9 @@ function Inventory() {
                   key={stockEntry._id || idx}
                   className="border border-gray-300 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
                 >
-                  <p className="text-sm text-gray-600 mb-4">
-                    Date: {new Date(stockEntry.date).toLocaleString()}
+                  <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+                    <FaCalendarAlt className="text-blue-500" />
+                    {new Date(stockEntry.date).toLocaleString()}
                   </p>
                   <div className="text-sm text-gray-700">
                     {renderProductDetails(stockEntry)}

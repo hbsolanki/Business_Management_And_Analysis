@@ -3,6 +3,17 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import OwnerHeader from "./OwnerHeader";
 import { getGlobalVariable } from "../../globalVariables";
+import {
+  FaUser,
+  FaEdit,
+  FaBuilding,
+  FaCog,
+  FaUsers,
+  FaProductHunt,
+  FaBoxOpen,
+  FaCashRegister,
+} from "react-icons/fa"; // Importing icons
+
 const Backend = getGlobalVariable();
 
 function Owner() {
@@ -76,10 +87,10 @@ function Owner() {
               </p>
               <div className="mt-4">
                 <Link
-                  className="mt-4  text-white bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                  className="mt-4 text-white bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300"
                   to={"/owner/edit"}
                 >
-                  Edit Profile Details
+                  <FaEdit className="inline mr-2" /> Edit Profile Details
                 </Link>
               </div>
             </div>
@@ -89,6 +100,7 @@ function Owner() {
                 <div className="mt-8 w-full">
                   <div className="bg-gray-100 p-6 rounded-md w-full mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                      <FaBuilding className="inline mr-2" />
                       {businessData.name || "Unnamed Business"}
                     </h2>
                     <p className="text-gray-700 mb-6 text-lg">
@@ -104,8 +116,9 @@ function Owner() {
                       {" "}
                       <Link
                         to={`/owner/business/edit/${ownerData.businessid}`}
-                        className="mt-4 text-white bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                        className="mt-4 items-center text-white bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300"
                       >
+                        <FaEdit className="inline mr-2" />
                         Edit Business Details
                       </Link>
                     </div>
@@ -120,28 +133,39 @@ function Owner() {
                         {
                           title: "Employee Management",
                           link: `/employee/${businessData.employee}`,
+                          icon: <FaUsers className="mr-2 text-blue-500" />,
                         },
                         {
                           title: "Product Management",
                           link: `/product/${businessData.product}`,
+                          icon: (
+                            <FaProductHunt className="mr-2 text-blue-500" />
+                          ),
                         },
                         {
                           title: "Inventory Management",
                           link: `/inventory/${businessData.inventory}`,
+                          icon: <FaBoxOpen className="mr-2 text-blue-500" />,
                         },
                         {
                           title: "Sale Management",
                           link: `/sale/${businessData.sale}`,
+                          icon: (
+                            <FaCashRegister className="mr-2 text-blue-500" />
+                          ),
                         },
                       ].map((item, index) => (
-                        <li key={index}>
+                        <li key={index} className="text-center">
                           <Link
                             to={item.link}
                             className="block bg-gray-100 border border-gray-200 rounded-lg p-4 shadow-sm text-center transition-all duration-300 hover:bg-blue-50 hover:shadow-md"
                           >
-                            <p className="text-gray-700 font-semibold">
-                              {item.title}
-                            </p>
+                            <div className="flex items-center justify-center">
+                              {item.icon}
+                              <p className="text-gray-700 font-semibold">
+                                {item.title}
+                              </p>
+                            </div>
                           </Link>
                         </li>
                       ))}
@@ -158,6 +182,7 @@ function Owner() {
                 to="/owner/business/new"
                 className="mt-8 block bg-blue-500 text-white py-3 px-6 rounded-lg w-full text-center shadow-md hover:bg-blue-600 transition-all duration-300"
               >
+                <FaBuilding className="inline mr-2" />
                 Create Business
               </Link>
             )}

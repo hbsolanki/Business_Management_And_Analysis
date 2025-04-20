@@ -4,6 +4,18 @@ import axios from "axios";
 import OwnerHeader from "../../Owner/OwnerHeader";
 import EmployeeHeader from "../Employee/EmployeeHeader";
 import { getGlobalVariable } from "../../../globalVariables";
+
+// Icons
+import {
+  FaRupeeSign,
+  FaChartLine,
+  FaBullhorn,
+  FaMoneyBillWave,
+  FaBoxOpen,
+  FaCalendarAlt,
+  FaClock,
+} from "react-icons/fa";
+
 const Backend = getGlobalVariable();
 const type = localStorage.getItem("type");
 
@@ -12,8 +24,8 @@ function Sale() {
   const [saleData, setSaleData] = useState(null);
   const [filteredSaleData, setFilteredSaleData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(""); // State for start date
-  const [endDate, setEndDate] = useState(""); // State for end date
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     async function getData() {
@@ -27,7 +39,7 @@ function Sale() {
         });
         const data = response.data;
         setSaleData(data);
-        setFilteredSaleData(data.saleInfo); // Set the filtered data initially
+        setFilteredSaleData(data.saleInfo);
       } catch (error) {
         console.log(error);
       } finally {
@@ -58,7 +70,6 @@ function Sale() {
     }).format(amount);
   };
 
-  // Sort the filteredSaleData by date in descending order
   const sortedSaleData = filteredSaleData
     ? filteredSaleData.sort((a, b) => new Date(b.date) - new Date(a.date))
     : [];
@@ -66,8 +77,7 @@ function Sale() {
   return (
     <>
       <div className="container mx-auto p-4">
-        {/* Header */}
-        {type == "owner" ? (
+        {type === "owner" ? (
           <OwnerHeader Businessid={localStorage.getItem("bid")} />
         ) : (
           <EmployeeHeader
@@ -78,7 +88,8 @@ function Sale() {
           />
         )}
       </div>
-      <div className="container mx-auto px-4 py-8">
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
             Sales Information
@@ -95,7 +106,6 @@ function Sale() {
         <div className="mb-8">
           <div className="flex space-x-4">
             <div>
-              {" "}
               Start{" "}
               <input
                 type="date"
@@ -124,6 +134,7 @@ function Sale() {
           </div>
         </div>
 
+        {/* Sales Cards */}
         {loading ? (
           <div className="flex justify-center items-center">
             <svg
@@ -154,35 +165,44 @@ function Sale() {
                 key={sale._id}
                 className="bg-white shadow-lg rounded-lg p-6 border border-gray-200 transition-transform duration-300 hover:shadow-xl"
               >
-                <h2 className="text-xl font-semibold mb-4 text-gray-900">
-                  Sale Data (ID: {sale._id})
-                </h2>
-                <div>
-                  <p className="font-medium text-gray-800">
-                    Total Revenue:{" "}
-                    {formatCurrency(sale.totalRevenueFromProduct)}
-                  </p>
-                  <p className="font-medium text-gray-800">
-                    Total Cost: {formatCurrency(sale.COGS)}
-                  </p>
-                  <p className="font-medium text-gray-800">
-                    Marketing Cost: {formatCurrency(sale.marketing)}
-                  </p>
-                  <p className="font-medium text-gray-800">
-                    Other Costs: {formatCurrency(sale.othercost)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    <strong className="text-gray-800 font-bold">Date: </strong>
-                    {new Date(sale.date).toLocaleDateString()}{" "}
+                <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                  <FaCalendarAlt className="text-blue-500" />
+                  {new Date(sale.date).toLocaleDateString()}
+                  <span className="ml-4 flex items-center gap-2">
+                    <FaClock className="text-blue-500" />
                     {new Date(sale.date).toLocaleTimeString("en-US", {
                       hour12: false,
                       hour: "2-digit",
                       minute: "2-digit",
                       second: "2-digit",
                     })}
+                  </span>
+                </h2>
+
+                <div className="space-y-2">
+                  <p className="font-medium text-gray-800 flex items-center gap-2">
+                    <FaChartLine className="text-green-600" />
+                    Total Revenue:{" "}
+                    {formatCurrency(sale.totalRevenueFromProduct)}
+                  </p>
+                  <p className="font-medium text-gray-800 flex items-center gap-2">
+                    <FaRupeeSign className="text-red-500" />
+                    Total Cost: {formatCurrency(sale.COGS)}
+                  </p>
+                  <p className="font-medium text-gray-800 flex items-center gap-2">
+                    <FaBullhorn className="text-orange-500" />
+                    Marketing Cost: {formatCurrency(sale.marketing)}
+                  </p>
+                  <p className="font-medium text-gray-800 flex items-center gap-2">
+                    <FaMoneyBillWave className="text-purple-500" />
+                    Other Costs: {formatCurrency(sale.othercost)}
                   </p>
                 </div>
-                <h3 className="font-semibold mt-4 text-gray-800">Products:</h3>
+
+                <h3 className="font-semibold mt-4 text-gray-800 flex items-center gap-2">
+                  <FaBoxOpen className="text-indigo-600" />
+                  Products:
+                </h3>
                 <ul className="list-disc pl-5">
                   {sale.allProductSale.map((product, idx) => {
                     const productName = Object.keys(product)[0];

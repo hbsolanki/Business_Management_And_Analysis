@@ -7,11 +7,9 @@ import CTA_Sections from "./CTA_Sections";
 
 export default function Home() {
   return (
-    <div className="home-page">
+    <div className="home-page overflow-x-hidden bg-gray-100">
       {/* Navbar */}
-      <div className="container px-4 pt-4">
-        <Header />
-      </div>
+      <Header />
 
       {/* Hero Section */}
       <HeroSection />

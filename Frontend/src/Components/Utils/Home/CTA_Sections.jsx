@@ -2,8 +2,8 @@ import IMG from "../../../assets/Home/productivity.png";
 
 export default function CTA_Sections() {
   return (
-    <div className="bg-gradient-to-r from-blue-50 via-white to-blue-50">
-      <div className="mx-auto max-w-7xl py-24 px-6 sm:py-32 lg:px-8">
+    <div className="bg-gradient-to-r from-blue-50 via-white to-blue-50 md:mx-12 md:mt-12 ">
+      <div className="">
         <div className="relative isolate overflow-hidden bg-white px-6 pt-16 shadow-lg sm:rounded-3xl sm:px-16 md:pt-24 lg:flex lg:gap-x-20 lg:px-24 lg:pt-0">
           {/* Background Gradient */}
           <svg

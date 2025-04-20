@@ -51,8 +51,9 @@ def owner_login(request):
 
     # Fetch user from database
     user = conn.Visionary.Owner.find_one({"email": email})
-
+    # hashed_password=make_password(password)
     if user and password== user['password']:
+        
         # Generate access token if login is successful
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(

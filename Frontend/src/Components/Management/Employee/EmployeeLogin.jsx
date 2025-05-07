@@ -1,16 +1,16 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "../../Utils/Header";
 import { getGlobalVariable } from "../../../globalVariables";
-import { toast } from "react-hot-toast"; // Import react-hot-toast
+import { toast } from "react-hot-toast";
 
 const Backend = getGlobalVariable();
 
 function EmployeeLogin() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
-  const [loading, setLoading] = useState(false); // State to manage loading
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     let { name, value } = e.target;
@@ -19,16 +19,12 @@ function EmployeeLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); // Set loading to true when form is submitted
+    setLoading(true);
     try {
       const response = await axios.post(
         `${Backend}/API/employee/login/page/`,
         formData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { headers: { "Content-Type": "application/json" } }
       );
 
       const accessToken = response.data.token;
@@ -36,89 +32,76 @@ function EmployeeLogin() {
 
       localStorage.setItem("token", accessToken);
       localStorage.setItem("type", "employee");
+      localStorage.setItem("token_created_at", Date.now());
 
-      // Show success toast
       toast.success("Login successful!");
-
       navigate(`/employee/dashboard/${oeid}`);
     } catch (err) {
-      // Show error toast
       toast.error("Invalid credentials, please try again!");
     } finally {
-      setLoading(false); // Reset loading to false once request is finished
+      setLoading(false);
     }
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-100">
       <Header />
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+      <div className="flex justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md mt-10">
+          <h2 className="text-center text-2xl font-bold text-gray-900 mb-6">
             Login Into Your Account
           </h2>
-        </div>
-
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium leading-6 text-gray-900"
+                className="block text-sm font-medium text-gray-900"
               >
                 Email address
               </label>
-              <div className="mt-2">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  onChange={handleChange}
-                  autoComplete="email"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm sm:leading-6"
-                />
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                onChange={handleChange}
+                autoComplete="email"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-gray-900 shadow-sm focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+              />
             </div>
 
             <div>
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium leading-6 text-gray-900"
-                >
-                  Password
-                </label>
-              </div>
-              <div className="mt-2">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  onChange={handleChange}
-                  autoComplete="current-password"
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm sm:leading-6"
-                />
-              </div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-900"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                onChange={handleChange}
+                autoComplete="current-password"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-gray-900 shadow-sm focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+              />
             </div>
 
             <div>
               <button
                 type="submit"
-                disabled={loading} // Disable the button when loading
-                className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
-                  ${
-                    loading
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  }
-                `}
+                disabled={loading}
+                className={`w-full flex justify-center items-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+                }`}
               >
                 {loading ? (
                   <>
                     <svg
-                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      className="animate-spin h-5 w-5 mr-2 text-white"
                       viewBox="0 0 24 24"
                     >
                       <circle
@@ -142,10 +125,19 @@ function EmployeeLogin() {
                 )}
               </button>
             </div>
+
+            <div className="text-center mt-2">
+              <Link
+                to="/employee/forgot-password"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            </div>
           </form>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

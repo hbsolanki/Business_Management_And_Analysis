@@ -113,12 +113,11 @@ function Owner() {
                       </p>
                     </div>
                     <div className="mt-4">
-                      {" "}
                       <Link
                         to={`/owner/business/edit/${ownerData.businessid}`}
-                        className="mt-4 items-center text-white bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                        className=" text-white bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-300 inline-flex items-center"
                       >
-                        <FaEdit className="inline mr-2" />
+                        <FaEdit className="mr-2" />
                         Edit Business Details
                       </Link>
                     </div>

@@ -11,7 +11,7 @@ function NewInventory() {
   const [productData, setProductData] = useState([]);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function getData() {
@@ -52,7 +52,7 @@ function NewInventory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true); // Start loading
+    setIsSubmitting(true);
 
     try {
       await axios.post(`${Backend}/API/inventory/${iid}/new/`, formData, {
@@ -65,22 +65,23 @@ function NewInventory() {
     } catch (err) {
       console.log(err.message);
     } finally {
-      setIsSubmitting(false); // Stop loading
+      setIsSubmitting(false);
     }
   };
 
   return (
     <>
       {productData.length > 0 ? (
-        <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-          <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-            <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+          <div className="bg-white rounded-lg shadow-md p-6 sm:max-w-sm w-full">
+            <h2 className="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
               Inventory Details
             </h2>
-          </div>
-
-          <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-            <form className="space-y-6" onSubmit={handleSubmit} method="post">
+            <form
+              className="mt-6 space-y-6"
+              onSubmit={handleSubmit}
+              method="post"
+            >
               {productData.map((product, idx) => (
                 <div key={idx}>
                   <label
@@ -144,7 +145,7 @@ function NewInventory() {
           </div>
         </div>
       ) : (
-        <div className="flex min-h-full justify-center items-center mt-8">
+        <div className="min-h-screen bg-gray-100 flex justify-center items-center">
           <p className="text-center text-gray-600 text-lg">No Product found.</p>
         </div>
       )}

@@ -42,7 +42,6 @@ def turnover(request, bid):
                 "tax": tax,
                 "net_profit": net_profit
             }
-            # print(data)
             return JsonResponse(data)
 
         else:
@@ -154,10 +153,6 @@ def Product_Manufacturing_Per_Month(request, bid):
         for product, quantities in product_quantities.items():
             quantities.reverse()
 
-        for product, quantities in product_quantities.items():
-            if len(quantities) < 10:
-                product_quantities[product] = [0] * (10 - len(quantities)) + quantities
-
         return JsonResponse(product_quantities)
     except Exception as e:
 
@@ -190,9 +185,6 @@ def Product_Sold_Per_Month(request,bid):
 
         for product, quantities in product_sales.items():
             quantities.reverse()
-        for product, quantities in product_sales.items():
-            if len(quantities) < 10:
-                product_sales[product] = [0] * (10 - len(quantities)) + quantities
 
         return JsonResponse(product_sales)
 

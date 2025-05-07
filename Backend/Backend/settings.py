@@ -32,7 +32,8 @@ INSTALLED_APPS = [
     "sale",
     "inventory",
     "analysis",
-    "corsheaders",  # Add this line to include CORS headers
+    "corsheaders", 
+    "AI"
 ]
 
 MIDDLEWARE = [

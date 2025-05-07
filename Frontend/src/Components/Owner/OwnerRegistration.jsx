@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "../Utils/Header";
 import { getGlobalVariable } from "../../globalVariables";
 import toast from "react-hot-toast";
@@ -16,7 +16,7 @@ function OwnerRegistration() {
     mobile_number: "",
   });
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false); // Loading state
+  const [loading, setLoading] = useState(false);
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePassword = (password) =>
@@ -31,7 +31,7 @@ function OwnerRegistration() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return; // Prevent multiple clicks
+    if (loading) return;
     setLoading(true);
 
     let validationErrors = {};
@@ -57,27 +57,29 @@ function OwnerRegistration() {
 
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("type", "owner");
+      localStorage.setItem("token_created_at", Date.now());
 
       toast.success("Successfully Registered!");
       navigate(`/owner/home`);
     } catch (err) {
-      toast.error("Some Error...!");
+      if (err.response?.status === 409) {
+        toast.error("Email already exists!");
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-100">
       <Header />
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+      <div className="flex justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md mt-10">
+          <h2 className="text-center text-2xl font-bold text-gray-900 mb-6">
             Register as Owner
           </h2>
-        </div>
-
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
@@ -86,16 +88,14 @@ function OwnerRegistration() {
               >
                 Name
               </label>
-              <div className="mt-2">
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  onChange={handleChange}
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm"
-                />
-              </div>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full p-2 rounded-md border border-gray-300 text-gray-900 shadow-sm focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+              />
             </div>
 
             <div>
@@ -105,17 +105,17 @@ function OwnerRegistration() {
               >
                 Email
               </label>
-              <div className="mt-2">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  onChange={handleChange}
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm"
-                />
-                {errors.email && <p className="text-red-600">{errors.email}</p>}
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full p-2 rounded-md border border-gray-300 text-gray-900 shadow-sm focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+              />
+              {errors.email && (
+                <p className="text-red-600 text-sm mt-1">{errors.email}</p>
+              )}
             </div>
 
             <div>
@@ -125,16 +125,14 @@ function OwnerRegistration() {
               >
                 Mobile Number
               </label>
-              <div className="mt-2">
-                <input
-                  id="mobile_number"
-                  name="mobile_number"
-                  type="number"
-                  onChange={handleChange}
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm"
-                />
-              </div>
+              <input
+                id="mobile_number"
+                name="mobile_number"
+                type="tel"
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full p-2 rounded-md border border-gray-300 text-gray-900 shadow-sm focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+              />
             </div>
 
             <div>
@@ -144,37 +142,33 @@ function OwnerRegistration() {
               >
                 Password
               </label>
-              <div className="mt-2">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  onChange={handleChange}
-                  required
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 sm:text-sm"
-                />
-                {errors.password && (
-                  <p className="text-red-600">{errors.password}</p>
-                )}
-              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full p-2 rounded-md border border-gray-300 text-gray-900 shadow-sm focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+              />
+              {errors.password && (
+                <p className="text-red-600 text-sm mt-1">{errors.password}</p>
+              )}
             </div>
 
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold text-white shadow-sm
-                  ${
-                    loading
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  }
-                `}
+                className={`w-full flex justify-center items-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+                }`}
               >
                 {loading ? (
                   <>
                     <svg
-                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      className="animate-spin h-5 w-5 mr-2 text-white"
                       viewBox="0 0 24 24"
                     >
                       <circle
@@ -198,10 +192,18 @@ function OwnerRegistration() {
                 )}
               </button>
             </div>
+            <div className="text-center mt-2">
+              <Link
+                to="/owner/login"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Already registered?{" "}
+              </Link>
+            </div>
           </form>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

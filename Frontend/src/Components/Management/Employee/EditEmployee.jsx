@@ -184,8 +184,8 @@ function EditEmployee() {
   };
 
   return (
-    <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+    <div className="bg-gray-50 min-h-screen flex items-center justify-center">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 my-20">
         {employeesData.length == 0 ? (
           <p className="text-center text-gray-500">Loading...</p>
         ) : (
@@ -294,14 +294,14 @@ function EditEmployee() {
               <div>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={loading}
                   className={`flex w-full justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm 
-                  ${
-                    loading
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                  }
-                `}
+              ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              }
+            `}
                 >
                   {loading ? (
                     <>
@@ -326,7 +326,7 @@ function EditEmployee() {
                       Loading...
                     </>
                   ) : (
-                    "Edit Employee"
+                    "Add Employee"
                   )}
                 </button>
               </div>

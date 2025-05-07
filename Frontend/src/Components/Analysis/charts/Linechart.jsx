@@ -20,10 +20,10 @@ export default function Linechart({ Data, h, t }) {
     return () => window.removeEventListener("resize", handleResize);
   }, [h, t]);
 
-  // Reverse the data array
-  const data = Data.reverse();
+  // Safely reverse the data (don't mutate the prop)
+  const data = [...Data].reverse();
 
-  // Generate xAxis data based on the length of the data
+  // xAxis starting from 1
   const xAxisData = Array.from(
     { length: data.length },
     (_, index) => index + 1
@@ -31,11 +31,11 @@ export default function Linechart({ Data, h, t }) {
 
   return (
     <LineChart
-      xAxis={[{ data: xAxisData }]} // Adjust xAxis to match the length of data
+      xAxis={[{ data: xAxisData }]}
       series={[{ data: data }]}
       width={dimensions.width}
       height={dimensions.height}
-      margin={{ left: 100, right: 20, top: 20, bottom: 20 }} // Add left margin for y-axis labels
+      margin={{ left: 100, right: 20, top: 20, bottom: 20 }}
     />
   );
 }

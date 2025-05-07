@@ -19,10 +19,25 @@ export default function ProductSell({ Data }) {
   const seriesData = [];
   let maxDataLength = 0;
 
+  // Find the max data length for all products
   for (let product in Data) {
     const productData = Data[product];
-    seriesData.push({ data: productData, label: product });
     maxDataLength = Math.max(maxDataLength, productData.length);
+  }
+
+  // Prepare series data, padding the data for products with fewer points
+  for (let product in Data) {
+    const productData = Data[product];
+    // Calculate how many null values to pad at the beginning
+    const missingDataPoints = maxDataLength - productData.length;
+
+    // Pad the product data with null values for missing data points
+    const paddedData = new Array(missingDataPoints)
+      .fill(null)
+      .concat(productData);
+
+    // Push the padded data to seriesData
+    seriesData.push({ data: paddedData, label: product });
   }
 
   // Generate xAxis values dynamically

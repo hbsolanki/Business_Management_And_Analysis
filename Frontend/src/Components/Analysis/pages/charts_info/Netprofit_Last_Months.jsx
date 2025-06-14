@@ -3,15 +3,16 @@ import axios from "axios";
 import { useParams } from "react-router-dom";
 import { getGlobalVariable } from "../../../../globalVariables";
 import Linechart from "../../charts/Linechart";
-import { FaChartLine, FaLightbulb, FaCheckCircle } from "react-icons/fa";
+import { FaChartLine, FaCheckCircle } from "react-icons/fa";
 
 const Backend = getGlobalVariable();
 
-function Netprofit_Last_Months() {
+function NetprofitLastMonths() {
   const { bid } = useParams();
   const [netProfitData, setNetProfitData] = useState([]);
   const [aiInsights, setAiInsights] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchNetProfit = async () => {
@@ -19,20 +20,24 @@ function Netprofit_Last_Months() {
         const response = await axios.get(
           `${Backend}/API/analysis/${bid}/netprofit/tenmonth/`
         );
+
         const cleaned = response.data?.filter(
           (val) => typeof val === "number" && val > 0
         );
         setNetProfitData(cleaned || []);
 
-        const aiRes = await axios.post(
-          `${Backend}/API/ai/netprofit_last_months/`,
-          {
-            netprofit_last_months: cleaned,
-          }
-        );
-        setAiInsights(aiRes.data.insights);
+        if (cleaned && cleaned.length > 0) {
+          const aiRes = await axios.post(
+            `${Backend}/API/ai/netprofit_last_months/`,
+            {
+              netprofit_last_months: cleaned,
+            }
+          );
+          setAiInsights(aiRes.data.insights || []);
+        }
       } catch (error) {
         console.error("Error fetching net profit data:", error);
+        setError("Failed to load net profit data.");
       } finally {
         setLoading(false);
       }
@@ -53,9 +58,11 @@ function Netprofit_Last_Months() {
           <p className="text-center text-gray-600 animate-pulse">
             Loading net profit data...
           </p>
+        ) : error ? (
+          <p className="text-center text-red-500">{error}</p>
         ) : netProfitData.length === 0 ? (
-          <p className="text-center text-red-500">
-            No valid net profit data available.
+          <p className="text-center text-yellow-500">
+            No valid net profit data found.
           </p>
         ) : (
           <>
@@ -63,17 +70,17 @@ function Netprofit_Last_Months() {
               <Linechart Data={netProfitData} />
             </div>
 
-            {aiInsights.length > 0 && (
+            {aiInsights.length > 0 ? (
               <div className="mt-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
                   <FaChartLine className="text-blue-500" />
                   AI Insights
                 </h2>
-                <div className="bg-gray-50 rounded-xl p-4 shadow-sm space-y-3">
+                <div className="bg-blue-50 rounded-xl p-4 shadow space-y-3">
                   {aiInsights.map((insight, idx) => (
                     <div
                       key={idx}
-                      className="flex items-start gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm"
+                      className="flex items-start gap-3 bg-white p-3 rounded-lg border border-gray-200"
                     >
                       <FaCheckCircle className="text-green-500 mt-1" />
                       <span className="text-gray-700">{insight}</span>
@@ -81,6 +88,10 @@ function Netprofit_Last_Months() {
                   ))}
                 </div>
               </div>
+            ) : (
+              <p className="text-center text-gray-500 mt-6">
+                No AI insights available.
+              </p>
             )}
           </>
         )}
@@ -89,4 +100,4 @@ function Netprofit_Last_Months() {
   );
 }
 
-export default Netprofit_Last_Months;
+export default NetprofitLastMonths;

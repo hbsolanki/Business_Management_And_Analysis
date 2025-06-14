@@ -41,6 +41,12 @@ function Turnover() {
     fetchData();
   }, [bid]);
 
+  const ChartContainer = ({ children }) => (
+    <div className="overflow-x-auto">
+      <div className="min-w-[500px] md:min-w-full">{children}</div>
+    </div>
+  );
+
   return (
     <div className="bg-gray-100 min-h-screen py-8 px-4 flex justify-center">
       <div className="bg-white w-full max-w-4xl p-6 rounded-lg shadow-md">
@@ -53,13 +59,16 @@ function Turnover() {
         ) : (
           <>
             {turnoverData && (
-              <Piechart Data={turnoverData} Height={300} t={850} />
+              <ChartContainer>
+                <Piechart Data={turnoverData} Height={300} t={850} />
+              </ChartContainer>
             )}
 
-            <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-gray-800 mt-8 mb-2 flex items-center gap-2">
               <FaChartLine className="text-blue-500" />
               AI Insights
             </h2>
+
             {aiInsights && (
               <div className="mt-6 space-y-4">
                 {aiInsights.summary && (

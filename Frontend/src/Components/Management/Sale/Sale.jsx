@@ -77,7 +77,7 @@ function Sale() {
   return (
     <>
       <div className="container mx-auto p-4">
-        {type === "owner" ? (
+        {type == "owner" ? (
           <OwnerHeader Businessid={localStorage.getItem("bid")} />
         ) : (
           <EmployeeHeader

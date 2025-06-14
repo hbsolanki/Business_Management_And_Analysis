@@ -23,24 +23,18 @@ function ProductStock() {
   useEffect(() => {
     const fetchProductStock = async () => {
       try {
-        // Fetch product stock data
-        const response = await axios.get(
+        const { data: stockData } = await axios.get(
           `${Backend}/API/analysis/${bid}/product/stock/`
         );
-        setProductStockData(response.data);
-        console.log(response.data);
+        setProductStockData(stockData);
 
-        // Fetch AI insights for product stock
-        const aiResponse = await axios.post(
+        const { data: aiData } = await axios.post(
           `${Backend}/API/ai/product_stock/`,
-          {
-            product_stock_data: response.data,
-          }
+          { product_stock_data: stockData }
         );
-
-        setAiInsights(aiResponse.data.insights);
-      } catch (error) {
-        console.error("Error fetching product stock data:", error);
+        setAiInsights(aiData.insights);
+      } catch (err) {
+        console.error("Error fetching product stock data:", err);
         setError("An error occurred while fetching product stock data.");
       } finally {
         setLoading(false);
@@ -50,6 +44,27 @@ function ProductStock() {
     fetchProductStock();
   }, [bid]);
 
+  const InsightBlock = ({ icon: Icon, title, color, points }) =>
+    points?.length > 0 && (
+      <div
+        className={`bg-${color}-50 border-l-4 border-${color}-500 p-4 rounded-md shadow-sm`}
+      >
+        <h2
+          className={`text-lg font-semibold text-${color}-800 mb-1 flex items-center gap-2`}
+        >
+          <Icon /> {title}
+        </h2>
+        <ul className={`space-y-2 text-${color}-700`}>
+          {points.map((point, idx) => (
+            <li key={idx} className="flex gap-2">
+              <Icon className="mt-1" />
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+
   return (
     <div className="bg-gray-100 min-h-screen flex items-center justify-center py-10 px-4">
       <div className="bg-white w-full max-w-5xl p-6 rounded-lg shadow-lg">
@@ -58,66 +73,48 @@ function ProductStock() {
         </h1>
 
         {loading ? (
-          <p className="text-center text-gray-600">Loading stock data...</p>
+          <p className="text-center text-gray-600 animate-pulse">
+            Loading stock data...
+          </p>
         ) : error ? (
           <p className="text-center text-red-500">{error}</p>
         ) : (
           <>
-            {/* Display Product Stock Chart */}
-            {productStockData && <ProductStockChart Data={productStockData} />}
-
-            <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
-              <FaChartLine className="text-blue-500" />
-              AI Insights
-            </h2>
-            {/* Display AI Insights */}
-            {aiInsights && (
-              <div className="mt-6 space-y-4">
-                {/* Summary of Insights */}
-                {aiInsights.summary && (
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md shadow-sm">
-                    <h2 className="text-lg font-semibold text-blue-800 mb-1 flex items-center gap-2">
-                      <FaLightbulb /> Summary
-                    </h2>
-                    <p className="text-gray-700">{aiInsights.summary}</p>
-                  </div>
-                )}
-
-                {/* Positive Insights */}
-                {aiInsights.positives?.length > 0 && (
-                  <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-md shadow-sm">
-                    <h2 className="text-lg font-semibold text-green-800 mb-1 flex items-center gap-2">
-                      <FaCheckCircle /> Positive Insights
-                    </h2>
-                    <ul className="space-y-2">
-                      {aiInsights.positives.map((point, idx) => (
-                        <li key={idx} className="flex gap-2 text-green-700">
-                          <FaCheckCircle className="mt-1" />
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Areas to Improve */}
-                {aiInsights.improvements?.length > 0 && (
-                  <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
-                    <h2 className="text-lg font-semibold text-red-800 mb-1 flex items-center gap-2">
-                      <FaTools /> Areas to Improve
-                    </h2>
-                    <ul className="space-y-2">
-                      {aiInsights.improvements.map((point, idx) => (
-                        <li key={idx} className="flex gap-2 text-red-700">
-                          <FaExclamationTriangle className="mt-1" />
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+            {productStockData && (
+              <div className="overflow-x-auto">
+                <ProductStockChart Data={productStockData} />
               </div>
             )}
+
+            <div className="mt-6 space-y-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <FaChartLine className="text-blue-500" />
+                AI Insights
+              </h2>
+
+              {aiInsights?.summary && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md shadow-sm">
+                  <h2 className="text-lg font-semibold text-blue-800 mb-1 flex items-center gap-2">
+                    <FaLightbulb /> Summary
+                  </h2>
+                  <p className="text-gray-700">{aiInsights.summary}</p>
+                </div>
+              )}
+
+              <InsightBlock
+                icon={FaCheckCircle}
+                title="Positive Insights"
+                color="green"
+                points={aiInsights?.positives}
+              />
+
+              <InsightBlock
+                icon={FaExclamationTriangle}
+                title="Areas to Improve"
+                color="red"
+                points={aiInsights?.improvements}
+              />
+            </div>
           </>
         )}
       </div>

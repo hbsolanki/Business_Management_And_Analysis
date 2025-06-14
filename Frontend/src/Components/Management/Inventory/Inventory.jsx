@@ -64,7 +64,7 @@ function Inventory() {
     <>
       <div className="container mx-auto p-4">
         {/* Header */}
-        {type === "owner" ? (
+        {type == "owner" ? (
           <OwnerHeader Businessid={localStorage.getItem("bid")} />
         ) : (
           <EmployeeHeader

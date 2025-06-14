@@ -1,1 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Django specific
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+
+# Django migrations
+*/migrations/
+!*/migrations/__init__.py
+
+# Static files
+staticfiles/
+static/
+
+# Media files
+media/
+
+# Environment
 .env
+.env.*
+
+# VSCode/IDE settings
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+venv/
+env/
+ENV/

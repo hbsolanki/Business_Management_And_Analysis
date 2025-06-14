@@ -50,18 +50,22 @@ function TurnoverLastMonths() {
       <div className="bg-white w-full max-w-5xl p-6 rounded-lg shadow-lg">
         <h1 className="text-3xl font-bold text-center text-neutral-900 mb-6 flex items-center justify-center gap-2">
           <FaChartLine className="text-blue-600" />
-          Turnover Last Month
+          Turnover - Last 10 Months
         </h1>
 
         {turnoverData ? (
           <>
-            <Linechart Data={turnoverData} />
+            <div className="overflow-x-auto">
+              <Linechart Data={turnoverData} />
+            </div>
+
             <div className="mt-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
                 <FaChartLine className="text-blue-500" />
                 AI Insights
               </h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
+
+              <ul className="list-disc list-inside text-gray-700 space-y-2">
                 {trend === "up" && (
                   <li className="flex items-center">
                     <FaArrowUp className="text-green-600 mr-2" />

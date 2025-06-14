@@ -35,6 +35,7 @@ function Analysis() {
       } catch (err) {
         console.log(err);
       }
+
       try {
         const responseData2 = await axios.get(
           `${Backend}/API/analysis/${bid}/product/stock/`
@@ -43,6 +44,7 @@ function Analysis() {
       } catch (err) {
         console.log(err);
       }
+
       try {
         const responseData3 = await axios.get(
           `${Backend}/API/analysis/${bid}/product/details/`
@@ -51,6 +53,7 @@ function Analysis() {
       } catch (err) {
         console.log(err);
       }
+
       try {
         const responseData4 = await axios.get(
           `${Backend}/API/analysis/${bid}/turnover/tenmonth/`
@@ -59,6 +62,7 @@ function Analysis() {
       } catch (err) {
         console.log(err);
       }
+
       try {
         const responseData5 = await axios.get(
           `${Backend}/API/analysis/${bid}/netprofit/tenmonth/`
@@ -67,6 +71,7 @@ function Analysis() {
       } catch (err) {
         console.log(err);
       }
+
       try {
         const responseData6 = await axios.get(
           `${Backend}/API/analysis/${bid}/product/Manufacturing/per/month/`
@@ -75,6 +80,7 @@ function Analysis() {
       } catch (err) {
         console.log(err);
       }
+
       try {
         const responseData7 = await axios.get(
           `${Backend}/API/analysis/${bid}/product/sold/per/month/`
@@ -84,18 +90,26 @@ function Analysis() {
         console.log(err);
       }
     };
+
     getData();
-  }, [bid]); // Ensure the effect re-runs if `bid` changes
+  }, [bid]);
 
   const handleView = (section) => {
     navigate(`/analysis/${bid}/${section}`);
   };
+
+  const ChartContainer = ({ children }) => (
+    <div className="overflow-x-auto">
+      <div className="min-w-[500px] md:min-w-full">{children}</div>
+    </div>
+  );
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       <AnalysisHeader />
       <div className="container mx-auto">
         <div className="grid grid-cols-1 gap-6">
+          {/* Turnover */}
           <h1
             id="Turnover"
             className="text-3xl font-bold text-neutral-950 mt-6"
@@ -103,11 +117,13 @@ function Analysis() {
             Company Turnover
           </h1>
           {turnoverData && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <Piechart Data={turnoverData} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <Piechart Data={turnoverData} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("turnover")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
@@ -116,12 +132,15 @@ function Analysis() {
               </p>
             </div>
           )}
+
           {turnoverTenmonthData && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <Linechart Data={turnoverTenmonthData} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <Linechart Data={turnoverTenmonthData} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("turnover_last_months")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
@@ -130,8 +149,10 @@ function Analysis() {
               </p>
             </div>
           )}
+
           <hr className="border-solid border-gray-950 border-x-8" />
 
+          {/* Net Profit */}
           <h1
             id="NetProfit"
             className="text-3xl font-bold text-neutral-950 mt-6"
@@ -139,11 +160,13 @@ function Analysis() {
             Company NetProfit
           </h1>
           {netprofitTenmonthData && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <Linechart Data={netprofitTenmonthData} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <Linechart Data={netprofitTenmonthData} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("netprofit_last_months")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
@@ -153,8 +176,10 @@ function Analysis() {
               </p>
             </div>
           )}
+
           <hr className="border-solid border-gray-950 border-x-8" />
 
+          {/* Product Analysis */}
           <h1
             id="ProductAnalysis"
             className="text-3xl font-bold text-neutral-950 mt-6"
@@ -162,37 +187,42 @@ function Analysis() {
             Product Analysis
           </h1>
           {productDetailsData && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <Barsize Data={productDetailsData} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <Barsize Data={productDetailsData} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("product_stats")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
               <p className="mt-4 text-center text-gray-800 text-lg font-semibold">
-                Product Manufacturing & Profit Distribution - A breakdown of how
-                products contribute to overall profitability.
+                Product Manufacturing & Profit Distribution.
               </p>
             </div>
           )}
+
           {productManufacturingpermonth && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <Productmnf Data={productManufacturingpermonth} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <Productmnf Data={productManufacturingpermonth} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("product_inventory_last_month")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
               <p className="mt-4 text-center text-gray-800 text-lg font-semibold">
-                Product Manufacturing Trends Per Month - Insights into
-                production capacity and trends.
+                Product Manufacturing Trends Per Month.
               </p>
             </div>
           )}
+
           <hr className="border-solid border-gray-950 border-x-8" />
 
+          {/* Selling Analysis */}
           <h1
             id="SellingAnalysis"
             className="text-3xl font-bold text-neutral-950 mt-6"
@@ -200,22 +230,25 @@ function Analysis() {
             Product Selling Analysis
           </h1>
           {productSoldpermonth && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <ProductSell Data={productSoldpermonth} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <ProductSell Data={productSoldpermonth} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("product_sold_last_month")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
               <p className="mt-4 text-center text-gray-800 text-lg font-semibold">
-                Product Sold Per Month - Sales performance and demand analysis
-                over time.
+                Product Sold Per Month - Sales performance and demand analysis.
               </p>
             </div>
           )}
+
           <hr className="border-solid border-gray-950 border-x-8" />
 
+          {/* Stock Analysis */}
           <h1
             id="StockAnalysis"
             className="text-3xl font-bold text-neutral-950 mt-6"
@@ -223,17 +256,18 @@ function Analysis() {
             Stock Analysis
           </h1>
           {productStockData && (
-            <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 overflow-hidden relative">
-              <ProductStock Data={productStockData} />
+            <div className="bg-white rounded-lg shadow-lg p-6 relative">
+              <ChartContainer>
+                <ProductStock Data={productStockData} />
+              </ChartContainer>
               <button
                 onClick={() => handleView("product_stock")}
-                className="absolute top-4 right-4 opacity-50 hover:opacity-80 transition-opacity duration-300 bg-gray-300 text-black px-4 py-2 rounded-md"
+                className="absolute top-4 right-4 bg-gray-300 text-black px-4 py-2 rounded-md opacity-50 hover:opacity-80"
               >
                 View
               </button>
               <p className="mt-4 text-center text-gray-800 text-lg font-semibold">
-                Current Month Product Stock - Overview of available stock and
-                inventory health.
+                Current Month Product Stock - Inventory health overview.
               </p>
             </div>
           )}

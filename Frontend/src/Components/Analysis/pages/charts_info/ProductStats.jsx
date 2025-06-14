@@ -15,26 +15,48 @@ function ProductStats() {
   const { bid } = useParams();
   const [productDetailsData, setProductDetailsData] = useState(null);
   const [aiInsights, setAiInsights] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchProductDetails = async () => {
       try {
-        const res = await axios.get(
+        const { data: productData } = await axios.get(
           `${Backend}/API/analysis/${bid}/product/details/`
         );
-        setProductDetailsData(res.data);
+        setProductDetailsData(productData);
 
-        const aiRes = await axios.post(`${Backend}/API/ai/product_stats/`, {
-          products: res.data,
-        });
-        setAiInsights(aiRes.data.insights);
-      } catch (error) {
-        console.error("Error fetching product details or AI insights:", error);
+        const { data: aiData } = await axios.post(
+          `${Backend}/API/ai/product_stats/`,
+          { products: productData }
+        );
+        setAiInsights(aiData.insights);
+      } catch (err) {
+        console.error("Error fetching product details or AI insights:", err);
+        setError("Failed to load product statistics.");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchProductDetails();
   }, [bid]);
+
+  const InsightList = ({ icon: Icon, title, color, items }) =>
+    items?.length > 0 && (
+      <div className={`mt-4`}>
+        <h3
+          className={`font-semibold text-${color}-800 flex items-center gap-2`}
+        >
+          <Icon /> {title}
+        </h3>
+        <ul className={`list-disc list-inside text-${color}-700`}>
+          {items.map((point, index) => (
+            <li key={index}>{point}</li>
+          ))}
+        </ul>
+      </div>
+    );
 
   return (
     <div className="bg-gray-100 min-h-screen flex items-center justify-center py-10 px-4">
@@ -43,7 +65,13 @@ function ProductStats() {
           Product Stats - Manufacturing & Profit
         </h1>
 
-        {productDetailsData ? (
+        {loading ? (
+          <p className="text-center text-gray-600 animate-pulse">
+            Loading product statistics...
+          </p>
+        ) : error ? (
+          <p className="text-center text-red-500">{error}</p>
+        ) : (
           <>
             <div className="mb-6">
               <Barsize Data={productDetailsData} />
@@ -54,40 +82,39 @@ function ProductStats() {
                 <FaChartLine className="text-blue-500" />
                 AI Insights
               </h2>
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md shadow-sm">
-                {aiInsights ? (
-                  <>
-                    <h3 className="font-semibold text-blue-800">📊 Summary:</h3>
-                    <p className="mb-4">{aiInsights.summary}</p>
 
-                    <h3 className="font-semibold text-green-800 mt-2 flex items-center gap-2">
-                      <FaCheckCircle /> Strengths
-                    </h3>
-                    <ul className="list-disc list-inside text-green-700">
-                      {aiInsights.positives?.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
+              {aiInsights ? (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md shadow-sm">
+                  {aiInsights.summary && (
+                    <div>
+                      <h3 className="font-semibold text-blue-800 mb-1">
+                        📊 Summary
+                      </h3>
+                      <p className="text-gray-700">{aiInsights.summary}</p>
+                    </div>
+                  )}
 
-                    <h3 className="font-semibold text-yellow-800 mt-4 flex items-center gap-2">
-                      <FaExclamationTriangle /> Areas for Improvement
-                    </h3>
-                    <ul className="list-disc list-inside text-yellow-700">
-                      {aiInsights.improvements?.map((point, index) => (
-                        <li key={index}>{point}</li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <p>No insights available.</p>
-                )}
-              </div>
+                  <InsightList
+                    icon={FaCheckCircle}
+                    title="Strengths"
+                    color="green"
+                    items={aiInsights.positives}
+                  />
+
+                  <InsightList
+                    icon={FaExclamationTriangle}
+                    title="Areas for Improvement"
+                    color="yellow"
+                    items={aiInsights.improvements}
+                  />
+                </div>
+              ) : (
+                <p className="text-gray-600 text-sm italic">
+                  No AI insights available.
+                </p>
+              )}
             </div>
           </>
-        ) : (
-          <p className="text-center text-gray-600">
-            Loading product statistics...
-          </p>
         )}
       </div>
     </div>

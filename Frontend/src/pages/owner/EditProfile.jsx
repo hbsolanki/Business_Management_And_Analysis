@@ -22,6 +22,8 @@ function EditProfile() {
         profile_picture_preview: null,
     });
 
+    const [initialData, setInitialData] = useState({});
+
     const navigate = useNavigate();
     const userId = tokenService.getId();
 
@@ -31,7 +33,7 @@ function EditProfile() {
                 const res = await api.get(`/user/${userId}/`);
                 const user = res.data;
 
-                setFormData({
+                const initialUserData = {
                     first_name: user.first_name || "",
                     last_name: user.last_name || "",
                     email: user.email || "",
@@ -40,7 +42,9 @@ function EditProfile() {
                     password: "",
                     profile_picture: user.profile_picture || null,
                     profile_picture_preview: null,
-                });
+                };
+                setFormData(initialUserData);
+                setInitialData(initialUserData);
             } catch (error) {
                 toast.error("Failed to load user data");
             } finally {
@@ -101,18 +105,31 @@ function EditProfile() {
 
         try {
             const data = new FormData();
-            data.append("first_name", formData.first_name);
-            data.append("last_name", formData.last_name);
-            data.append("email", formData.email);
-            data.append("username", formData.username);
-            data.append("mobile_number", formData.mobile_number);
+
+            const fieldsToCheck = ['first_name', 'last_name', 'email', 'username', 'mobile_number'];
+            let hasChanges = false;
+
+            fieldsToCheck.forEach(field => {
+                if (formData[field] !== initialData[field]) {
+                    data.append(field, formData[field]);
+                    hasChanges = true;
+                }
+            });
 
             if (formData.password) {
                 data.append("password", formData.password);
+                hasChanges = true;
             }
 
             if (formData.profile_picture instanceof File) {
                 data.append("profile_picture", formData.profile_picture);
+                hasChanges = true;
+            }
+
+            if (!hasChanges) {
+                toast.success("No changes to save");
+                setIsSubmitting(false);
+                return;
             }
 
             await api.patch(`/user/${userId}/`, data, {

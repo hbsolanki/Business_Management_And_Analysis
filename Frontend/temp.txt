@@ -1,0 +1,23 @@
+Today’s Progress:
+    improve code readability and performance path changes
+    setting config changed
+    validation password handle,patch request user username,password validation error solve 
+
+Blockers:
+    None
+
+Today’s Progress:
+
+    Fixed user, business, and profile-related errors (1h)
+
+    Updated and tested role-based permissions for owner, manager, and employees. (1.5h)
+
+    product, invoice, inventory, and employee APIs permission update. (1h)
+
+    Learned and implemented Celery with periodic tasks. (1.5h)
+
+    Added and tested cost category APIs and create task daily_financial_summary_update and test it. (3h)
+
+Blockers:
+
+    None

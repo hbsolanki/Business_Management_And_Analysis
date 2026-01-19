@@ -1,156 +1,165 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Toaster } from "react-hot-toast";
+
+import PublicRoute from "@/features/auth/routes/PublicRoute";
+import PrivateRoute from "@/features/auth/routes/PrivateRoute";
+
+// lazy imports
+const Home = lazy(() => import("@/pages/Home"));
+const OwnerRegistration = lazy(() =>
+  import("@/pages/auth/OwnerRegister")
+);
+const Login = lazy(() => import("@/pages/auth/Login"));
+const Owner = lazy(() => import("@/pages/owner/Dashboard"));
+const OwnerEdit = lazy(() => import("@/pages/owner/EditProfile"));
+const Product = lazy(() => import("@/pages/product/ProductList"));
+const ProductAdd = lazy(() => import("@/pages/product/AddProduct"));
+const ProductEdit = lazy(() => import("@/pages/product/EditProduct"));
+const CreateBusiness = lazy(() => import("@/pages/business/CreateBusiness"));
+
+// inventory
+const Inventory = lazy(() => import("@/pages/inventory/InventoryList"));
+const InventoryTransactionCreate = lazy(() =>
+  import("@/pages/inventory/AddTransaction")
+);
+
+const BusinessEdit = lazy(() => import("@/pages/business/EditBusiness"));
+
+// invoice
+const InvoiceNew = lazy(() => import("@/pages/invoice/AddInvoice"));
+const Invoice = lazy(() => import("@/pages/invoice/InvoiceList"));
+
+// Cost Category
+const CostCategoryList = lazy(() => import("@/features/costCategory/components/CostCategoryList"));
+
+// employee
+const EmployeesManage = lazy(() => import("@/pages/employee/EmployeeList"));
+const EmployeesNew = lazy(() => import("@/pages/employee/AddEmployee"));
+const EmployeeEdit = lazy(() => import("@/pages/employee/EditEmployee"));
+const EmployeeSelfEdit = lazy(() => import("@/pages/employee/EditProfile"));
+const Employee = lazy(() => import("@/pages/employee/Dashboard"));
+
+//Analysis
+const Analytics = lazy(() => import("@/pages/analytics/Analytics"));
+
+//Manage
+const ManagerManage = lazy(() => import("@/pages/manager/ManagerList"));
+const ManagerNew = lazy(() => import("@/pages/manager/AddManager"));
+const ManagerDashboard = lazy(() => import("@/pages/manager/Dashboard"));
+const ManagerEditProfile = lazy(() => import("@/pages/manager/EditProfile"));
+
+
+
+const ProfileViewer = lazy(() => import("@/pages/common/ProfileViewer"));
+
+const PageNotFound = lazy(() => import("@/pages/NotFound"));
 
 // Utils
-import Home from "./Components/Utils/Home/Home";
-import PageNotFound from "./Components/Utils/PageNotFound";
-import ForgotPassword from "./Components/Utils/ForgetPassword";
+const ForgetPassword = lazy(() => import("@/pages/auth/ForgetPassword"));
+const ContactSupport = lazy(() => import("@/pages/support/Contact"));
+const LearnMore = lazy(() => import("@/components/static/LearnMore"));
 
-// Owner
-import OwnerRegistration from "./Components/Owner/OwnerRegistration";
-import OwnerLogin from "./Components/Owner/OwnerLogin";
-import Owner from "./Components/Owner/Owner";
-import CreateBusiness from "./Components/Business/CreateBusiness";
-import EditBusiness from "./Components/Business/EditBusiness";
-import OwnerEdit from "./Components/Owner/OwnerEdit";
+// loader
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+    </div>
+  );
+}
 
 // Sale
-import Sale from "./Components/Management/Sale/Sale";
-import NewSale from "./Components/Management/Sale/NewSale";
-
-// Employee
-import Employee from "./Components/Management/Employee/Employee";
-import NewEmployee from "./Components/Management/Employee/NewEmployee";
-import EditEmployee from "./Components/Management/Employee/EditEmployee";
-import EmployeeLogin from "./Components/Management/Employee/EmployeeLogin";
-import EmployeeDashboard from "./Components/Management/Employee/EmployeeDashboard";
-import SelfEditEmployee from "./Components/Management/Employee/SelfEditEmployee";
-
-// Product
-import Product from "./Components/Management/Product/Product";
-import NewProduct from "./Components/Management/Product/NewProduct";
-import EditProduct from "./Components/Management/Product/EditProduct";
-
-// Inventory
-import Inventory from "./Components/Management/Inventory/Inventory";
-import NewInventory from "./Components/Management/Inventory/NewInventory";
-
-// Analysis
-import Analysis from "./Components/Analysis/pages/Analysis";
-
-// Public & Private Routes
-import PublicRoute from "./Components/Auth/PublicRoute";
-import PrivateRoute from "./Components/Auth/PrivateRoute";
-import OwnerRoute from "./Components/Auth/OwnerRoute";
-import EmployeeRoutes from "./Components/Auth/EmployeeRoutes";
-
-//charts
-import Netprofit_Last_Months from "./Components/Analysis/pages/charts_info/Netprofit_Last_Months";
-import ProductInventoryLastmMonth from "./Components/Analysis/pages/charts_info/ProductInventoryLastmMonth";
-import ProductSoldLastMonth from "./Components/Analysis/pages/charts_info/ProductSoldLastMonth";
-import ProductStats from "./Components/Analysis/pages/charts_info/ProductStats";
-import ProductStock from "./Components/Analysis/pages/charts_info/ProductStock";
-import Turnover from "./Components/Analysis/pages/charts_info/Turnover";
-import TurnoverLastMonths from "./Components/Analysis/pages/charts_info/TurnoverLastMonths";
-
-import { Toaster } from "react-hot-toast";
-import TokenExpiryWatcher from "./TokenExpiryWatcher";
+const SaleList = lazy(() => import("@/pages/sale/SaleList"));
+const AddSale = lazy(() => import("@/pages/sale/AddSale"));
 
 function App() {
   return (
     <>
       <Toaster position="top-center" />
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route element={<PublicRoute />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/owner/registration" element={<OwnerRegistration />} />
-            <Route path="/owner/login" element={<OwnerLogin />} />
-            <Route path="/employee/login" element={<EmployeeLogin />} />
-            <Route path="/owner/forgot-password" element={<ForgotPassword />} />
-            <Route
-              path="/employee/forgot-password"
-              element={<ForgotPassword />}
-            />
-          </Route>
 
-          {/* Private Routes */}
-          <Route
-            element={
-              <>
-                <TokenExpiryWatcher />{" "}
-                {/* Token check only for authenticated users */}
-                <PrivateRoute />
-              </>
-            }
-          >
-            {/* Owner Routes */}
-            <Route element={<OwnerRoute />}>
-              <Route path="/owner/home" element={<Owner />} />
-              <Route path="/owner/edit" element={<OwnerEdit />} />
-              <Route path="/owner/business/new" element={<CreateBusiness />} />
-              <Route
-                path="/owner/business/edit/:bid"
-                element={<EditBusiness />}
-              />
-              <Route path="/analysis/:bid/" element={<Analysis />} />
-              <Route path="/analysis/:bid/turnover" element={<Turnover />} />
-              <Route
-                path="/analysis/:bid/turnover_last_months"
-                element={<TurnoverLastMonths />}
-              />
-              <Route
-                path="/analysis/:bid/netprofit_last_months"
-                element={<Netprofit_Last_Months />}
-              />
-              <Route
-                path="/analysis/:bid/product_stats"
-                element={<ProductStats />}
-              />
-              <Route
-                path="/analysis/:bid/product_inventory_last_month"
-                element={<ProductInventoryLastmMonth />}
-              />
-              <Route
-                path="/analysis/:bid/product_sold_last_month"
-                element={<ProductSoldLastMonth />}
-              />
-              <Route
-                path="/analysis/:bid/product_stock"
-                element={<ProductStock />}
-              />
+      <Router>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public Routes */}
+            <Route element={<PublicRoute />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/owner/register" element={<OwnerRegistration />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgetPassword />} />
             </Route>
 
-            {/* Sales */}
-            <Route path="/sale/:sid" element={<Sale />} />
-            <Route path="/sale/:sid/new" element={<NewSale />} />
+            {/* Protected Routes */}
+            {/* Protected Routes - All Authenticated */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/profile" element={<ProfileViewer />} />
+              {/* Sale routes accessible to all authenticated users (including employees) */}
+              <Route path="/sale/:sid" element={<SaleList />} />
+              <Route path="/sale/:sid/new" element={<AddSale />} />
+            </Route>
 
-            {/* Employee Management */}
-            <Route
-              path="/employee/dashboard/:eid"
-              element={<EmployeeDashboard />}
-            />
-            <Route path="/employee/:eid" element={<Employee />} />
-            <Route path="/employee/:eid/new" element={<NewEmployee />} />
-            <Route
-              path="/employee/:eid/:oeid/edit"
-              element={<EditEmployee />}
-            />
-            <Route path="/employee/:oeid/edit" element={<SelfEditEmployee />} />
+            {/* Owner Only */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER"]} />}>
+              <Route path="/owner" element={<Owner />} />
+              <Route path="/owner/edit" element={<OwnerEdit />} />
+              <Route path="/business/edit/:bid" element={<BusinessEdit />} />
+              <Route path="/business/new" element={<CreateBusiness />} />
+              <Route path="/manager/manage" element={<ManagerManage />} />
+              <Route path="/manager/new" element={<ManagerNew />} />
+              <Route path="/manager/:id" element={<ProfileViewer />} />
+            </Route>
 
-            {/* Products */}
-            <Route path="/product/:pid" element={<Product />} />
-            <Route path="/product/:pid/new" element={<NewProduct />} />
-            <Route path="/product/:pid/:opid/edit" element={<EditProduct />} />
+            {/* Manager Only */}
+            <Route element={<PrivateRoute allowedRoles={["MANAGER"]} />}>
+              <Route path="/manager" element={<ManagerDashboard />} />
+              <Route path="/manager/edit" element={<ManagerEditProfile />} />
+            </Route>
 
-            {/* Inventory */}
-            <Route path="/inventory/:iid" element={<Inventory />} />
-            <Route path="/inventory/:iid/new" element={<NewInventory />} />
-          </Route>
+            {/* Employee Only */}
+            <Route element={<PrivateRoute allowedRoles={["EMPLOYEE"]} />}>
+              <Route path="/employee" element={<Employee />} />
+              <Route path="/employee/edit" element={<EmployeeSelfEdit />} />
+            </Route>
 
-          {/* Catch-All Route for 404 Page */}
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
+            {/* Owner & Manager Common Routes */}
+            {/* Owner & Manager Common Routes - Restricted */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+              <Route path="/analytics" element={<Analytics />} />
+
+              {/* Employee Management */}
+              <Route path="/employees/manage" element={<EmployeesManage />} />
+              <Route path="/employee/new" element={<EmployeesNew />} />
+              <Route path="/employee/:id" element={<ProfileViewer />} />
+              <Route path="/employee/:id/edit" element={<EmployeeEdit />} />
+            </Route>
+
+            {/* Product - Accessible to Owner, Manager, and Employees with 'product' work */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} requiredWork="product" />}>
+              <Route path="/product" element={<Product />} />
+              <Route path="/product/add" element={<ProductAdd />} />
+              <Route path="/product/:id/edit" element={<ProductEdit />} />
+            </Route>
+
+            {/* Inventory - Accessible to Owner, Manager, and Employees with 'inventory' work */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} requiredWork="inventory" />}>
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/inventory/transaction/new" element={<InventoryTransactionCreate />} />
+            </Route>
+
+            {/* Cost Category - Accessible to Owner and Manager (and Employee if needed, assumed same as Product for now or own permission) */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+              <Route path="/cost-category" element={<CostCategoryList />} />
+            </Route>
+
+            {/* Invoice - Accessible to Owner, Manager, and Employees with 'invoice' work */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} requiredWork="invoice" />}>
+              <Route path="/invoice/new" element={<InvoiceNew />} />
+              <Route path="/invoice" element={<Invoice />} />
+            </Route>
+
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+        </Suspense>
       </Router>
     </>
   );

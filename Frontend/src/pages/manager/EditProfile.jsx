@@ -1,0 +1,377 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Toaster, toast } from "react-hot-toast";
+import api from "@/services/api";
+import { tokenService } from "@/services/tokenService";
+import { FaCamera, FaSave, FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard, FaFileAlt } from "react-icons/fa";
+
+function EditProfile() {
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
+
+    const [formData, setFormData] = useState({
+        first_name: "",
+        last_name: "",
+        email: "",
+        username: "",
+        mobile_number: "",
+        password: "",
+        description: "",
+        profile_picture: null,
+        profile_picture_preview: null,
+    });
+
+    const navigate = useNavigate();
+    const userId = tokenService.getId();
+
+    useEffect(() => {
+        async function fetchUser() {
+            try {
+                const res = await api.get(`/user/${userId}/`);
+                const user = res.data;
+
+                setFormData({
+                    first_name: user.first_name || "",
+                    last_name: user.last_name || "",
+                    email: user.email || "",
+                    username: user.username || "",
+                    mobile_number: user.mobile_number || "",
+                    password: "",
+                    description: user.description || "",
+                    profile_picture: user.profile_picture || null,
+                    profile_picture_preview: null,
+                });
+            } catch (error) {
+                toast.error("Failed to load user data");
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        if (userId) fetchUser();
+        else setLoading(false);
+    }, [userId]);
+
+    const validateEmail = (email) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    const validatePassword = (password) =>
+        /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).{8,}$/.test(password);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Clear error when user types
+        if (errors[name]) {
+            setErrors((prev) => ({ ...prev, [name]: null }));
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData((prev) => ({
+                ...prev,
+                profile_picture: file,
+                profile_picture_preview: URL.createObjectURL(file),
+            }));
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrors({});
+
+        const validationErrors = {};
+
+        if (!validateEmail(formData.email)) {
+            validationErrors.email = "Invalid email address";
+        }
+
+        if (formData.password && !validatePassword(formData.password)) {
+            validationErrors.password =
+                "Password must be at least 8 characters, include a number and a special character";
+        }
+
+        if (Object.keys(validationErrors).length) {
+            setErrors(validationErrors);
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            const data = new FormData();
+            // Append fields only if they have values or if we want to allow clearing them (depending on backend)
+            // For required fields, we assume they are populated.
+            data.append("first_name", formData.first_name);
+            data.append("last_name", formData.last_name);
+            data.append("email", formData.email);
+            data.append("username", formData.username);
+            data.append("mobile_number", formData.mobile_number);
+            data.append("description", formData.description);
+
+            if (formData.password) {
+                data.append("password", formData.password);
+            }
+
+            if (formData.profile_picture instanceof File) {
+                data.append("profile_picture", formData.profile_picture);
+            }
+
+            await api.patch(`/user/${userId}/`, data, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+                timeout: 30000,
+            });
+
+            toast.success("Profile updated successfully");
+            // Optional: update local storage or context if user data is stored there
+            navigate(-1);
+        } catch (error) {
+            toast.error("Failed to update profile");
+            console.error(error);
+            if (error.response?.data) {
+                setErrors(error.response.data);
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+            <Toaster position="top-center" />
+
+            <div className="max-w-3xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-6 text-white">
+                        <h2 className="text-3xl font-extrabold">Edit Profile</h2>
+                        <p className="mt-2 text-purple-100 opacity-90">Update your personal information and account settings</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+                        {/* Profile Picture Section */}
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                            <div className="relative group">
+                                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg ring-2 ring-purple-100">
+                                    {formData.profile_picture_preview || formData.profile_picture ? (
+                                        <img
+                                            src={
+                                                formData.profile_picture_preview ||
+                                                formData.profile_picture
+                                            }
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                            <FaUser className="text-gray-400 text-4xl" />
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <FaCamera className="text-white text-2xl" />
+                                    </div>
+                                </div>
+                                <label
+                                    htmlFor="profile-upload"
+                                    className="absolute bottom-0 right-0 bg-purple-600 text-white p-2.5 rounded-full cursor-pointer hover:bg-purple-700 shadow-lg transform transition-transform hover:scale-105"
+                                >
+                                    <FaCamera className="w-4 h-4" />
+                                </label>
+                                <input
+                                    id="profile-upload"
+                                    type="file"
+                                    name="profile_picture"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
+                            </div>
+                            <p className="text-sm text-gray-500">Click the camera icon to update your photo</p>
+                        </div>
+
+                        {/* Form Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            {/* Personal Information */}
+                            <div className="col-span-1 md:col-span-2">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 border-b pb-2">
+                                    <FaUser className="text-purple-600" /> Personal Details
+                                </h3>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">First Name</label>
+                                <input
+                                    name="first_name"
+                                    value={formData.first_name}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                    placeholder="Enter your first name"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Last Name</label>
+                                <input
+                                    name="last_name"
+                                    value={formData.last_name}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                    placeholder="Enter your last name"
+                                />
+                            </div>
+
+                            <div className="col-span-1 md:col-span-2 space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Description / Bio</label>
+                                <div className="relative">
+                                    <div className="absolute top-3 left-4 text-gray-400">
+                                        <FaFileAlt />
+                                    </div>
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleChange}
+                                        rows="3"
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white resize-none"
+                                        placeholder="Tell us a bit about yourself..."
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Contact & Account */}
+                            <div className="col-span-1 md:col-span-2 mt-2">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 border-b pb-2">
+                                    <FaIdCard className="text-purple-600" /> Account Information
+                                </h3>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Username</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                        <FaUser />
+                                    </div>
+                                    <input
+                                        name="username"
+                                        value={formData.username}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        placeholder="Choose a username"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Mobile Number</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                        <FaPhone />
+                                    </div>
+                                    <input
+                                        name="mobile_number"
+                                        value={formData.mobile_number}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        placeholder="Your mobile number"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Email Address</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                        <FaEnvelope />
+                                    </div>
+                                    <input
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        placeholder="name@example.com"
+                                    />
+                                </div>
+                                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">New Password (Optional)</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                        <FaLock />
+                                    </div>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        className="w-full pl-10 pr-20 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        placeholder="Min 8 chars, 1 special"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-2.5 text-xs font-semibold text-purple-600 hover:text-purple-800 uppercase tracking-wide"
+                                    >
+                                        {showPassword ? "Hide" : "Show"}
+                                    </button>
+                                </div>
+                                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => navigate(-1)}
+                                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-white font-bold rounded-xl shadow-lg shadow-purple-200 transition-all transform hover:-translate-y-0.5 ${isSubmitting
+                                    ? "bg-purple-400 cursor-not-allowed"
+                                    : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                                    }`}
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FaSave /> Save Changes
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default EditProfile;

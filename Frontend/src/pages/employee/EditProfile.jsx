@@ -22,6 +22,8 @@ export default function EditProfile() {
     profile_picture_preview: null,
   });
 
+  const [initialData, setInitialData] = useState({});
+
   const navigate = useNavigate();
   const userId = localStorage.getItem("id");
 
@@ -35,7 +37,7 @@ export default function EditProfile() {
       .getById(userId)
       .then((res) => {
         const user = res.data;
-        setFormData({
+        const initialUserData = {
           first_name: user.first_name || "",
           last_name: user.last_name || "",
           email: user.email || "",
@@ -45,7 +47,9 @@ export default function EditProfile() {
           description: user.description || "",
           profile_picture: user.profile_picture || null,
           profile_picture_preview: null,
-        });
+        };
+        setFormData(initialUserData);
+        setInitialData(initialUserData);
       })
       .catch((err) => {
         console.error("Failed to load user data", err);
@@ -103,19 +107,31 @@ export default function EditProfile() {
 
     try {
       const payload = new FormData();
-      payload.append("first_name", formData.first_name);
-      payload.append("last_name", formData.last_name);
-      payload.append("email", formData.email);
-      payload.append("username", formData.username);
-      payload.append("mobile_number", formData.mobile_number);
-      payload.append("description", formData.description);
+      
+      const fieldsToCheck = ['first_name', 'last_name', 'email', 'username', 'mobile_number', 'description'];
+      let hasChanges = false;
+
+      fieldsToCheck.forEach(field => {
+        if (formData[field] !== initialData[field]) {
+          payload.append(field, formData[field]);
+          hasChanges = true;
+        }
+      });
 
       if (formData.password) {
         payload.append("password", formData.password);
+        hasChanges = true;
       }
 
       if (formData.profile_picture instanceof File) {
         payload.append("profile_picture", formData.profile_picture);
+        hasChanges = true;
+      }
+
+      if (!hasChanges) {
+        toast.success("No changes to save");
+        setIsSubmitting(false);
+        return;
       }
 
       await employeeService.update(userId, payload);

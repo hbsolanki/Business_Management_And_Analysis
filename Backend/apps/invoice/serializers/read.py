@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.invoice.models import ProductInvoice,Invoice
-from apps.product.serializers.read import ProductReadSerializer
+from apps.product.serializers.product import ProductReadSerializer
 from apps.customer.serializers.read import CustomerReadSerializer
 
 class ProductInvoiceReadSerializer(serializers.ModelSerializer):

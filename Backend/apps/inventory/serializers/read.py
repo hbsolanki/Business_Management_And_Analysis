@@ -1,9 +1,9 @@
 from rest_framework import serializers
-from apps.product.serializers import  read
+from apps.product.serializers.product import  ProductReadInventorySerializer
 from apps.inventory.models import InventoryTransaction, InventoryTransactionItem,Inventory,InventoryProduct
 
 class InventoryTransItemSerializer(serializers.ModelSerializer):
-    product = read.ProductReadInventorySerializer(read_only=True)
+    product = ProductReadInventorySerializer(read_only=True)
 
     class Meta:
         model = InventoryTransactionItem
@@ -18,7 +18,7 @@ class InventoryTransReadSerializer(serializers.ModelSerializer):
         fields = ["id", "action", "description",  "items","created_at","created_by"]
 
 class InventoryProductReadSerializer(serializers.ModelSerializer):
-    product = read.ProductReadInventorySerializer(read_only=True)
+    product = ProductReadInventorySerializer(read_only=True)
 
     class Meta:
         model = InventoryProduct

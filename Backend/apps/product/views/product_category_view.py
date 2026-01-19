@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from .models import  ProductCategory
-from apps.product_category.serializers import ProductCategorySerializer
+from apps.product.models import ProductCategory
+from apps.product.serializers.product_category import ProductCategorySerializer
 from apps.permission.product import ProductPermission
 
 

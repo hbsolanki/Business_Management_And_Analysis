@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.product_category.models import ProductCategory
+from apps.product.models import ProductCategory
 
 class ProductCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,14 +20,3 @@ class ProductCategorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Name already exists")
 
         return value
-
-
-class ProductCategoryReadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductCategory
-        fields = [
-            "id",
-            "name",
-            "description"
-        ]
-

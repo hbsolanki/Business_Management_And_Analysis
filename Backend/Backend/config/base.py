@@ -30,7 +30,6 @@ django_apps=[
 project_app=[
     'apps.user',
     'apps.business_app',
-    'apps.product_category',
     'apps.product',
     'apps.inventory',
     'apps.customer',

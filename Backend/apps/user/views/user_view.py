@@ -3,7 +3,7 @@ from rest_framework.viewsets import ModelViewSet
 from apps.permission.business import IsOwner,IsOwnerOrManager,CanModifyUser,CanDeleteUser
 from rest_framework.permissions import IsAuthenticated
 from apps.user.services.user_service import  create_user,create_manager_employee
-from apps.user.serializers import  create,read,owner_update,update
+from apps.user.serializers import  create,read,update
 from apps.user.models import User
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -27,7 +27,7 @@ class UserViewSet(ModelViewSet):
             return  create.EmployeeCreateSerializer
         elif self.action == 'partial_update':
             if self.request.user.role == User.Role.OWNER:
-                return owner_update.OwnerUpdateSerializer
+                return update.OwnerUpdateSerializer
             return update.UserUpdateSerializer
         if self.request.user.role == User.Role.OWNER:
             return read.OwnerUserReadSerializer

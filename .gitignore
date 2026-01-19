@@ -25,7 +25,6 @@ media/
 
 # Environment
 .env
-.env.*
 
 # VSCode/IDE settings
 .vscode/

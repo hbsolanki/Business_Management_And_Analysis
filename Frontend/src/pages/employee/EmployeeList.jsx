@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { employeeService } from "@/features/employee/services/employeeService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
-import Modal from "@/components/ui/Modal";
-import UserList from "@/components/ui/UserList";
+
+const Modal = lazy(() => import("@/components/ui/Modal"));
+const UserList = lazy(() => import("@/components/ui/UserList"));
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 import { FaIdCard } from "react-icons/fa";
 
@@ -52,27 +53,31 @@ function EmployeeManage() {
           </Link>
         </div>
 
-        <UserList
-          users={employees}
-          type="EMPLOYEE"
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={(id) => setDeleteId(id)}
-          emptyText="No employees found. Start by adding a new team member."
-        />
+        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+          <UserList
+            users={employees}
+            type="EMPLOYEE"
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={(id) => setDeleteId(id)}
+            emptyText="No employees found. Start by adding a new team member."
+          />
+        </Suspense>
       </div>
 
-      <Modal
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        title="Delete Employee"
-        message="Are you sure you want to delete this employee?"
-        onConfirm={handleDelete}
-        confirmText="Delete"
-        cancelText="Cancel"
-        icon={FaIdCard}
-        type="danger"
-      />
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={!!deleteId}
+          onClose={() => setDeleteId(null)}
+          title="Delete Employee"
+          message="Are you sure you want to delete this employee?"
+          onConfirm={handleDelete}
+          confirmText="Delete"
+          cancelText="Cancel"
+          icon={FaIdCard}
+          type="danger"
+        />
+      </Suspense>
     </>
   );
 }

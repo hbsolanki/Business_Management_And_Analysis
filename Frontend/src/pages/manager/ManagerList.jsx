@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { managerService } from "@/features/manager/services/managerService";
 import OwnerHeader from "@/components/layout/OwnerHeader";
-import UserList from "@/components/ui/UserList";
-import Modal from "@/components/ui/Modal";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 import { FaUserTie } from "react-icons/fa";
+
+const UserList = lazy(() => import("@/components/ui/UserList"));
+const Modal = lazy(() => import("@/components/ui/Modal"));
 
 export default function ManagerList() {
   const [managers, setManagers] = useState([]);
@@ -46,6 +47,10 @@ export default function ManagerList() {
     navigate(`/manager/${id}`);
   };
 
+  const handleEdit = (id) => {
+    navigate(`/manager/${id}/edit`);
+  };
+
   if (loading) {
     return (
       <>
@@ -79,27 +84,33 @@ export default function ManagerList() {
         </div>
 
         {/* ---------------- User List ---------------- */}
-        <UserList
-          users={managers}
-          type="MANAGER"
-          onView={handleView}
-          onDelete={(id) => setManagerToDelete(id)}
-          emptyText="No managers found. Add a manager to help oversee operations."
-        />
+        {/* ---------------- User List ---------------- */}
+        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+          <UserList
+            users={managers}
+            type="MANAGER"
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={(id) => setManagerToDelete(id)}
+            emptyText="No managers found. Add a manager to help oversee operations."
+          />
+        </Suspense>
       </div>
 
       {/* ---------------- Delete Modal ---------------- */}
-      <Modal
-        isOpen={!!managerToDelete}
-        onClose={() => setManagerToDelete(null)}
-        title="Delete Manager"
-        message="Are you sure you want to delete this manager?"
-        onConfirm={handleDelete}
-        confirmText="Delete"
-        cancelText="Cancel"
-        icon={FaUserTie}
-        type="danger"
-      />
+      <Suspense fallback={null}>
+        <Modal
+          isOpen={!!managerToDelete}
+          onClose={() => setManagerToDelete(null)}
+          title="Delete Manager"
+          message="Are you sure you want to delete this manager?"
+          onConfirm={handleDelete}
+          confirmText="Delete"
+          cancelText="Cancel"
+          icon={FaUserTie}
+          type="danger"
+        />
+      </Suspense>
     </>
   );
 }

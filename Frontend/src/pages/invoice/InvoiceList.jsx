@@ -1,22 +1,15 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { invoiceService } from "@/features/invoice/services/invoiceService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import {
     FaFileInvoice,
-    FaUser,
-
-    FaCalendarAlt,
     FaPlus,
 } from "react-icons/fa";
 
-/* ---------------- Utils ---------------- */
-
-const formatINR = (value) =>
-    new Intl.NumberFormat("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(value);
+// Lazy Load the Card Component
+const InvoiceCard = lazy(() => import("./components/InvoiceCard"));
+const PaymentModal = lazy(() => import("@/features/payment/components/PaymentModal"));
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -126,10 +119,20 @@ export default function InvoiceList() {
         });
     };
 
-    /* ---------------- UI ---------------- */
+    /* ---------------- Payment Modal State ---------------- */
+    const [paymentModal, setPaymentModal] = useState({
+        isOpen: false,
+        invoiceId: null,
+        amount: 0,
+    });
 
-    /* ---------------- Stats Calculation ---------------- */
-
+    const handlePayClick = (invoice) => {
+        setPaymentModal({
+            isOpen: true,
+            invoiceId: invoice.id,
+            amount: invoice.total_amount,
+        });
+    };
 
     /* ---------------- UI ---------------- */
 
@@ -225,88 +228,19 @@ export default function InvoiceList() {
                         </div>
                     )}
 
-                    {invoices.map((invoice) => (
-                        <div
-                            key={invoice.id}
-                            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-0 overflow-hidden transition-all hover:shadow-md group"
-                        >
-                            {/* Card Header */}
-                            <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                                        #{invoice.id.toString().slice(-4)}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 font-bold text-lg text-gray-900">
-                                            {invoice.customer.name}
-                                        </div>
-                                        <div className="text-sm text-gray-500 font-medium">
-                                            {invoice.customer.mobile_number}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-sm text-gray-600 text-right">
-                                    <div className="flex items-center gap-2 justify-end font-medium text-gray-900">
-                                        <FaCalendarAlt className="text-gray-400" />
-                                        {new Date(invoice.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                                    </div>
-                                    <div className="text-xs mt-1 bg-gray-100 px-2 py-1 rounded-md inline-block">Billed by: {invoice.created_by}</div>
-                                </div>
-                            </div>
-
-                            {/* Card Content Table */}
-                            <div className="p-6">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="text-gray-400 font-medium text-xs uppercase tracking-wider border-b border-gray-100">
-                                            <tr>
-                                                <th className="text-left py-3 px-2">Product</th>
-                                                <th className="text-right py-3 px-2">Qty</th>
-                                                <th className="text-right py-3 px-2">Unit Price</th>
-                                                <th className="text-right py-3 px-2 text-gray-900">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {invoice.invoice_items.map((item) => (
-                                                <tr key={item.id} className="group/row hover:bg-gray-50/50 transition-colors">
-                                                    <td className="py-4 px-2 font-medium text-gray-800">{item.product.name}</td>
-                                                    <td className="text-right py-4 px-2 text-gray-600">{item.quantity}</td>
-                                                    <td className="text-right py-4 px-2 text-gray-500">
-                                                        ₹{formatINR(item.base_price)}
-                                                    </td>
-                                                    <td className="text-right py-4 px-2 font-bold text-gray-900">
-                                                        ₹{formatINR(item.selling_price)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Card Footer */}
-                            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${invoice.payment_mode === 'CASH'
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-blue-100 text-blue-700'
-                                        }`}>
-                                        {invoice.payment_mode}
-                                    </span>
-                                </div>
-
-                                <div className="text-right flex items-center gap-6">
-                                    <div className="text-sm text-gray-500">
-                                        Subtotal: <span className="font-medium">₹{formatINR(invoice.sub_total)}</span>
-                                    </div>
-                                    <div className="text-xl font-extrabold text-gray-900">
-                                        ₹{formatINR(invoice.total_amount)}
-                                    </div>
-                                </div>
-                            </div>
+                    <Suspense fallback={
+                        <div className="text-center py-10">
+                            <div className="animate-pulse bg-gray-200 h-32 w-full rounded-2xl"></div>
                         </div>
-                    ))}
+                    }>
+                        {invoices.map((invoice) => (
+                            <InvoiceCard
+                                key={invoice.id}
+                                invoice={invoice}
+                                onPayClick={handlePayClick}
+                            />
+                        ))}
+                    </Suspense>
                 </div>
 
                 {/* Footer Loading State */}
@@ -322,6 +256,16 @@ export default function InvoiceList() {
                     </div>
                 )}
             </div>
+
+            {/* Payment Modal */}
+            <Suspense fallback={null}>
+                <PaymentModal
+                    isOpen={paymentModal.isOpen}
+                    onClose={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
+                    invoiceId={paymentModal.invoiceId}
+                    amount={paymentModal.amount}
+                />
+            </Suspense>
         </>
     );
 }

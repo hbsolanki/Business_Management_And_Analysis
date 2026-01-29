@@ -32,15 +32,14 @@ export default function TransactionSection({
               className="border rounded-lg p-4 hover:bg-gray-50 transition"
             >
               {/* Top Row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {/* Action Badge */}
                   <span
-                    className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${
-                      isIn
+                    className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${isIn
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
-                    }`}
+                      }`}
                   >
                     {isIn ? <FiArrowUp /> : <FiArrowDown />}
                     {isIn ? "Stock In" : "Stock Out"}

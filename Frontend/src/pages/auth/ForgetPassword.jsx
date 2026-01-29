@@ -5,6 +5,15 @@ import { authService } from "@/services/authService";
 import toast from "react-hot-toast";
 import { FaUser, FaKey, FaLock, FaArrowLeft, FaCheckCircle, FaPaperPlane } from "react-icons/fa";
 
+// Helper to extract error message
+const getErrorMessage = (err, defaultMessage) => {
+  const data = err.response?.data;
+  if (!data) return defaultMessage;
+  if (data.detail) return data.detail;
+  if (Array.isArray(data.error)) return data.error[0];
+  return data.error || defaultMessage;
+};
+
 export default function ForgotPassword() {
   const navigate = useNavigate();
 
@@ -30,13 +39,13 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      await authService.validateUsername(formData.username);
+      const response = await authService.validateUsername(formData.username);
       // Backend responsed 200 OK: "otp send to your register email"
-      toast.success("OTP sent to your registered email!");
+      toast.success(response.data.message || "OTP sent to your registered email!");
       setStep(2);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.error || "Username not found");
+      toast.error(getErrorMessage(err, "Username not found"));
     } finally {
       setLoading(false);
     }
@@ -55,7 +64,7 @@ export default function ForgotPassword() {
       setStep(3);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.error || "Invalid OTP");
+      toast.error(getErrorMessage(err, "Invalid OTP"));
     } finally {
       setLoading(false);
     }
@@ -76,7 +85,7 @@ export default function ForgotPassword() {
       navigate("/login");
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.error || "Failed to reset password");
+      toast.error(getErrorMessage(err, "Failed to reset password"));
     } finally {
       setLoading(false);
     }

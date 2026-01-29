@@ -8,5 +8,5 @@ export const inventoryService = {
     getTransactions: (query = "") => api.get(`/inventory/transaction/${query}`),
     getTransactionsByUrl: (url) => api.get(url),
 
-    createTransaction: (data) => api.post("/inventory/transaction/new/", data),
+    createTransaction: (data) => api.post("/inventory/transaction/", data),
 };

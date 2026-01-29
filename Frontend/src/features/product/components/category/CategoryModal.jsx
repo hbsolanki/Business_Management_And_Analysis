@@ -23,6 +23,12 @@ export default function CategoryModal({ category, onClose, onSaved }) {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !loading) {
+      handleSave();
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) return;
 
@@ -61,6 +67,7 @@ export default function CategoryModal({ category, onClose, onSaved }) {
             placeholder="Category name"
             value={form.name}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             className={`w-full border rounded-md px-3 py-2 ${errors.name ? "border-red-500" : ""
               }`}
           />

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { Toaster } from "react-hot-toast";
 
@@ -29,9 +29,12 @@ const BusinessEdit = lazy(() => import("@/pages/business/EditBusiness"));
 // invoice
 const InvoiceNew = lazy(() => import("@/pages/invoice/AddInvoice"));
 const Invoice = lazy(() => import("@/pages/invoice/InvoiceList"));
+const PaymentSuccess = lazy(() => import("@/pages/invoice/PaymentSuccess"));
 
-// Cost Category
+// Cost Category & Management
 const CostCategoryList = lazy(() => import("@/features/costCategory/components/CostCategoryList"));
+const CostDashboard = lazy(() => import("@/pages/cost/CostDashboard"));
+const AddCost = lazy(() => import("@/pages/cost/AddCost"));
 
 // employee
 const EmployeesManage = lazy(() => import("@/pages/employee/EmployeeList"));
@@ -48,6 +51,7 @@ const ManagerManage = lazy(() => import("@/pages/manager/ManagerList"));
 const ManagerNew = lazy(() => import("@/pages/manager/AddManager"));
 const ManagerDashboard = lazy(() => import("@/pages/manager/Dashboard"));
 const ManagerEditProfile = lazy(() => import("@/pages/manager/EditProfile"));
+const EditManager = lazy(() => import("@/pages/manager/EditManager"));
 
 
 
@@ -57,8 +61,16 @@ const PageNotFound = lazy(() => import("@/pages/NotFound"));
 
 // Utils
 const ForgetPassword = lazy(() => import("@/pages/auth/ForgetPassword"));
+const ForgotUsername = lazy(() => import("@/pages/auth/ForgotUsername"));
 const ContactSupport = lazy(() => import("@/pages/support/Contact"));
 const LearnMore = lazy(() => import("@/components/static/LearnMore"));
+
+// Info Feature
+const InfoLayout = lazy(() => import("@/features/info/components/InfoLayout"));
+const InfoLanding = lazy(() => import("@/pages/info/InfoLanding"));
+const OwnerInfo = lazy(() => import("@/pages/info/OwnerInfo"));
+const ManagerInfo = lazy(() => import("@/pages/info/ManagerInfo"));
+const EmployeeInfo = lazy(() => import("@/pages/info/EmployeeInfo"));
 
 // loader
 function PageLoader() {
@@ -73,10 +85,31 @@ function PageLoader() {
 const SaleList = lazy(() => import("@/pages/sale/SaleList"));
 const AddSale = lazy(() => import("@/pages/sale/AddSale"));
 
+import { useSelector } from "react-redux";
+import { useEffect } from "react";
+
 function App() {
+  const theme = useSelector((state) => state.theme.mode);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
   return (
     <>
-      <Toaster position="top-center" />
+      <Toaster position="top-center"
+        toastOptions={{
+          className: 'dark:bg-gray-800 dark:text-white',
+          style: {
+            background: theme === 'dark' ? '#1f2937' : '#fff',
+            color: theme === 'dark' ? '#fff' : '#1f2937',
+          },
+        }}
+      />
 
       <Router>
         <Suspense fallback={<PageLoader />}>
@@ -87,6 +120,7 @@ function App() {
               <Route path="/owner/register" element={<OwnerRegistration />} />
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgetPassword />} />
+              <Route path="/forgot-username" element={<ForgotUsername />} />
             </Route>
 
             {/* Protected Routes */}
@@ -98,6 +132,20 @@ function App() {
               <Route path="/sale/:sid/new" element={<AddSale />} />
             </Route>
 
+            {/* Info Routes - InfoLanding is Public, others are Protected */}
+            <Route path="/info" element={<InfoLayout />}>
+              <Route index element={<InfoLanding />} />
+              <Route element={<PrivateRoute allowedRoles={["OWNER"]} />}>
+                <Route path="owner" element={<OwnerInfo />} />
+              </Route>
+              <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+                <Route path="manager" element={<ManagerInfo />} />
+              </Route>
+              <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} />}>
+                <Route path="employee" element={<EmployeeInfo />} />
+              </Route>
+            </Route>
+
             {/* Owner Only */}
             <Route element={<PrivateRoute allowedRoles={["OWNER"]} />}>
               <Route path="/owner" element={<Owner />} />
@@ -107,6 +155,7 @@ function App() {
               <Route path="/manager/manage" element={<ManagerManage />} />
               <Route path="/manager/new" element={<ManagerNew />} />
               <Route path="/manager/:id" element={<ProfileViewer />} />
+              <Route path="/manager/:id/edit" element={<EditManager />} />
             </Route>
 
             {/* Manager Only */}
@@ -124,7 +173,9 @@ function App() {
             {/* Owner & Manager Common Routes */}
             {/* Owner & Manager Common Routes - Restricted */}
             <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
-              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/analytics" element={<Navigate to="/analytics/overview" replace />} />
+              <Route path="/analytics/overview" element={<Analytics initialView="SUMMARY" />} />
+              <Route path="/analytics/visual" element={<Analytics initialView="CHARTS" />} />
 
               {/* Employee Management */}
               <Route path="/employees/manage" element={<EmployeesManage />} />
@@ -146,15 +197,18 @@ function App() {
               <Route path="/inventory/transaction/new" element={<InventoryTransactionCreate />} />
             </Route>
 
-            {/* Cost Category - Accessible to Owner and Manager (and Employee if needed, assumed same as Product for now or own permission) */}
+            {/* Cost Management - Accessible to Owner and Manager */}
             <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
-              <Route path="/cost-category" element={<CostCategoryList />} />
+              <Route path="/cost-category" element={<CostDashboard />} />
+              <Route path="/cost-category/month" element={<AddCost />} />
+              <Route path="/cost" element={<Navigate to="/cost-category" replace />} />
             </Route>
 
             {/* Invoice - Accessible to Owner, Manager, and Employees with 'invoice' work */}
             <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} requiredWork="invoice" />}>
               <Route path="/invoice/new" element={<InvoiceNew />} />
               <Route path="/invoice" element={<Invoice />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
             </Route>
 
             <Route path="*" element={<PageNotFound />} />

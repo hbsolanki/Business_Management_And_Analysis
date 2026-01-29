@@ -4,6 +4,7 @@ import Header from "@/components/layout/Header";
 import toast from "react-hot-toast";
 import { authService } from "@/services/authService";
 import { FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash } from "react-icons/fa";
+import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
 
 function Login() {
     const navigate = useNavigate();
@@ -47,6 +48,29 @@ function Login() {
         }
     };
 
+    const handleGoogleLogin = async (codeResponse) => {
+        if (loading) return;
+        setLoading(true);
+        try {
+            const data = await authService.googleLogin(codeResponse.code);
+            const role = data.user.role;
+
+            toast.success("Successfully logged in with Google");
+            if (role === "OWNER") {
+                navigate("/owner");
+            } else if (role === "MANAGER") {
+                navigate("/manager");
+            } else {
+                navigate("/employee");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Google Login Failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen relative overflow-hidden bg-gray-50 flex flex-col">
             <Header />
@@ -77,12 +101,20 @@ function Login() {
                         <form className="space-y-6" onSubmit={handleSubmit}>
                             {/* Username */}
                             <div>
-                                <label
-                                    htmlFor="username"
-                                    className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1"
-                                >
-                                    Username
-                                </label>
+                                <div className="flex justify-between items-center mb-1.5 ml-1">
+                                    <label
+                                        htmlFor="username"
+                                        className="block text-sm font-semibold text-gray-700"
+                                    >
+                                        Username
+                                    </label>
+                                    <Link
+                                        to="/forgot-username"
+                                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                                    >
+                                        Forgot Username?
+                                    </Link>
+                                </div>
                                 <div className="relative group">
                                     <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition duration-200" />
                                     <input
@@ -158,6 +190,19 @@ function Login() {
                                     </>
                                 )}
                             </button>
+
+                            <div className="relative my-4">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <GoogleLoginButton onGoogleLogin={handleGoogleLogin} loading={loading} />
+                            </div>
 
                             {/* Links */}
                             <div className="text-center pt-4 border-t border-gray-100">

@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 
-import AnalyticsHeader from "@/features/analytics/components/AnalyticsHeader";
-import Barsize from "@/features/analytics/components/charts/BasicBars";
-import Radar from "@/features/analytics/components/charts/Radar";
-import ProductStock from "@/features/analytics/components/charts/ProductStock";
-import { toPng } from "html-to-image";
-import ProductDetailsBar from "@/features/analytics/utils/ProductDetailsBar";
+import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import { useRef, lazy, Suspense } from "react";
+import { FaChartPie, FaTable } from "react-icons/fa";
+
+const AnalyticsSummary = lazy(() => import("@/features/analytics/components/AnalyticsSummary"));
+const AnalyticsCharts = lazy(() => import("@/features/analytics/components/AnalyticsCharts"));
 
 /* ---------- helpers ---------- */
 const normalizeProductDetails = (data) =>
@@ -18,16 +18,17 @@ const normalizeProductDetails = (data) =>
     net_profit: Number(p.net_profit),
   }));
 
-function Analytics() {
+export default function Analytics({ initialView = "SUMMARY" }) {
   const navigate = useNavigate();
-
+  const [view, setView] = useState(initialView);
   const [productStockData, setProductStockData] = useState([]);
   const [productDetailsData, setProductDetailsData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const productDetailsBarRef = useRef(null);
-  const productDetailsRadarRef = useRef(null);
-  const stockRef = useRef(null);
+  // Sync view state with prop if it changes (e.g. browser back button)
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
 
   useEffect(() => {
     const getData = async () => {
@@ -37,9 +38,7 @@ function Analytics() {
           api.get("/analytics/product/stocks/"),
         ]);
 
-        setProductDetailsData(
-          normalizeProductDetails(detailsRes.data)
-        );
+        setProductDetailsData(normalizeProductDetails(detailsRes.data));
         setProductStockData(stockRes.data);
       } catch (err) {
         console.error("Analytics fetch failed", err);
@@ -53,105 +52,72 @@ function Analytics() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600 text-lg">Loading analytics…</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 font-medium">Loading analytics...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4">
-      <AnalyticsHeader />
+    <div className="min-h-screen bg-gray-50">
+      <ProtectedHeader />
 
-      <div className="container mx-auto grid gap-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
 
-        {/* -------- Product Details (Bar) -------- */}
-        {productDetailsData.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 relative">
-            <div ref={productDetailsBarRef}>
-              <ProductDetailsBar Data={productDetailsData} />
-            </div>
-
-            <ChartButtons
-              chartRef={productDetailsBarRef}
-              fileName="product_bar.png"
-              onView={() => navigate("/analytics/product_stats")}
-            />
+        {/* Header & Tabs */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Analytics Dashboard</h1>
+            <p className="text-gray-500 mt-1">Real-time insights on your inventory and profitability</p>
           </div>
-        )}
 
-        {/* -------- Product Details (Radar) -------- */}
-        {/*{productDetailsData.length > 0 && (*/}
-        {/*  <div className="bg-white rounded-lg shadow p-6 relative">*/}
-        {/*    <div ref={productDetailsRadarRef}>*/}
-        {/*      <Radar*/}
-        {/*        Data={productDetailsData}*/}
-        {/*        metrics={[*/}
-        {/*          "Selling Price",*/}
-        {/*          "Manufacturing cost",*/}
-        {/*          "Profit",*/}
-        {/*        ]}*/}
-        {/*      />*/}
-        {/*    </div>*/}
-
-        {/*    <ChartButtons*/}
-        {/*      chartRef={productDetailsRadarRef}*/}
-        {/*      fileName="product_radar.png"*/}
-        {/*      onView={() => navigate("/analytics/product_stats")}*/}
-        {/*    />*/}
-        {/*  </div>*/}
-        {/*)}*/}
-
-        {/* -------- Product Stock -------- */}
-        {productStockData.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 relative">
-            <div ref={stockRef}>
-              <ProductStock data={productStockData} />
-            </div>
-
-            <ChartButtons
-              chartRef={stockRef}
-              fileName="product_stock.png"
-              onView={() => navigate("/analytics/product_stock")}
-            />
+          <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 inline-flex">
+            <button
+              onClick={() => navigate("/analytics/overview")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${view === "SUMMARY"
+                ? "bg-blue-600 text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              <FaTable /> Overview
+            </button>
+            <button
+              onClick={() => navigate("/analytics/visual")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${view === "CHARTS"
+                ? "bg-blue-600 text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              <FaChartPie /> Visuals
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="min-h-[400px]">
+          <Suspense fallback={
+            <div className="h-64 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          }>
+            {view === "SUMMARY" ? (
+              <AnalyticsSummary
+                stockData={productStockData}
+                detailsData={productDetailsData}
+              />
+            ) : (
+              <AnalyticsCharts
+                stockData={productStockData}
+                detailsData={productDetailsData}
+              />
+            )}
+          </Suspense>
+        </div>
+
+      </main>
     </div>
   );
 }
-
-/* ---------- chart buttons ---------- */
-const ChartButtons = ({ onView, chartRef, fileName }) => {
-  const handleDownload = () => {
-    if (!chartRef?.current) return;
-
-    toPng(chartRef.current, { backgroundColor: "white" })
-      .then((dataUrl) => {
-        const link = document.createElement("a");
-        link.download = fileName;
-        link.href = dataUrl;
-        link.click();
-      })
-      .catch(console.error);
-  };
-
-  return (
-    <div className="absolute top-4 right-4 flex gap-2">
-      <button
-        onClick={onView}
-        className="bg-gray-300 px-3 py-1 rounded hover:opacity-80"
-      >
-        View
-      </button>
-      <button
-        onClick={handleDownload}
-        className="bg-gray-300 px-3 py-1 rounded hover:opacity-80"
-      >
-        Download
-      </button>
-    </div>
-  );
-};
-
-export default Analytics;

@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { FiLayers, FiPlus } from "react-icons/fi";
 
 import { inventoryService } from "@/features/inventory/services/inventoryService";
-import StockSection from "@/features/inventory/components/StockSection";
-import TransactionSection from "@/features/inventory/components/TransactionSection";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+
+const StockSection = lazy(() => import("@/features/inventory/components/StockSection"));
+const TransactionSection = lazy(() => import("@/features/inventory/components/TransactionSection"));
 
 export default function InventoryList() {
   const [stocks, setStocks] = useState([]);
@@ -150,19 +151,24 @@ export default function InventoryList() {
         </div>
 
         {/* Stock Section */}
-        <StockSection
-          stocks={stocks}
-          hasMore={Boolean(stockNext)}
-          onLoadMore={loadMoreStock}
-          onFilter={applyStockFilter}
-        />
+        {/* Stock Section */}
+        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+          <StockSection
+            stocks={stocks}
+            hasMore={Boolean(stockNext)}
+            onLoadMore={loadMoreStock}
+            onFilter={applyStockFilter}
+          />
+        </Suspense>
 
         {/* Transaction Section */}
-        <TransactionSection
-          transactions={transactions}
-          loading={txLoading}
-          onFilter={applyTransactionFilter}
-        />
+        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+          <TransactionSection
+            transactions={transactions}
+            loading={txLoading}
+            onFilter={applyTransactionFilter}
+          />
+        </Suspense>
       </div>
     </>
   );

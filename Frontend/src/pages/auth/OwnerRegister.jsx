@@ -14,6 +14,7 @@ import {
     FaEye,
     FaEyeSlash,
 } from "react-icons/fa";
+import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
 
 /* ---------------- Reusable Input Comp ---------------- */
 const InputField = ({
@@ -139,6 +140,30 @@ function OwnerRegister() {
             } else {
                 toast.error("Something went wrong");
             }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async (codeResponse) => {
+        console.log(codeResponse);
+        if (loading) return;
+        setLoading(true);
+        try {
+            const data = await authService.googleLogin(codeResponse.code);
+            const role = data.user.role;
+
+            toast.success("Successfully logged in with Google");
+            if (role === "OWNER") {
+                navigate("/owner");
+            } else if (role === "MANAGER") {
+                navigate("/manager");
+            } else {
+                navigate("/employee");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Google Login Failed");
         } finally {
             setLoading(false);
         }
@@ -276,6 +301,19 @@ function OwnerRegister() {
                             >
                                 {loading ? "Creating Account..." : "Create Business Account"}
                             </button>
+
+                            <div className="relative my-4">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-blue-50/50 text-gray-500">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <GoogleLoginButton onGoogleLogin={handleGoogleLogin} loading={loading} />
+                            </div>
 
                             <p className="text-center text-sm text-gray-600 mt-6">
                                 Already have an account?{" "}

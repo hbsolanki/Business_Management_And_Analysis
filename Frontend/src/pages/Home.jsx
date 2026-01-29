@@ -4,6 +4,7 @@ import HeroSection from "@/features/home/components/HeroSection";
 import CallToAction from "@/features/home/components/CallToAction";
 import FeaturesSection from "@/features/home/components/FeaturesSection";
 import HowItWorks from "@/features/home/components/HowItWorks";
+import InfoPromoSection from "@/features/home/components/InfoPromoSection";
 
 export default function Home() {
     return (
@@ -19,6 +20,9 @@ export default function Home() {
 
             {/* How It Works Section */}
             <HowItWorks />
+
+            {/* Info Promo Section */}
+            <InfoPromoSection />
 
             {/* Call-to-Action Section */}
             <CallToAction

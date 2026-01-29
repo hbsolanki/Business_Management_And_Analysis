@@ -2,9 +2,14 @@ import Logo from "@/assets/VISIONARY.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import Modal from "@/components/ui/Modal";
+import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal";
 import { authService } from "@/services/authService";
 import { tokenService } from "@/services/tokenService";
 import api from "@/services/api";
+import { useDispatch, useSelector } from "react-redux";
+import { toggleQuickAction } from "@/redux/slices/quickActionsSlice";
+import { toggleTheme } from "@/redux/slices/themeSlice";
+import { MANAGER_ACTIONS } from "@/config/quickActionsData";
 import {
     FaUserCircle,
     FaSignOutAlt,
@@ -13,23 +18,26 @@ import {
     FaHome,
     FaBriefcase,
     FaChevronDown,
-    FaChartLine,
-    FaUsers,
-    FaBoxOpen,
-    FaCashRegister,
-    FaProductHunt,
     FaUser,
-    FaTags,
-    FaLayerGroup
+    FaInfoCircle,
+    FaCog,
+    FaSun,
+    FaMoon
 } from "react-icons/fa";
+
 
 function ManagerHeader() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
+
+    const dispatch = useDispatch();
+    const activeActionIds = useSelector((state) => state.quickActions.activeActionIds);
+    const theme = useSelector((state) => state.theme.mode);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -73,6 +81,10 @@ function ManagerHeader() {
         setActiveDropdown(activeDropdown === name ? null : name);
     };
 
+    const toggleAction = (id) => {
+        dispatch(toggleQuickAction(id));
+    };
+
     return (
         <>
             <nav className="bg-white/90 backdrop-blur-xl shadow-sm sticky top-0 z-50 border-b border-gray-100 transition-all font-sans" ref={dropdownRef}>
@@ -91,6 +103,16 @@ function ManagerHeader() {
                         <div className="hidden md:flex items-center gap-6">
                             <div className="flex items-center gap-1 bg-gray-50/80 p-1.5 rounded-xl border border-gray-100 relative">
                                 <NavLink to="/" icon={<FaHome />} text="Home" />
+                                <NavLink to="/info" icon={<FaInfoCircle />} text="Info" />
+
+                                {/* Theme Toggle */}
+                                <button
+                                    onClick={() => dispatch(toggleTheme())}
+                                    className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-yellow-500 transition-colors"
+                                    title="Toggle Theme"
+                                >
+                                    {theme === 'dark' ? <FaSun size={20} /> : <FaMoon size={20} />}
+                                </button>
 
                                 {/* Quick Actions Dropdown */}
                                 <div className="relative">
@@ -103,14 +125,37 @@ function ManagerHeader() {
                                     </button>
 
                                     {activeDropdown === "quickActions" && (
-                                        <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-fade-in-down">
-                                            <DropdownItem to="/manager" icon={<FaBriefcase />} text="Dashboard" onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/analytics" icon={<FaChartLine />} text="Analytics" onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/employees/manage" icon={<FaUsers />} text="Employees" onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/inventory" icon={<FaBoxOpen />} text="Inventory" onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/invoice" icon={<FaCashRegister />} text="Invoices" onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/product" icon={<FaProductHunt />} text="Products" onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/cost-category" icon={<FaLayerGroup />} text="Cost Categories" onClick={() => setActiveDropdown(null)} />
+                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-fade-in-down">
+                                            {activeActionIds.length > 0 ? (
+                                                activeActionIds.map(id => {
+                                                    const action = MANAGER_ACTIONS[id];
+                                                    if (!action) return null;
+                                                    return (
+                                                        <DropdownItem
+                                                            key={id}
+                                                            to={action.path}
+                                                            icon={action.icon}
+                                                            text={action.label}
+                                                            onClick={() => setActiveDropdown(null)}
+                                                        />
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="px-4 py-3 text-center text-gray-400 text-sm">
+                                                    No quick actions set.
+                                                </div>
+                                            )}
+
+                                            <div className="border-t border-gray-50 my-1"></div>
+                                            <button
+                                                onClick={() => {
+                                                    setActiveDropdown(null);
+                                                    setIsConfigModalOpen(true);
+                                                }}
+                                                className="w-full text-left px-4 py-2 text-sm font-semibold text-purple-600 hover:bg-purple-50 flex items-center gap-3 transition-colors"
+                                            >
+                                                <FaCog /> Configure Actions
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -172,13 +217,37 @@ function ManagerHeader() {
                         <div className="p-4 space-y-2">
                             <MobileNavLink to="/" text="Home" icon={<FaHome />} onClick={() => setIsMobileMenuOpen(false)} />
                             <div className="py-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Quick Actions</div>
-                            <MobileNavLink to="/manager" text="Dashboard" icon={<FaBriefcase />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/analytics" text="Analytics" icon={<FaChartLine />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/employees/manage" text="Employees" icon={<FaUsers />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/inventory" text="Inventory" icon={<FaBoxOpen />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/invoice" text="Invoices" icon={<FaCashRegister />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/product" text="Products" icon={<FaProductHunt />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/cost-category" text="Cost Categories" icon={<FaLayerGroup />} onClick={() => setIsMobileMenuOpen(false)} />
+
+                            {/* Render Active Quick Actions in Mobile Menu too */}
+                            {activeActionIds.length > 0 ? (
+                                activeActionIds.map(id => {
+                                    const action = MANAGER_ACTIONS[id];
+                                    if (!action) return null;
+                                    return (
+                                        <MobileNavLink
+                                            key={id}
+                                            to={action.path}
+                                            text={action.label}
+                                            icon={action.icon}
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                        />
+                                    );
+                                })
+                            ) : (
+                                <div className="px-4 py-2 text-sm text-gray-400">No quick actions set</div>
+                            )}
+
+                            <button
+                                onClick={() => {
+                                    setIsMobileMenuOpen(false);
+                                    setIsConfigModalOpen(true);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-purple-600 bg-purple-50 font-medium transition-all"
+                            >
+                                <span className="text-lg opacity-70"><FaCog /></span>
+                                Configure Actions
+                            </button>
+
                         </div>
                         <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                             <div className="flex items-center gap-4 mb-4">
@@ -218,6 +287,7 @@ function ManagerHeader() {
                 )}
             </nav>
 
+            {/* Logout Modal */}
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -226,6 +296,16 @@ function ManagerHeader() {
                 onConfirm={handleLogout}
                 confirmText="Sign Out"
                 cancelText="Cancel"
+            />
+
+            {/* Config Quick Actions Modal */}
+            <QuickActionsConfigModal
+                isOpen={isConfigModalOpen}
+                onClose={() => setIsConfigModalOpen(false)}
+                availableActions={MANAGER_ACTIONS}
+                activeActionIds={activeActionIds}
+                onToggleAction={toggleAction}
+                themeColor="purple"
             />
         </>
     );

@@ -6,6 +6,7 @@ import {
     FaChartLine,
     FaShieldAlt,
     FaEnvelopeOpenText,
+    FaBook,
 } from "react-icons/fa";
 
 const features = [
@@ -57,6 +58,13 @@ const features = [
             "Role-based access control ensures your data is safe and only accessible to authorized personnel.",
         icon: <FaShieldAlt className="text-white text-2xl" />,
         color: "bg-red-500",
+    },
+    {
+        title: "Knowledge Hub",
+        description:
+            "Access detailed guides and resources for Owners, Managers, and Employees to master the platform.",
+        icon: <FaBook className="text-white text-2xl" />,
+        color: "bg-cyan-500",
     },
 ];
 

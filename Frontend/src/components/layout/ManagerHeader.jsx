@@ -7,8 +7,10 @@ import { authService } from "@/services/authService";
 import { tokenService } from "@/services/tokenService";
 import api from "@/services/api";
 import { useDispatch, useSelector } from "react-redux";
-import { toggleQuickAction } from "@/redux/slices/quickActionsSlice";
+import { toggleHeaderAction } from "@/redux/slices/quickActionsSlice";
+
 import { toggleTheme } from "@/redux/slices/themeSlice";
+import { fetchUserProfile, clearUserProfile } from "@/redux/slices/userSlice";
 import { MANAGER_ACTIONS } from "@/config/quickActionsData";
 import {
     FaUserCircle,
@@ -22,37 +24,29 @@ import {
     FaInfoCircle,
     FaCog,
     FaSun,
-    FaMoon
+    FaMoon,
+    FaComments
 } from "react-icons/fa";
-
 
 function ManagerHeader() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [user, setUser] = useState(null);
+    // User state moved to Redux
     const [activeDropdown, setActiveDropdown] = useState(null);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
 
     const dispatch = useDispatch();
-    const activeActionIds = useSelector((state) => state.quickActions.activeActionIds);
+    const activeActionIds = useSelector((state) => state.quickActions.headerActions);
     const theme = useSelector((state) => state.theme.mode);
+    const { profile: user } = useSelector((state) => state.user);
 
     useEffect(() => {
-        const fetchUser = async () => {
-            const id = tokenService.getId();
-            if (id) {
-                try {
-                    const res = await api.get(`/user/${id}/`);
-                    setUser(res.data);
-                } catch (err) {
-                    console.error("Failed to fetch user for header", err);
-                }
-            }
-        };
-        fetchUser();
-    }, []);
+        if (!user) {
+            dispatch(fetchUserProfile());
+        }
+    }, [dispatch, user]);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -67,6 +61,7 @@ function ManagerHeader() {
 
     const handleLogout = () => {
         authService.logout();
+        dispatch(clearUserProfile());
         navigate("/");
     };
 
@@ -82,7 +77,7 @@ function ManagerHeader() {
     };
 
     const toggleAction = (id) => {
-        dispatch(toggleQuickAction(id));
+        dispatch(toggleHeaderAction(id));
     };
 
     return (
@@ -104,6 +99,7 @@ function ManagerHeader() {
                             <div className="flex items-center gap-1 bg-gray-50/80 p-1.5 rounded-xl border border-gray-100 relative">
                                 <NavLink to="/" icon={<FaHome />} text="Home" />
                                 <NavLink to="/info" icon={<FaInfoCircle />} text="Info" />
+                                <NavLink to="/chat" icon={<FaComments />} text="Chat" />
 
                                 {/* Theme Toggle */}
                                 <button
@@ -216,6 +212,7 @@ function ManagerHeader() {
                     <div className="md:hidden bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl animate-fade-in-down max-h-[80vh] overflow-y-auto">
                         <div className="p-4 space-y-2">
                             <MobileNavLink to="/" text="Home" icon={<FaHome />} onClick={() => setIsMobileMenuOpen(false)} />
+                            <MobileNavLink to="/chat" text="Chat" icon={<FaComments />} onClick={() => setIsMobileMenuOpen(false)} />
                             <div className="py-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Quick Actions</div>
 
                             {/* Render Active Quick Actions in Mobile Menu too */}

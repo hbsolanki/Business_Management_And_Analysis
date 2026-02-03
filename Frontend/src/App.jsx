@@ -71,6 +71,7 @@ const InfoLanding = lazy(() => import("@/pages/info/InfoLanding"));
 const OwnerInfo = lazy(() => import("@/pages/info/OwnerInfo"));
 const ManagerInfo = lazy(() => import("@/pages/info/ManagerInfo"));
 const EmployeeInfo = lazy(() => import("@/pages/info/EmployeeInfo"));
+const Support = lazy(() => import("@/pages/info/Support"));
 
 // loader
 function PageLoader() {
@@ -84,6 +85,16 @@ function PageLoader() {
 // Sale
 const SaleList = lazy(() => import("@/pages/sale/SaleList"));
 const AddSale = lazy(() => import("@/pages/sale/AddSale"));
+
+// Chat
+const Chat = lazy(() => import("@/pages/chat/Chat"));
+const Broadcast = lazy(() => import("@/pages/chat/Broadcast"));
+const NewBroadcast = lazy(() => import("@/pages/chat/NewBroadcast"));
+
+// Task Management
+const TaskDashboard = lazy(() => import("@/pages/task/TaskDashboard"));
+const TaskDetails = lazy(() => import("@/pages/task/TaskDetails"));
+const EditTask = lazy(() => import("@/pages/task/EditTask"));
 
 import { useSelector } from "react-redux";
 import { useEffect } from "react";
@@ -139,11 +150,13 @@ function App() {
                 <Route path="owner" element={<OwnerInfo />} />
               </Route>
               <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+
                 <Route path="manager" element={<ManagerInfo />} />
               </Route>
               <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} />}>
                 <Route path="employee" element={<EmployeeInfo />} />
               </Route>
+              <Route path="support" element={<Support />} />
             </Route>
 
             {/* Owner Only */}
@@ -172,7 +185,8 @@ function App() {
 
             {/* Owner & Manager Common Routes */}
             {/* Owner & Manager Common Routes - Restricted */}
-            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+            {/* Owner & Manager Common Routes - Restricted */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} requiredWork="analytics" />}>
               <Route path="/analytics" element={<Navigate to="/analytics/overview" replace />} />
               <Route path="/analytics/overview" element={<Analytics initialView="SUMMARY" />} />
               <Route path="/analytics/visual" element={<Analytics initialView="CHARTS" />} />
@@ -209,6 +223,28 @@ function App() {
               <Route path="/invoice/new" element={<InvoiceNew />} />
               <Route path="/invoice" element={<Invoice />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
+            </Route>
+
+            {/* Chat - Accessible to all authenticated users */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} />}>
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat/:otherUserId" element={<Chat />} />
+            </Route>
+
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+              <Route path="/chat/broadcast" element={<Broadcast />} />
+              <Route path="/chat/broadcast/new" element={<NewBroadcast />} />
+              <Route path="/chat/broadcast/:id/edit" element={<NewBroadcast />} />
+              <Route path="/chat/broadcast/:id/edit" element={<NewBroadcast />} />
+            </Route>
+
+            {/* Task Management - Accessible to Owner, Manager, and Employees */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]} />}>
+              <Route path="/tasks" element={<TaskDashboard />} />
+              <Route path="/tasks/created" element={<TaskDashboard />} />
+              <Route path="/tasks/my-tasks" element={<TaskDashboard />} />
+              <Route path="/tasks/:id" element={<TaskDetails />} />
+              <Route path="/tasks/:id/edit" element={<EditTask />} />
             </Route>
 
             <Route path="*" element={<PageNotFound />} />

@@ -39,6 +39,7 @@ export default function EditEmployee() {
           username: data.username || "",
           mobile_number: data.mobile_number || "",
           description: data.description || "",
+          work: data.work || [], // Fetch work
         };
 
         originalData.current = { ...fetchedData };
@@ -98,6 +99,16 @@ export default function EditEmployee() {
         hasChanges = true;
       }
     });
+
+    // Handle Work change manually (array comparison)
+    const originalWork = originalData.current.work || [];
+    const currentWork = formData.work || [];
+    if (JSON.stringify(originalWork.sort()) !== JSON.stringify(currentWork.sort())) {
+      // Append each work item individually for List[str] or as a JSON string depending on backend
+      // Standard FormData for list: append multiple times
+      currentWork.forEach(w => payload.append("work", w));
+      hasChanges = true;
+    }
 
     // Password is only sent if provided
     if (formData.password) {
@@ -236,47 +247,78 @@ export default function EditEmployee() {
                   placeholder="Leave blank to keep current"
                   icon={FaIdCard}
                 />
-              </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Description / Notes</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 resize-none bg-gray-50 focus:bg-white transition-all"
-                  placeholder="Additional details about this employee..."
-                />
-              </div>
+                {/* Work Assignment */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Work Assignment</label>
+                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {["PRODUCT", "INVENTORY", "SALE", "ANALYTICS", "INVOICE"].map((workType) => (
+                        <label key={workType} className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={Array.isArray(formData.work) ? formData.work.includes(workType) : formData.work === workType}
+                            onChange={(e) => {
+                              const { value, checked } = e.target;
+                              setFormData(prev => {
+                                const currentWork = Array.isArray(prev.work) ? prev.work : (prev.work ? [prev.work] : []);
+                                if (checked) {
+                                  return { ...prev, work: [...currentWork, workType] };
+                                } else {
+                                  return { ...prev, work: currentWork.filter(w => w !== workType) };
+                                }
+                              });
+                            }}
+                            className="h-5 w-5 rounded-md border-gray-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+                          />
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors capitalize">
+                            {workType.toLowerCase()}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-              {/* Action Bar */}
-              <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg shadow-blue-200 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
-                >
-                  {saving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <FaSave /> Save Changes
-                    </>
-                  )}
-                </button>
-              </div>
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Description / Notes</label>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    value={formData.description}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 resize-none bg-gray-50 focus:bg-white transition-all"
+                    placeholder="Additional details about this employee..."
+                  />
+                </div>
+
+                {/* Action Bar */}
+                <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg shadow-blue-200 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
+                  >
+                    {saving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FaSave /> Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
             </form>
           </div>
         </div>

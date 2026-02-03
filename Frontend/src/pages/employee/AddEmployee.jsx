@@ -138,20 +138,40 @@ export default function AddEmployee() {
                 </div>
 
                 {/* Work/Role */}
-                <div>
+                <div className="md:col-span-2">
                   <Label>Work Assignment</Label>
-                  <div className="relative group">
-                    <FaBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
-                    <select name="work" value={formData.work || ""} onChange={handleChange} className={inputClass("work")}>
-                      <option value="">None</option>
-                      <option value="PRODUCT">Product</option>
-                      <option value="INVENTORY">Inventory</option>
-                      <option value="SALE">Sale</option>
-                      <option value="ANALYTICS">Analytics</option>
-                      <option value="INVOICE">Invoice</option>
-                    </select>
+                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {["PRODUCT", "INVENTORY", "SALE", "ANALYTICS", "INVOICE"].map((workType) => (
+                        <label key={workType} className="flex items-center gap-3 cursor-pointer group">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              name="work"
+                              value={workType}
+                              checked={Array.isArray(formData.work) ? formData.work.includes(workType) : formData.work === workType}
+                              onChange={(e) => {
+                                const { value, checked } = e.target;
+                                setFormData(prev => {
+                                  const currentWork = Array.isArray(prev.work) ? prev.work : (prev.work ? [prev.work] : []);
+                                  if (checked) {
+                                    return { ...prev, work: [...currentWork, value] };
+                                  } else {
+                                    return { ...prev, work: currentWork.filter(w => w !== value) };
+                                  }
+                                });
+                              }}
+                              className="peer h-5 w-5 rounded-md border-gray-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
+                            />
+                            <div className="absolute inset-0 bg-blue-100 rounded-md scale-0 peer-checked:scale-100 -z-10 transition-transform duration-200"></div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors capitalize">
+                            {workType.toLowerCase()}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                  {errors.work && <p className="text-red-500 text-xs mt-1">{errors.work[0]}</p>}
                 </div>
 
                 {/* Description */}

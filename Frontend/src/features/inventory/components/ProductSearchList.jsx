@@ -21,7 +21,7 @@ export default function ProductSearchList({ selected, setSelected }) {
 
     setLoading(true);
     searchTimeout.current = setTimeout(() => {
-      fetchProducts(`/product/?search=${encodeURIComponent(query)}`, true);
+      fetchProducts(`/product/?name=${encodeURIComponent(query)}`, true);
     }, 400);
 
     return () => clearTimeout(searchTimeout.current);
@@ -104,7 +104,26 @@ export default function ProductSearchList({ selected, setSelected }) {
                     <div>
                       <p className={`font-semibold text-sm ${selected ? "text-blue-700" : "text-gray-900"}`}>{p.name}</p>
                       <p className="text-xs text-gray-500 font-mono">SKU: {p.sku}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Stock: {p.stock_quantity ?? 'N/A'}</p>
+                      <div className="mt-1.5 flex items-center">
+                        {p.stock_quantity === undefined || p.stock_quantity === null ? (
+                          <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-2 py-0.5 rounded-full border border-gray-200">
+                            Stock: N/A
+                          </span>
+                        ) : p.stock_quantity <= 0 ? (
+                          <span className="bg-red-50 text-red-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            Out of Stock
+                          </span>
+                        ) : p.stock_quantity < 10 ? (
+                          <span className="bg-amber-50 text-amber-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-100">
+                            Low Stock: {p.stock_quantity}
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-50 text-emerald-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-100">
+                            Stock: {p.stock_quantity}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -113,8 +132,8 @@ export default function ProductSearchList({ selected, setSelected }) {
                     onClick={() => !selected && addProduct(p)}
                     disabled={selected}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${selected
-                        ? "bg-green-100 text-green-700 cursor-default"
-                        : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md active:scale-95"
+                      ? "bg-green-100 text-green-700 cursor-default"
+                      : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md active:scale-95"
                       }`}
                   >
                     {selected ? (

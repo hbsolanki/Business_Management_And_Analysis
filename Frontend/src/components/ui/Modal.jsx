@@ -18,8 +18,10 @@ export default function Modal({
     onConfirm,
     confirmText,
     cancelText,
-    type = "danger", // danger, info, success
+    type = "danger", // danger, info, success, form
     icon: CustomIcon, // Optional custom icon
+    children, // Custom content
+    showFooter = true,
 }) {
     const handleConfirm = () => {
         if (onConfirm) onConfirm();
@@ -44,6 +46,12 @@ export default function Modal({
             iconBg: "bg-green-100",
             iconColor: "text-green-600",
             buttonBg: "bg-green-600 hover:bg-green-700 focus:ring-green-500",
+        },
+        form: {
+            icon: CustomIcon || InformationCircleIcon,
+            iconBg: "bg-indigo-100",
+            iconColor: "text-indigo-600",
+            buttonBg: "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500",
         },
     };
 
@@ -76,33 +84,38 @@ export default function Modal({
                                         {title}
                                     </DialogTitle>
                                     <div className="mt-2">
-                                        <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                                            {message}
-                                        </p>
+                                        {message && (
+                                            <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                                {message}
+                                            </p>
+                                        )}
+                                        {children}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50/80 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-6 border-t border-gray-100">
-                            <button
-                                type="button"
-                                onClick={handleConfirm}
-                                className={`inline-flex w-full justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-${type === 'danger' ? 'red' : 'blue'}-500/20 transition-all transform hover:-translate-y-0.5 sm:ml-3 sm:w-auto focus:outline-none focus:ring-2 focus:ring-offset-2 ${config.buttonBg}`}
-                            >
-                                {confirmText || "Confirm"}
-                            </button>
-                            <button
-                                type="button"
-                                data-autofocus
-                                onClick={onClose}
-                                className="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors sm:mt-0 sm:w-auto"
-                            >
-                                {cancelText || "Cancel"}
-                            </button>
-                        </div>
+                        {showFooter && (
+                            <div className="bg-gray-50/80 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-6 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={handleConfirm}
+                                    className={`inline-flex w-full justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-${type === 'danger' ? 'red' : 'blue'}-500/20 transition-all transform hover:-translate-y-0.5 sm:ml-3 sm:w-auto focus:outline-none focus:ring-2 focus:ring-offset-2 ${config.buttonBg}`}
+                                >
+                                    {confirmText || "Confirm"}
+                                </button>
+                                <button
+                                    type="button"
+                                    data-autofocus
+                                    onClick={onClose}
+                                    className="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors sm:mt-0 sm:w-auto"
+                                >
+                                    {cancelText || "Cancel"}
+                                </button>
+                            </div>
+                        )}
                     </DialogPanel>
                 </div>
-            </div>
-        </Dialog>
+            </div >
+        </Dialog >
     );
 }

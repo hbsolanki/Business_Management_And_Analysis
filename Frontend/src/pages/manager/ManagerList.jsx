@@ -51,6 +51,10 @@ export default function ManagerList() {
     navigate(`/manager/${id}/edit`);
   };
 
+  const handleChat = (id) => {
+    navigate(`/chat?userId=${id}`);
+  };
+
   if (loading) {
     return (
       <>
@@ -91,6 +95,7 @@ export default function ManagerList() {
             type="MANAGER"
             onView={handleView}
             onEdit={handleEdit}
+            onChat={handleChat}
             onDelete={(id) => setManagerToDelete(id)}
             emptyText="No managers found. Add a manager to help oversee operations."
           />

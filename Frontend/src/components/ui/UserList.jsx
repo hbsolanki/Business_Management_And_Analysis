@@ -5,7 +5,7 @@ import {
     ChevronRightIcon,
     MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
-import { FaUserTie, FaIdCard, FaEnvelope, FaPhone, FaCircle, FaSearch } from "react-icons/fa";
+import { FaUserTie, FaIdCard, FaEnvelope, FaPhone, FaCircle, FaSearch, FaComments } from "react-icons/fa";
 import { API_BASE_URL } from "@/services/api";
 
 export default function UserList({
@@ -14,6 +14,7 @@ export default function UserList({
     onView, // function(id) passed to handle navigation
     onEdit, // function(id) optional
     onDelete, // function(id)
+    onChat, // function(id) optional
     emptyText = "No users found"
 }) {
     const [searchTerm, setSearchTerm] = useState("");
@@ -150,6 +151,16 @@ export default function UserList({
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            onChat && onChat(user.id);
+                                                        }}
+                                                        className="text-gray-400 hover:text-teal-600 transition-colors bg-white p-2 rounded-lg hover:bg-teal-50 border border-transparent hover:border-teal-100"
+                                                        title="Chat"
+                                                    >
+                                                        <FaComments className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             onEdit(user.id);
                                                         }}
                                                         className="text-gray-400 hover:text-blue-600 transition-colors bg-white p-2 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-100"
@@ -185,6 +196,15 @@ export default function UserList({
                                 className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative active:scale-[0.99] transition-transform"
                             >
                                 <div className="absolute top-4 right-4 flex gap-2">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onChat && onChat(user.id);
+                                        }}
+                                        className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-teal-600 active:bg-teal-50"
+                                    >
+                                        <FaComments className="w-5 h-5" />
+                                    </button>
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();

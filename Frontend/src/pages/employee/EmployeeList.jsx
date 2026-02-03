@@ -33,6 +33,10 @@ function EmployeeManage() {
     navigate(`/employee/${id}/edit`);
   };
 
+  const handleChat = (id) => {
+    navigate(`/chat?userId=${id}`);
+  };
+
   return (
     <>
       <ProtectedHeader />
@@ -59,6 +63,7 @@ function EmployeeManage() {
             type="EMPLOYEE"
             onView={handleView}
             onEdit={handleEdit}
+            onChat={handleChat}
             onDelete={(id) => setDeleteId(id)}
             emptyText="No employees found. Start by adding a new team member."
           />

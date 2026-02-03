@@ -1,0 +1,156 @@
+import React, { Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { FaUser, FaClock, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrash, FaEllipsisV } from 'react-icons/fa';
+import { Menu, Transition } from '@headlessui/react';
+import { tokenService } from '@/services/tokenService';
+
+const TaskCard = ({ task, onEdit, onDelete }) => {
+    const currentUserId = tokenService.getId();
+    const navigate = useNavigate();
+
+    // Permission Logic
+    const isCreator = task.assigned_by?.id === currentUserId;
+    const isAssignee = task.assignee?.id === currentUserId;
+
+    // Creator can delete, Assignee cannot
+    const canDelete = isCreator;
+
+    // Both can edit (Creator: full, Assignee: limited - handled in modal/backend)
+    const canEdit = isCreator || isAssignee;
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'COMPLETED': return 'text-green-600 bg-green-50 border-green-100';
+            case 'PENDING': return 'text-yellow-600 bg-yellow-50 border-yellow-100';
+            case 'IN_PROGRESS': return 'text-blue-600 bg-blue-50 border-blue-100';
+            default: return 'text-gray-600 bg-gray-50 border-gray-100';
+        }
+    };
+
+    const statusStyle = getStatusColor(task.status);
+
+    return (
+        <div
+            onClick={() => navigate(`/tasks/${task.id}`)}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200 flex flex-col h-full relative overflow-visible group cursor-pointer"
+        >
+            <div className={`absolute top-0 left-0 w-1 h-full ${task.status === 'COMPLETED' ? 'bg-green-500' : task.status === 'PENDING' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
+
+            <div className="flex justify-between items-start mb-3 pl-2">
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${statusStyle}`}>
+                    {task.status || 'PENDING'}
+                </span>
+
+                {(canEdit || canDelete) && (
+                    <Menu as="div" className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                        <div>
+                            <Menu.Button className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none">
+                                <FaEllipsisV size={14} />
+                            </Menu.Button>
+                        </div>
+                        <Transition
+                            as={Fragment}
+                            enter="transition ease-out duration-100"
+                            enterFrom="transform opacity-0 scale-95"
+                            enterTo="transform opacity-100 scale-100"
+                            leave="transition ease-in duration-75"
+                            leaveFrom="transform opacity-100 scale-100"
+                            leaveTo="transform opacity-0 scale-95"
+                        >
+                            <Menu.Items className="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none overflow-hidden">
+                                <div className="p-1">
+                                    {canEdit && (
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Stop menu close from triggering card click immediately if needed, though usually handled
+                                                        navigate(`/tasks/${task.id}/edit`);
+                                                    }}
+                                                    className={`${active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
+                                                        } group flex w-full items-center rounded-lg px-2 py-2 text-sm font-medium transition-colors`}
+                                                >
+                                                    <FaEdit className="mr-2 h-4 w-4" aria-hidden="true" />
+                                                    Edit
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    )}
+                                    {canDelete && (
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onDelete(task.id);
+                                                    }}
+                                                    className={`${active ? 'bg-red-50 text-red-600' : 'text-gray-700'
+                                                        } group flex w-full items-center rounded-lg px-2 py-2 text-sm font-medium transition-colors`}
+                                                >
+                                                    <FaTrash className="mr-2 h-4 w-4" aria-hidden="true" />
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    )}
+                                </div>
+                            </Menu.Items>
+                        </Transition>
+                    </Menu>
+                )}
+            </div>
+
+            <h3 className="text-lg font-bold text-gray-800 mb-2 pl-2 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors">
+                {task.title}
+            </h3>
+
+            <p className="text-sm text-gray-500 mb-4 pl-2 line-clamp-3 flex-1">
+                {task.description}
+            </p>
+
+            <div className="mt-auto pl-2 pt-3 border-t border-gray-50 flex items-center justify-between">
+                <span className="text-xs text-gray-400 font-medium flex items-center gap-1">
+                    <FaClock size={10} />
+                    {task.created_at ? format(new Date(task.created_at), 'MMM d, yyyy h:mm a') : 'Date N/A'}
+                </span>
+
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                        {task.assignee?.profile_picture ? (
+                            <img
+                                src={task.assignee.profile_picture}
+                                alt={task.assignee.username}
+                                className="w-6 h-6 rounded-full object-cover shadow-sm border border-white"
+                            />
+                        ) : (
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+                                {task.assignee?.username?.substring(0, 2).toUpperCase() || 'NA'}
+                            </div>
+                        )}
+                    </div>
+
+                    {task.assigned_by && (
+                        <div className="flex flex-col items-end text-right ml-2 border-l border-gray-200 pl-2">
+                            <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">By</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] font-bold text-gray-600">
+                                    {task.assigned_by.first_name ? `${task.assigned_by.first_name}` : task.assigned_by.username}
+                                </span>
+                                {task.assigned_by.profile_picture && (
+                                    <img
+                                        src={task.assigned_by.profile_picture}
+                                        alt={task.assigned_by.username}
+                                        className="w-4 h-4 rounded-full object-cover shadow-sm"
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default TaskCard;

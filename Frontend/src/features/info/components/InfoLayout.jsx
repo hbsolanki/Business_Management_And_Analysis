@@ -68,7 +68,7 @@ export default function InfoLayout() {
                                 Contact our support team for specialized assistance.
                             </p>
                             <Link
-                                to="/contact-support"
+                                to="/info/support"
                                 className="flex items-center justify-center w-full text-xs font-semibold bg-white text-gray-900 hover:bg-gray-50 transition-colors py-2.5 rounded-lg shadow-sm"
                             >
                                 Contact Support

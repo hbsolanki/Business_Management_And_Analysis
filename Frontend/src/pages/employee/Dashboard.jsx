@@ -1,59 +1,64 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { employeeService } from "@/features/employee/services/employeeService";
+import taskService from "@/features/task/services/taskService";
 import EmployeeHeader from "@/components/layout/EmployeeHeader";
-import { useDispatch, useSelector } from "react-redux";
-import { toggleQuickAction } from "@/redux/slices/quickActionsSlice";
-import { EMPLOYEE_ACTIONS } from "@/config/quickActionsData";
-import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal";
-
+import { toast } from "react-hot-toast";
+import { format } from "date-fns";
 import {
   FaUser,
-  FaEdit,
   FaBuilding,
   FaPhone,
   FaEnvelope,
   FaCalendarAlt,
-  FaBriefcase,
-  FaCheckCircle,
-  FaThLarge,
   FaClipboardList,
   FaBoxOpen,
   FaProductHunt,
   FaCashRegister,
-  FaTasks
+  FaChartPie,
+  FaTasks,
+  FaCheckCircle,
+  FaClock,
+  FaExclamationCircle,
+  FaArrowRight,
+  FaBriefcase,
+  FaComments,
+  FaShoppingBag
 } from "react-icons/fa";
 
 export default function EmployeeDashboard() {
   const [employee, setEmployee] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const activeActionIds = useSelector((state) => state.quickActions.activeActionIds);
 
   useEffect(() => {
-    employeeService
-      .getById(localStorage.getItem("id"))
-      .then((res) => {
-        setEmployee(res.data)
-        localStorage.setItem("work", res.data.work)
-      })
-      .catch((err) => {
+    const fetchData = async () => {
+      try {
+        const empRes = await employeeService.getById(localStorage.getItem("id"));
+        setEmployee(empRes.data);
+        localStorage.setItem("work", empRes.data.work);
+
+        // Fetch tasks for stats and recent activity
+        const tasksRes = await taskService.getAssigneeTasks();
+        if (Array.isArray(tasksRes)) {
+          setTasks(tasksRes);
+        } else if (tasksRes && Array.isArray(tasksRes.results)) {
+          setTasks(tasksRes.results);
+        }
+      } catch (err) {
         if (err.response?.status === 401) {
           navigate("/login");
+        } else {
+          console.error("Dashboard fetch error:", err);
         }
-      })
-      .finally(() => setLoading(false));
-  }, [navigate]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const toggleAction = (actionId) => {
-    dispatch(toggleQuickAction({
-      actionId,
-      role: 'employee'
-    }));
-  };
+    fetchData();
+  }, [navigate]);
 
   const copyBusinessId = () => {
     if (employee?.business?.id) {
@@ -65,258 +70,186 @@ export default function EmployeeDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   if (!employee) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500">
-        No employee data found
+      <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium">
+        Unable to load employee profile.
       </div>
     );
   }
 
+  // Calculate Stats
+  const stats = {
+    pending: tasks.filter(t => t.status === 'PENDING').length,
+    inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+    completed: tasks.filter(t => t.status === 'COMPLETED').length,
+    total: tasks.length
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50/50  transition-colors duration-300">
+    <div className="min-h-screen bg-[#F3F4F6] font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-12">
       <EmployeeHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-600 to-teal-700 shadow-xl text-white">
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-green-400/20 rounded-full blur-2xl pointer-events-none"></div>
-
-          <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                {employee.profile_picture ? (
-                  <img
-                    alt={`${employee.first_name?.[0]}${employee.last_name?.[0]}`}
-                    src={employee.profile_picture}
-                    className="h-24 w-24 rounded-2xl object-cover border-4 border-white/20 shadow-2xl bg-white/10"
-                  />
-                ) : (
-                  <div className="h-24 w-24 rounded-2xl bg-white/10 border-4 border-white/20 flex items-center justify-center text-white text-3xl font-bold shadow-2xl backdrop-blur-sm">
-                    {employee.first_name?.[0]}{employee.last_name?.[0]}
-                  </div>
-                )}
-                <div className="absolute -bottom-2 -right-2 bg-blue-500 w-6 h-6 rounded-full border-4 border-teal-700"></div>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                    Hello, {employee.first_name}!
-                  </h1>
-                  <span className="bg-white/20 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full font-medium border border-white/10">
-                    Employee
-                  </span>
-                </div>
-                <p className="text-green-100 text-lg">Ready to work consistently.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button className="px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl font-medium transition-all border border-white/10">
-                My Tasks
-              </button>
-            </div>
+        {/* Welcome Section */}
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
+              {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{employee.first_name}</span>
+            </h1>
+            <p className="text-gray-500 mt-2 font-medium">Here's what's happening today.</p>
+          </div>
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-sm font-semibold text-gray-700">{format(new Date(), "EEEE, MMMM do")}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Work & Business */}
-          <div className="lg:col-span-2 space-y-8">
+        {/* Bento Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-8 auto-rows-min">
 
-            {/* Assigned Work Card */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-all duration-300 relative">
-              <div className="p-1 bg-gradient-to-r from-orange-400 via-pink-500 to-purple-500"></div>
-              <div className="p-6 md:p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl">
-                      <FaClipboardList size={28} />
+          {/* 1. Profile Card (row-span-2) */}
+          <div className="md:col-span-2 md:row-span-2 bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+
+            <div className="relative z-10 flex flex-col h-full justify-between">
+              <div className="flex items-start justify-between">
+                <div className="relative">
+                  {employee.profile_picture ? (
+                    <img src={employee.profile_picture} alt="Profile" className="w-24 h-24 rounded-2xl object-cover shadow-lg border-4 border-white" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 text-white flex items-center justify-center text-3xl font-bold shadow-lg border-4 border-white">
+                      {employee.first_name?.[0]}{employee.last_name?.[0]}
                     </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Your Work Assignment</h2>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                        <span>Role: <span className="font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">{typeof employee.work === 'string' ? employee.work.charAt(0).toUpperCase() + employee.work.slice(1) : Array.isArray(employee.work) ? employee.work.join(', ') : 'Not Assigned'}</span></span>
-                      </div>
-                    </div>
+                  )}
+                  <span className="absolute -bottom-2 -right-2 bg-green-500 border-4 border-white w-6 h-6 rounded-full"></span>
+                </div>
+                <span className="px-3 py-1 bg-gray-900 text-white text-xs font-bold rounded-full uppercase tracking-wider">Employee</span>
+              </div>
+
+              <div className="mt-6">
+                <h2 className="text-2xl font-bold text-gray-900">{employee.first_name} {employee.last_name}</h2>
+                <p className="text-gray-500 font-medium">{employee.email}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 text-sm font-semibold text-gray-600">
+                    <FaPhone size={12} className="text-gray-400" /> {employee.mobile_number}
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 text-sm font-semibold text-gray-600">
+                    <FaCalendarAlt size={12} className="text-gray-400" /> Joined {new Date(employee.date_joined).getFullYear()}
                   </div>
                 </div>
-
-                {Array.isArray(employee.work) && employee.work.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
-                    {employee.work.includes("inventory") && (
-                      <AppCard to="/inventory" icon={FaBoxOpen} label="Inventory" color="text-purple-600" bg="bg-purple-50" />
-                    )}
-                    {employee.work.includes("product") && (
-                      <AppCard to="/product" icon={FaProductHunt} label="Products" color="text-orange-600" bg="bg-orange-50" />
-                    )}
-                    {employee.work.includes("invoice") && (
-                      <AppCard to="/invoice" icon={FaCashRegister} label="Invoices" color="text-emerald-600" bg="bg-emerald-50" />
-                    )}
-                  </div>
-                ) : (
-                  <div className="bg-white h-full flex flex-col items-center justify-center p-8 text-center text-gray-500">
-                    <div className="p-3 bg-gray-50 rounded-full mb-3">
-                      <FaTasks size={24} className="text-gray-400" />
-                    </div>
-                    <p>No specific work modules assigned yet.</p>
-                  </div>
-                )}
               </div>
             </div>
+          </div>
 
-            {/* Business Card */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-all duration-300 relative">
+          {/* 2. Stats Cards (Individual cells) */}
+          <StatsCard
+            title="Pending"
+            count={stats.pending}
+            icon={FaClock}
+            color="text-yellow-600"
+            bg="bg-yellow-50"
+            trend="Needs Attention"
+          />
+          <StatsCard
+            title="In Progress"
+            count={stats.inProgress}
+            icon={FaTasks}
+            color="text-blue-600"
+            bg="bg-blue-50"
+            trend="Active Now"
+          />
+
+          {/* Work Modules & Chat */}
+          <div className="md:col-span-2 bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <FaBriefcase className="text-indigo-600" /> Work
+            </h3>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              <AppIcon to="/tasks" icon={FaTasks} label="My Tasks" color="bg-indigo-600" shadow="shadow-indigo-200" />
+              <AppIcon to="/chat" icon={FaComments} label="Chat" color="bg-rose-500" shadow="shadow-rose-200" />
+
+              {Array.isArray(employee.work) && employee.work.includes("inventory") && <AppIcon to="/inventory" icon={FaBoxOpen} label="Inventory" color="bg-purple-500" shadow="shadow-purple-200" />}
+              {Array.isArray(employee.work) && employee.work.includes("product") && <AppIcon to="/product" icon={FaProductHunt} label="Products" color="bg-orange-500" shadow="shadow-orange-200" />}
+              {Array.isArray(employee.work) && employee.work.includes("sale") && <AppIcon to="/sale" icon={FaShoppingBag} label="Sales" color="bg-green-500" shadow="shadow-green-200" />}
+              {Array.isArray(employee.work) && employee.work.includes("invoice") && <AppIcon to="/invoice" icon={FaCashRegister} label="Invoices" color="bg-emerald-500" shadow="shadow-emerald-200" />}
+              {Array.isArray(employee.work) && employee.work.includes("analytics") && <AppIcon to="/analytics" icon={FaChartPie} label="Analytics" color="bg-blue-500" shadow="shadow-blue-200" />}
+            </div>
+          </div>
+
+          {/* Business Info */}
+          <div className="md:col-span-2 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-8 shadow-xl text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm">
+                  <FaBuilding className="text-indigo-100" />
+                </div>
+                <h3 className="text-lg font-bold">{employee.business?.name || "No Business"}</h3>
+              </div>
+
               {employee.business ? (
                 <>
-                  <div className="p-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500"></div>
-                  <div className="p-6 md:p-8">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl">
-                        <FaBuilding size={28} />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{employee.business.name}</h2>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <span>ID: <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200 text-gray-700">{employee.business.id}</span></span>
-                          <button
-                            onClick={copyBusinessId}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold hover:underline"
-                            title="Copy Business ID"
-                          >
-                            Copy
-                          </button>
-                        </div>
-                      </div>
+                  <p className="text-indigo-100 text-sm mb-6 leading-relaxed line-clamp-2">
+                    {employee.business.description || "Welcome to the team workspace."}
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className="bg-black/20 px-4 py-2 rounded-xl backdrop-blur-md flex items-center gap-3 border border-indigo-400/30">
+                      <span className="text-xs font-mono text-indigo-200 tracking-wider">ID</span>
+                      <span className="font-mono font-bold tracking-widest">{employee.business.id}</span>
                     </div>
-
-                    <p className="text-gray-600 leading-relaxed bg-gray-50/50 p-5 rounded-2xl border border-gray-100 text-sm">
-                      {employee.business.description || "No description provided."}
-                    </p>
+                    <button onClick={copyBusinessId} className="text-sm font-semibold hover:text-white text-indigo-200 transition-colors">
+                      Copy
+                    </button>
                   </div>
                 </>
               ) : (
-                <div className="p-12 text-center">
-                  <div className="inline-flex p-4 bg-gray-50 rounded-full text-gray-400 mb-4">
-                    <FaBuilding size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">No Business Registered</h3>
-                  <p className="text-gray-500">Ask your manager to add business details.</p>
-                </div>
+                <p className="text-indigo-200">Contact admin to link business.</p>
               )}
             </div>
           </div>
 
-          {/* Right Column - Quick Actions & Profile */}
-          <div className="space-y-8">
-            {/* Quick Actions */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 relative">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  Quick Actions
-                </h2>
-                <button
-                  onClick={() => setIsConfigModalOpen(true)}
-                  className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline"
-                >
-                  Configure
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                {activeActionIds.length > 0 ? (
-                  activeActionIds.map(id => {
-                    const action = EMPLOYEE_ACTIONS[id];
-                    if (!action) return null;
-                    return (
-                      <QuickActionHorizontal
-                        key={id}
-                        to={action.path}
-                        icon={action.icon}
-                        label={action.label}
-                        desc={action.desc}
-                        color={action.color}
-                        bg={action.bg}
-                      />
-                    );
-                  })
-                ) : (
-                  <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                    <p className="text-gray-500 text-sm mb-2">No quick actions pinned.</p>
-                    <button
-                      onClick={() => setIsConfigModalOpen(true)}
-                      className="text-green-600 font-semibold text-sm hover:underline"
-                    >
-                      Add Actions
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Personal Info */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 relative">
-              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4">
-                <FaUser className="text-green-600" /> Personal Details
-              </h3>
-              <div className="space-y-6">
-                <InfoItem icon={FaUser} label="Full Name" value={`${employee.first_name} ${employee.last_name}`} />
-                <InfoItem icon={FaPhone} label="Mobile" value={employee.mobile_number} />
-                <InfoItem icon={FaEnvelope} label="Email" value={employee.email} />
-                <InfoItem icon={FaCalendarAlt} label="Joined" value={new Date(employee.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
-
-      <QuickActionsConfigModal
-        isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
-        availableActions={EMPLOYEE_ACTIONS}
-        activeActionIds={activeActionIds}
-        onToggleAction={toggleAction}
-        themeColor="green"
-      />
     </div>
   );
 }
 
-// Sub-components
-function QuickActionHorizontal({ to, icon, label, desc, color, bg }) {
-  return (
-    <Link
-      to={to}
-      className={`flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-gray-200 transition-all duration-200 group ${bg}`}
-    >
-      <div className={`p-2.5 rounded-lg bg-white shadow-sm ${color} group-hover:scale-105 transition-transform text-lg`}>
-        {icon}
-      </div>
-      <div>
-        <span className="block font-bold text-gray-900 text-sm">{label}</span>
-        <span className="block text-xs text-gray-500">{desc}</span>
-      </div>
-    </Link>
-  );
-}
-
-function InfoItem({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-start gap-4 p-2 hover:bg-gray-50 rounded-xl transition-colors">
-      <div className="p-2.5 bg-gray-100 rounded-xl text-gray-500">
-        <Icon size={16} />
-      </div>
-      <div>
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-        <p className="text-gray-800 font-medium text-sm break-all">{value || "Not set"}</p>
-      </div>
+// Stats Card Component
+const StatsCard = ({ title, count, icon: Icon, color, bg, trend }) => (
+  <div className="bg-white rounded-3xl p-6 shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-md transition-shadow">
+    <div className={`w-10 h-10 rounded-2xl ${bg} ${color} flex items-center justify-center mb-4`}>
+      <Icon size={18} />
     </div>
-  );
-}
+    <p className="text-gray-500 text-sm font-medium">{title}</p>
+    <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{count}</h3>
+    <p className={`text-xs font-semibold mt-3 ${color} bg-opacity-10 px-2 py-1 rounded-md inline-block bg-gray-50`}>
+      {trend}
+    </p>
+  </div>
+);
+
+// App Icon Component
+const AppIcon = ({ to, icon: Icon, label, color, shadow }) => (
+  <Link to={to} className="group block text-center">
+    <div className={`w-16 h-16 mx-auto rounded-3xl ${color} text-white flex items-center justify-center mb-3 shadow-lg ${shadow} group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300`}>
+      <Icon size={28} />
+    </div>
+    <span className="font-bold text-gray-700 group-hover:text-indigo-600 transition-colors">{label}</span>
+  </Link>
+);

@@ -2,14 +2,12 @@ import Logo from "@/assets/VISIONARY.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import Modal from "@/components/ui/Modal";
-import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal";
 import { authService } from "@/services/authService";
 import { tokenService } from "@/services/tokenService";
 import api from "@/services/api";
 import { useDispatch, useSelector } from "react-redux";
-import { toggleQuickAction } from "@/redux/slices/quickActionsSlice";
 import { toggleTheme } from "@/redux/slices/themeSlice";
-import { EMPLOYEE_ACTIONS } from "@/config/quickActionsData";
+import { fetchUserProfile, clearUserProfile } from "@/redux/slices/userSlice";
 import {
     FaUserCircle,
     FaSignOutAlt,
@@ -19,42 +17,29 @@ import {
     FaThLarge,
     FaBriefcase,
     FaUser,
-    FaChevronDown,
     FaInfoCircle,
-    FaCog,
-    FaPlus,
-    FaMinus,
     FaSun,
-    FaMoon
+    FaMoon,
+    FaComments
 } from "react-icons/fa";
 
 function EmployeeHeader() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [user, setUser] = useState(null);
+    // User state moved to Redux
     const [activeDropdown, setActiveDropdown] = useState(null);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
 
     const dispatch = useDispatch();
-    const activeActionIds = useSelector((state) => state.quickActions.activeActionIds);
     const theme = useSelector((state) => state.theme.mode);
+    const { profile: user } = useSelector((state) => state.user);
 
     useEffect(() => {
-        const fetchUser = async () => {
-            const id = tokenService.getId();
-            if (id) {
-                try {
-                    const res = await api.get(`/user/${id}/`);
-                    setUser(res.data);
-                } catch (err) {
-                    console.error("Failed to fetch user for header", err);
-                }
-            }
-        };
-        fetchUser();
-    }, []);
+        if (!user) {
+            dispatch(fetchUserProfile());
+        }
+    }, [dispatch, user]);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -69,6 +54,7 @@ function EmployeeHeader() {
 
     const handleLogout = () => {
         authService.logout();
+        dispatch(clearUserProfile());
         navigate("/");
     };
 
@@ -81,10 +67,6 @@ function EmployeeHeader() {
 
     const toggleDropdown = (name) => {
         setActiveDropdown(activeDropdown === name ? null : name);
-    };
-
-    const toggleAction = (id) => {
-        dispatch(toggleQuickAction(id));
     };
 
     return (
@@ -106,7 +88,6 @@ function EmployeeHeader() {
                             <div className="flex items-center gap-1 bg-gray-50/80 p-1.5 rounded-xl border border-gray-100 relative">
                                 <NavLink to="/" icon={<FaHome />} text="Home" />
                                 <NavLink to="/info" icon={<FaInfoCircle />} text="Info" />
-                                <NavLink to="/employee" icon={<FaThLarge />} text="Dashboard" />
                                 {user?.work && (
                                     <NavLink to={`/${user.work.toLowerCase()}`} icon={<FaBriefcase />} text="My Workspace" />
                                 )}
@@ -119,52 +100,6 @@ function EmployeeHeader() {
                                 >
                                     {theme === 'dark' ? <FaSun size={20} /> : <FaMoon size={20} />}
                                 </button>
-
-                                {/* Quick Actions Dropdown */}
-                                <div className="relative">
-                                    <button
-                                        onClick={() => toggleDropdown("quickActions")}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeDropdown === "quickActions" ? "bg-white text-green-700 shadow-sm" : "text-gray-600 hover:text-green-700 hover:bg-white hover:shadow-sm"}`}
-                                    >
-                                        <span>Quick Actions</span>
-                                        <FaChevronDown size={10} className={`transition-transform duration-200 ${activeDropdown === "quickActions" ? "rotate-180" : ""}`} />
-                                    </button>
-
-                                    {activeDropdown === "quickActions" && (
-                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-fade-in-down">
-                                            {activeActionIds.length > 0 ? (
-                                                activeActionIds.map(id => {
-                                                    const action = EMPLOYEE_ACTIONS[id];
-                                                    if (!action) return null;
-                                                    return (
-                                                        <DropdownItem
-                                                            key={id}
-                                                            to={action.path}
-                                                            icon={action.icon}
-                                                            text={action.label}
-                                                            onClick={() => setActiveDropdown(null)}
-                                                        />
-                                                    );
-                                                })
-                                            ) : (
-                                                <div className="px-4 py-3 text-center text-gray-400 text-sm">
-                                                    No quick actions set.
-                                                </div>
-                                            )}
-
-                                            <div className="border-t border-gray-50 my-1"></div>
-                                            <button
-                                                onClick={() => {
-                                                    setActiveDropdown(null);
-                                                    setIsConfigModalOpen(true);
-                                                }}
-                                                className="w-full text-left px-4 py-2 text-sm font-semibold text-green-600 hover:bg-green-50 flex items-center gap-3 transition-colors"
-                                            >
-                                                <FaCog /> Configure Actions
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
                             </div>
 
                             <div className="flex items-center gap-4 pl-4 border-l border-gray-200">
@@ -222,41 +157,9 @@ function EmployeeHeader() {
                     <div className="md:hidden bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl animate-fade-in-down max-h-[80vh] overflow-y-auto">
                         <div className="p-4 space-y-2">
                             <MobileNavLink to="/" text="Home" icon={<FaHome />} onClick={() => setIsMobileMenuOpen(false)} />
-                            <MobileNavLink to="/employee" text="Dashboard" icon={<FaThLarge />} onClick={() => setIsMobileMenuOpen(false)} />
                             {user?.work && (
                                 <MobileNavLink to={`/${user.work.toLowerCase()}`} text="My Workspace" icon={<FaBriefcase />} onClick={() => setIsMobileMenuOpen(false)} />
                             )}
-
-                            <div className="py-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Quick Actions</div>
-
-                            {activeActionIds.length > 0 ? (
-                                activeActionIds.map(id => {
-                                    const action = EMPLOYEE_ACTIONS[id];
-                                    if (!action) return null;
-                                    return (
-                                        <MobileNavLink
-                                            key={id}
-                                            to={action.path}
-                                            text={action.label}
-                                            icon={action.icon}
-                                            onClick={() => setIsMobileMenuOpen(false)}
-                                        />
-                                    );
-                                })
-                            ) : (
-                                <div className="px-4 py-2 text-sm text-gray-400">No quick actions set</div>
-                            )}
-
-                            <button
-                                onClick={() => {
-                                    setIsMobileMenuOpen(false);
-                                    setIsConfigModalOpen(true);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-green-600 bg-green-50 font-medium transition-all"
-                            >
-                                <span className="text-lg opacity-70"><FaCog /></span>
-                                Configure Actions
-                            </button>
                         </div>
                         <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                             <div className="flex items-center gap-4 mb-4">
@@ -304,15 +207,6 @@ function EmployeeHeader() {
                 onConfirm={handleLogout}
                 confirmText="Sign Out"
                 cancelText="Cancel"
-            />
-
-            <QuickActionsConfigModal
-                isOpen={isConfigModalOpen}
-                onClose={() => setIsConfigModalOpen(false)}
-                availableActions={EMPLOYEE_ACTIONS}
-                activeActionIds={activeActionIds}
-                onToggleAction={toggleAction}
-                themeColor="green"
             />
         </>
     );

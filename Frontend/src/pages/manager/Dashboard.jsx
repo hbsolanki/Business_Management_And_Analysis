@@ -4,9 +4,11 @@ import ManagerHeader from "@/components/layout/ManagerHeader";
 import api from "@/services/api";
 import { tokenService } from "@/services/tokenService";
 import { useDispatch, useSelector } from "react-redux";
-import { toggleQuickAction } from "@/redux/slices/quickActionsSlice";
+import { toggleDashboardAction } from "@/redux/slices/quickActionsSlice";
 import { MANAGER_ACTIONS } from "@/config/quickActionsData";
 import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal";
+import ChatUserModal from "@/components/shared/ChatUserModal";
+import TaskQuickView from "@/features/task/components/TaskQuickView";
 import {
     FaUser,
     FaEdit,
@@ -21,7 +23,9 @@ import {
     FaChartLine,
     FaTags,
     FaLayerGroup,
-    FaUserTie
+    FaUserTie,
+    FaCogs,
+    FaTasks
 } from "react-icons/fa";
 
 function ManagerDashboard() {
@@ -29,11 +33,13 @@ function ManagerDashboard() {
     const [businessData, setBusinessData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
     const navigate = useNavigate();
     const userId = tokenService.getId();
     const dispatch = useDispatch();
-    const activeActionIds = useSelector((state) => state.quickActions.activeActionIds);
+    const activeActionIds = useSelector((state) => state.quickActions.dashboardActions);
+    const chatPreferredUserId = useSelector((state) => state.quickActions.chatPreferredUserId);
 
     useEffect(() => {
         if (!userId) {
@@ -57,10 +63,7 @@ function ManagerDashboard() {
     }, [navigate, userId]);
 
     const toggleAction = (actionId) => {
-        dispatch(toggleQuickAction({
-            actionId,
-            role: 'manager'
-        }));
+        dispatch(toggleDashboardAction(actionId));
     };
 
     const copyBusinessId = () => {
@@ -188,6 +191,7 @@ function ManagerDashboard() {
                                 <AppCard to="/inventory" icon={FaBoxOpen} label="Inventory" color="text-purple-600" bg="bg-purple-50" />
                                 <AppCard to="/invoice" icon={FaCashRegister} label="Invoices" color="text-emerald-600" bg="bg-emerald-50" />
                                 <AppCard to="/cost-category" icon={FaLayerGroup} label="Costs" color="text-rose-600" bg="bg-rose-50" />
+                                <AppCard to="/tasks" icon={FaTasks} label="Tasks" color="text-pink-600" bg="bg-pink-50" />
                             </div>
                         </div>
                     </div>
@@ -222,6 +226,16 @@ function ManagerDashboard() {
                                                 desc={action.desc}
                                                 color={action.color}
                                                 bg={action.bg}
+                                                onClick={(e) => {
+                                                    if (action.id === 'chat') {
+                                                        e.preventDefault();
+                                                        if (chatPreferredUserId) {
+                                                            navigate(`/chat?userId=${chatPreferredUserId}`);
+                                                        } else {
+                                                            setIsChatModalOpen(true);
+                                                        }
+                                                    }
+                                                }}
                                             />
                                         );
                                     })
@@ -236,6 +250,16 @@ function ManagerDashboard() {
                                         </button>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Tasks Quick Views */}
+                        <div className="grid grid-cols-1 gap-6">
+                            <div className="h-80">
+                                <TaskQuickView type="assigned_to" title="My Tasks" />
+                            </div>
+                            <div className="h-80">
+                                <TaskQuickView type="assigned_by" title="Tasks Created" />
                             </div>
                         </div>
 
@@ -263,15 +287,21 @@ function ManagerDashboard() {
                 onToggleAction={toggleAction}
                 themeColor="purple"
             />
-        </div>
+
+            <ChatUserModal
+                isOpen={isChatModalOpen}
+                onClose={() => setIsChatModalOpen(false)}
+            />
+        </div >
     );
 }
 
 // Sub-components
-function QuickActionHorizontal({ to, icon, label, desc, color, bg }) {
+function QuickActionHorizontal({ to, icon, label, desc, color, bg, onClick }) {
     return (
         <Link
             to={to}
+            onClick={onClick}
             className={`flex items-center gap-4 p-3 rounded-xl border border-transparent hover:border-gray-200 transition-all duration-200 group ${bg}`}
         >
             <div className={`p-2.5 rounded-lg bg-white shadow-sm ${color} group-hover:scale-105 transition-transform text-lg`}>

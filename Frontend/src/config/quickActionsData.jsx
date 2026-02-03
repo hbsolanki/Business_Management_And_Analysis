@@ -13,7 +13,9 @@ import {
     FaMoneyBillWave,
     FaTags,
     FaThLarge,
-    FaExchangeAlt
+    FaExchangeAlt,
+    FaComments,
+    FaUserTie
 } from "react-icons/fa";
 
 export const OWNER_ACTIONS = {
@@ -35,6 +37,15 @@ export const OWNER_ACTIONS = {
         desc: "Performance Data",
         color: "text-indigo-600",
         bg: "bg-indigo-50 hover:bg-indigo-100"
+    },
+    chat: {
+        id: "chat",
+        label: "Chat",
+        path: "/chat",
+        icon: <FaComments />,
+        desc: "Team Chat",
+        color: "text-teal-600",
+        bg: "bg-teal-50 hover:bg-teal-100"
     },
     employees: {
         id: "employees",
@@ -119,6 +130,15 @@ export const OWNER_ACTIONS = {
         color: "text-blue-600",
         bg: "bg-blue-50 hover:bg-blue-100"
     },
+    addManager: {
+        id: "addManager",
+        label: "Add Manager",
+        path: "/manager/new",
+        icon: <FaUserTie />,
+        desc: "New Manager",
+        color: "text-indigo-600",
+        bg: "bg-indigo-50 hover:bg-indigo-100"
+    },
     recordCost: {
         id: "recordCost",
         label: "Record Cost",
@@ -149,6 +169,15 @@ export const MANAGER_ACTIONS = {
         desc: "Data Reports",
         color: "text-indigo-600",
         bg: "bg-indigo-50 hover:bg-indigo-100"
+    },
+    chat: {
+        id: "chat",
+        label: "Chat",
+        path: "/chat",
+        icon: <FaComments />,
+        desc: "Team Chat",
+        color: "text-teal-600",
+        bg: "bg-teal-50 hover:bg-teal-100"
     },
     employees: {
         id: "employees",
@@ -255,6 +284,15 @@ export const EMPLOYEE_ACTIONS = {
         desc: "Overview",
         color: "text-green-600",
         bg: "bg-green-50 hover:bg-green-100"
+    },
+    chat: {
+        id: "chat",
+        label: "Chat",
+        path: "/chat",
+        icon: <FaComments />,
+        desc: "Team Chat",
+        color: "text-teal-600",
+        bg: "bg-teal-50 hover:bg-teal-100"
     },
     info: {
         id: "info",

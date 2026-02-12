@@ -12,12 +12,28 @@ export const useChatData = (socketMessages, setSocketMessages) => {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [paginationLoading, setPaginationLoading] = useState(false);
     const [nextPageUrl, setNextPageUrl] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);
+    const [subscriptionMessage, setSubscriptionMessage] = useState("");
 
     const prevScrollHeightRef = useRef(null);
     const isInitialLoadRef = useRef(true);
 
     const currentUserId = parseInt(tokenService.getId());
+
+    const handleSubscriptionError = useCallback((err) => {
+        const detail = err?.response?.data?.detail || err?.response?.data?.message;
+        if (err?.response?.status === 403 && typeof detail === "string") {
+            const lowerDetail = detail.toLowerCase();
+            if (lowerDetail.includes("subscription") || lowerDetail.includes("has_chat")) {
+                setSubscriptionBlocked(true);
+                setSubscriptionMessage(detail);
+                return true;
+            }
+        }
+        return false;
+    }, []);
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -52,18 +68,19 @@ export const useChatData = (socketMessages, setSocketMessages) => {
                 setFilteredUsers([]);
             }
         } catch (err) {
+            if (handleSubscriptionError(err)) return;
             console.error("Failed to fetch conversations", err);
             // Don't show error toast for empty chat list, just empty state
         } finally {
             setLoadingUsers(false);
         }
-    }, [currentUserId]);
+    }, [currentUserId, handleSubscriptionError]);
 
     const searchGlobalUsers = useCallback(async (query) => {
         if (!query) return [];
         console.log("query", query);
         try {
-            const response = await api.get(`/user/search/?search=${query}`);
+            const response = await api.get(`/user/?search=${query}`);
             if (response.data && Array.isArray(response.data.results)) {
                 return response.data.results.filter(u => u.id !== currentUserId);
             } else if (Array.isArray(response.data)) {
@@ -75,6 +92,26 @@ export const useChatData = (socketMessages, setSocketMessages) => {
             return [];
         }
     }, [currentUserId]);
+
+    const normalizeMessage = useCallback((m) => {
+        const normalized = {
+            id: m.id ?? m.temp_id ?? `${Date.now()}-${Math.random()}`,
+            sender_id: m.sender_id ?? m.sender,
+            text: m.text ?? m.message ?? "",
+            created_at: m.created_at ?? new Date().toISOString(),
+            file: m.file ?? null,
+            is_updated: Boolean(m.is_updated),
+        };
+        return normalized;
+    }, []);
+
+    const mergeMessages = useCallback((prev, incoming, { prepend = false } = {}) => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const uniqueIncoming = incoming.filter(m => !existingIds.has(m.id));
+        const merged = prepend ? [...uniqueIncoming, ...prev] : [...prev, ...uniqueIncoming];
+        merged.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        return merged;
+    }, []);
 
     const fetchMessages = useCallback(async (urlOrId, isPagination = false) => {
         try {
@@ -95,56 +132,45 @@ export const useChatData = (socketMessages, setSocketMessages) => {
             const res = await api.get(url);
 
             if (res.data && Array.isArray(res.data.results)) {
-                const sortedMessages = [...res.data.results].sort((a, b) =>
+                const normalized = res.data.results.map(normalizeMessage);
+                const sortedMessages = [...normalized].sort((a, b) =>
                     new Date(a.created_at) - new Date(b.created_at)
                 );
 
                 if (isPagination) {
-                    setMessages(prev => {
-                        const existingIds = new Set(prev.map(m => m.id));
-                        const uniqueNew = sortedMessages.filter(m => !existingIds.has(m.id));
-                        return [...uniqueNew, ...prev];
-                    });
+                    setMessages(prev => mergeMessages(prev, sortedMessages, { prepend: true }));
                 } else {
                     setMessages(sortedMessages);
                     isInitialLoadRef.current = true;
                 }
                 setNextPageUrl(res.data.next);
+                setHasMore(Boolean(res.data.next));
             }
         } catch (err) {
+            if (handleSubscriptionError(err)) return;
             console.error("Failed to fetch messages", err);
             toast.error("Could not load messages.");
         } finally {
             setLoadingMessages(false);
             setPaginationLoading(false);
         }
-    }, []);
+    }, [mergeMessages, normalizeMessage, handleSubscriptionError]);
 
     useEffect(() => {
         if (socketMessages.length > 0) {
-            const newMessages = socketMessages.map(data => ({
-                id: data.id || Date.now() + Math.random(),
-                sender_id: data.sender_id || data.sender,
-                text: data.text || data.message,
-                created_at: data.created_at || new Date().toISOString(),
-                file: data.file,
-                is_updated: data.is_updated
-            }));
-
-            setMessages(prev => {
-                const uniqueNewMessages = newMessages.filter(nm => !prev.some(pm => pm.id === nm.id));
-                if (uniqueNewMessages.length === 0) return prev;
-                return [...prev, ...uniqueNewMessages];
-            });
+            const newMessages = socketMessages.map(normalizeMessage);
+            setMessages(prev => mergeMessages(prev, newMessages, { prepend: false }));
 
             setSocketMessages([]);
         }
-    }, [socketMessages, setSocketMessages]);
+    }, [socketMessages, setSocketMessages, mergeMessages, normalizeMessage]);
 
     const handleUserSelect = useCallback(async (user) => {
         setMessages([]);
         setNextPageUrl(null);
+        setHasMore(false);
         setConversationId(null);
+        isInitialLoadRef.current = true;
 
         try {
             const res = await api.post("/chat/conversation/", { user_id: user.id });
@@ -153,17 +179,18 @@ export const useChatData = (socketMessages, setSocketMessages) => {
             await fetchMessages(convId);
             return convId;
         } catch (err) {
+            if (handleSubscriptionError(err)) return null;
             console.error("Init conversation failed", err);
             toast.error("Failed to start chat");
             return null;
         }
-    }, [fetchMessages]);
+    }, [fetchMessages, handleSubscriptionError]);
 
     const handleLoadMore = useCallback(() => {
-        if (nextPageUrl && !paginationLoading) {
+        if (nextPageUrl && hasMore && !paginationLoading) {
             fetchMessages(nextPageUrl, true);
         }
-    }, [nextPageUrl, paginationLoading, fetchMessages]);
+    }, [nextPageUrl, hasMore, paginationLoading, fetchMessages]);
 
     const updateMessage = useCallback(async (msgId, text) => {
         try {
@@ -201,17 +228,18 @@ export const useChatData = (socketMessages, setSocketMessages) => {
             });
 
             if (res.data && res.data.id) {
-                setMessages(prev => [...prev, res.data]);
+                setMessages(prev => mergeMessages(prev, [normalizeMessage(res.data)], { prepend: false }));
             }
             return true;
         } catch (err) {
+            if (handleSubscriptionError(err)) return false;
             console.error("File upload failed", err);
             toast.error("Failed to upload file");
             return false;
         } finally {
             setUploading(false);
         }
-    }, [conversationId]);
+    }, [conversationId, mergeMessages, normalizeMessage, handleSubscriptionError]);
 
     const deleteConversations = useCallback(async (ids) => {
         try {
@@ -234,11 +262,12 @@ export const useChatData = (socketMessages, setSocketMessages) => {
             toast.success("Conversations deleted");
             return true;
         } catch (err) {
+            if (handleSubscriptionError(err)) return false;
             console.error("Delete conversations failed", err);
             toast.error("Failed to delete conversations");
             return false;
         }
-    }, [conversationId]);
+    }, [conversationId, handleSubscriptionError]);
 
     return {
         users,
@@ -262,6 +291,9 @@ export const useChatData = (socketMessages, setSocketMessages) => {
         isInitialLoadRef,
         searchGlobalUsers,
         deleteConversations,
-        setLoadingUsers
+        setLoadingUsers,
+        hasMore,
+        subscriptionBlocked,
+        subscriptionMessage
     };
 };

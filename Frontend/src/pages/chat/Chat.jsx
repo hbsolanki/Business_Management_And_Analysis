@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import { tokenService } from "@/services/tokenService";
+import toast from "react-hot-toast";
 
 // Feature Imports
 import ChatSidebar from "@/features/chat/components/ChatSidebar";
@@ -49,7 +50,9 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
         uploading,
         prevScrollHeightRef,
         isInitialLoadRef,
-        deleteConversations
+        deleteConversations,
+        subscriptionBlocked,
+        subscriptionMessage
     } = useChatData(socketMessagesBuffer, setSocketMessagesBuffer);
 
     // Determine otherUserId from props, params, or search query
@@ -122,7 +125,10 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
 
         setSelectedUser(user);
         setMobileShowChat(true);
-        await handleUserSelect(user);
+
+        if (!subscriptionBlocked) {
+            await handleUserSelect(user);
+        }
     };
 
     const handleBackToSidebar = () => {
@@ -132,6 +138,10 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
     };
 
     const handleSendMessage = async (text) => {
+        if (subscriptionBlocked) {
+            toast.error("Feature not in your plan");
+            return false;
+        }
         const sent = sendMessage(text);
         if (!sent) {
             return false;
@@ -140,16 +150,24 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
     };
 
     const handleFileUploadWrapper = async (e) => {
+        if (subscriptionBlocked) {
+            toast.error("Feature not in your plan");
+            return;
+        }
         const file = e.target.files[0];
         if (!file) return;
         await uploadFile(file);
     };
 
+
+
     return (
-        <div className="flex flex-col h-screen bg-[#f8f9fc] overflow-hidden font-sans">
+        <div className="flex flex-col h-screen bg-slate-50 overflow-hidden font-sans relative">
             <ProtectedHeader />
 
-            <div className="flex-1 flex overflow-hidden w-full max-w-[1600px] mx-auto p-0 md:p-4 lg:p-6 gap-6">
+
+
+            <div className={`flex-1 flex overflow-hidden w-full max-w-[1600px] mx-auto p-0 md:p-4 lg:p-6 gap-6`}>
 
                 <ChatSidebar
                     users={users}
@@ -164,10 +182,7 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
                     onDeleteConversations={deleteConversations}
                 />
 
-                <div className={`
-                    ${mobileShowChat ? 'flex' : 'hidden md:flex'} 
-                    flex-col flex-1 bg-white md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative
-                `}>
+                <div className={` ${mobileShowChat ? 'flex' : 'hidden md:flex'} flex-col flex-1 bg-white border border-slate-200 md:rounded-2xl overflow-hidden relative shadow-sm `}>
                     <ChatWindow
                         selectedUser={selectedUser}
                         messages={messages}
@@ -180,6 +195,7 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
                         onFileUpload={handleFileUploadWrapper}
                         onEditMessage={updateMessage}
                         onDeleteMessage={deleteMessage}
+                        uploading={uploading}
                         loadingMore={paginationLoading || loadingMessages}
                         onLoadMore={handleLoadMore}
                         prevScrollHeightRef={prevScrollHeightRef}
@@ -203,7 +219,8 @@ const Chat = ({ conversationId: propConversationId, otherUserId: propOtherUserId
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
                     background-color: #cbd5e1;
-                }
+                    border-radius: 20px;
+                }                }
                 @keyframes bounce-slow {
                     0%, 100% { transform: translateY(-5%); }
                     50% { transform: translateY(5%); }

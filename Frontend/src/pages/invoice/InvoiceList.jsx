@@ -2,10 +2,7 @@ import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react"
 import { Link } from "react-router-dom";
 import { invoiceService } from "@/features/invoice/services/invoiceService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
-import {
-    FaFileInvoice,
-    FaPlus,
-} from "react-icons/fa";
+import { FaFileInvoice, FaPlus, FaTimes, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaCreditCard, FaBox } from "react-icons/fa";
 
 // Lazy Load the Card Component
 const InvoiceCard = lazy(() => import("./components/InvoiceCard"));
@@ -134,29 +131,52 @@ export default function InvoiceList() {
         });
     };
 
+    /* ---------------- View Modal ---------------- */
+    const [viewModal, setViewModal] = useState({
+        isOpen: false,
+        loading: false,
+        error: null,
+        data: null,
+    });
+
+    const openInvoiceView = async (invoice) => {
+        if (!invoice?.id) return;
+        setViewModal({ isOpen: true, loading: true, error: null, data: null });
+        try {
+            const res = await invoiceService.getById(invoice.id);
+            setViewModal({ isOpen: true, loading: false, error: null, data: res.data });
+        } catch {
+            setViewModal({ isOpen: true, loading: false, error: "Failed to load invoice", data: null });
+        }
+    };
+
+    const closeInvoiceView = () => {
+        setViewModal({ isOpen: false, loading: false, error: null, data: null });
+    };
+
     /* ---------------- UI ---------------- */
 
     return (
         <>
             <ProtectedHeader />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 bg-gray-50/50 min-h-screen">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 min-h-screen bg-transparent">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20 text-white">
+                        <div className="p-3 bg-slate-900 rounded-xl shadow-sm text-white">
                             <FaFileInvoice className="text-2xl" />
                         </div>
                         <div>
                             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                                 Invoice Management
                             </h2>
-                            <p className="text-gray-500 font-medium">Track and manage your billing efficiently</p>
+                            <p className="text-slate-500 font-medium">Track and manage your billing efficiently</p>
                         </div>
                     </div>
 
                     <Link
                         to="/invoice/new"
-                        className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5"
+                        className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-sm transition-all"
                     >
                         <FaPlus className="h-4 w-4" />
                         Create New Invoice
@@ -166,20 +186,20 @@ export default function InvoiceList() {
 
 
                 {/* Filters */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-end">
+                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-wrap gap-4 items-end">
                     <div className="flex-1 min-w-[200px]">
-                        <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Search</label>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1 uppercase tracking-wider">Search</label>
                         <input
                             type="text"
                             placeholder="Search by mobile number..."
                             value={mobileInput}
                             onChange={(e) => setMobileInput(e.target.value)}
-                            className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                            className="w-full bg-white rounded-xl px-4 py-2.5 text-sm border border-slate-200 focus:ring-2 focus:ring-slate-200 focus:border-slate-400 outline-none transition-all"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">From Date</label>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1 uppercase tracking-wider">From Date</label>
                         <input
                             type="date"
                             max={today}
@@ -188,12 +208,12 @@ export default function InvoiceList() {
                                 setFromDateInput(e.target.value);
                                 setToDateInput("");
                             }}
-                            className="border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                            className="bg-white rounded-xl px-4 py-2.5 text-sm border border-slate-200 focus:ring-2 focus:ring-slate-200 focus:border-slate-400 outline-none transition-all"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1 uppercase tracking-wider">To Date</label>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1 uppercase tracking-wider">To Date</label>
                         <input
                             type="date"
                             min={fromDateInput || undefined}
@@ -201,36 +221,36 @@ export default function InvoiceList() {
                             disabled={!fromDateInput}
                             value={toDateInput}
                             onChange={(e) => setToDateInput(e.target.value)}
-                            className="border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm disabled:bg-gray-100 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                            className="bg-white rounded-xl px-4 py-2.5 text-sm border border-slate-200 disabled:bg-slate-50 focus:ring-2 focus:ring-slate-200 focus:border-slate-400 outline-none transition-all"
                         />
                     </div>
 
                     <button
                         onClick={handleGo}
-                        className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200"
+                        className="bg-slate-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
                     >
                         Apply Filters
                     </button>
                 </div>
 
                 {/* Error */}
-                {error && <div className="text-red-600 bg-red-50 p-4 rounded-xl text-center font-medium">{error}</div>}
+                {error && <div className="text-red-700 bg-red-50 border border-red-200 p-4 rounded-xl text-center font-medium">{error}</div>}
 
                 {/* Invoices List */}
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {invoices.length === 0 && !loading && (
-                        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 mb-4">
-                                <FaFileInvoice className="text-gray-400 text-2xl" />
+                        <div className="bg-white border border-dashed border-slate-200 text-center py-20 rounded-3xl">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 mb-4">
+                                <FaFileInvoice className="text-slate-400 text-2xl" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900">No invoices found</h3>
-                            <p className="text-gray-500">Create a new invoice to get started</p>
+                            <h3 className="text-lg font-semibold text-slate-900">No invoices found</h3>
+                            <p className="text-slate-500">Create a new invoice to get started</p>
                         </div>
                     )}
 
                     <Suspense fallback={
                         <div className="text-center py-10">
-                            <div className="animate-pulse bg-gray-200 h-32 w-full rounded-2xl"></div>
+                            <div className="animate-pulse bg-slate-100 h-32 w-full rounded-2xl"></div>
                         </div>
                     }>
                         {invoices.map((invoice) => (
@@ -238,6 +258,7 @@ export default function InvoiceList() {
                                 key={invoice.id}
                                 invoice={invoice}
                                 onPayClick={handlePayClick}
+                                onViewClick={openInvoiceView}
                             />
                         ))}
                     </Suspense>
@@ -246,13 +267,13 @@ export default function InvoiceList() {
                 {/* Footer Loading State */}
                 {loading && (
                     <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
                     </div>
                 )}
 
                 {!hasMore && invoices.length > 0 && (
                     <div className="flex justify-center py-8">
-                        <span className="px-4 py-2 bg-gray-100 rounded-full text-xs font-bold text-gray-400 uppercase tracking-widest">End of list</span>
+                        <span className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-500 uppercase tracking-widest">End of list</span>
                     </div>
                 )}
             </div>
@@ -266,6 +287,117 @@ export default function InvoiceList() {
                     amount={paymentModal.amount}
                 />
             </Suspense>
+
+            {viewModal.isOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+                    <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900">Invoice Details</h3>
+                                <p className="text-xs text-slate-500">Full information from the invoice record</p>
+                            </div>
+                            <button
+                                onClick={closeInvoiceView}
+                                className="h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100"
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-5">
+                            {viewModal.loading && (
+                                <div className="py-10 text-center text-slate-500">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-3"></div>
+                                    Loading invoice...
+                                </div>
+                            )}
+
+                            {viewModal.error && (
+                                <div className="text-red-700 bg-red-50 border border-red-200 p-4 rounded-xl text-center font-medium">
+                                    {viewModal.error}
+                                </div>
+                            )}
+
+                            {viewModal.data && (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="border border-slate-200 rounded-xl p-4">
+                                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                                <FaUser className="text-slate-500" /> Customer
+                                            </h4>
+                                            <div className="space-y-2 text-sm text-slate-700">
+                                                <div className="font-semibold text-slate-900">{viewModal.data.customer?.name || "N/A"}</div>
+                                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                    <FaPhone size={10} /> {viewModal.data.customer?.mobile_number || "N/A"}
+                                                </div>
+                                                {viewModal.data.customer?.email && (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                        <FaEnvelope size={10} /> {viewModal.data.customer?.email}
+                                                    </div>
+                                                )}
+                                                {viewModal.data.customer?.address && (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                        <FaMapMarkerAlt size={10} /> {viewModal.data.customer?.address}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="border border-slate-200 rounded-xl p-4">
+                                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                                <FaCalendarAlt className="text-slate-500" /> Invoice
+                                            </h4>
+                                            <div className="space-y-2 text-sm text-slate-700">
+                                                <div className="text-xs text-slate-500">Invoice ID</div>
+                                                <div className="font-mono font-semibold text-slate-900">#{viewModal.data.id}</div>
+                                                <div className="text-xs text-slate-500">Created By</div>
+                                                <div className="font-semibold text-slate-900">{viewModal.data.created_by || "N/A"}</div>
+                                                <div className="text-xs text-slate-500">Created At</div>
+                                                <div>{viewModal.data.created_at ? new Date(viewModal.data.created_at).toLocaleString() : "N/A"}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-slate-200 rounded-xl p-4">
+                                        <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                            <FaBox className="text-slate-500" /> Items
+                                        </h4>
+                                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                            {(viewModal.data.invoice_items || []).map((item) => (
+                                                <div key={item.id} className="flex items-center justify-between text-sm border-b border-slate-100 pb-2">
+                                                    <div>
+                                                        <div className="font-semibold text-slate-900">{item.product?.name || "Product"}</div>
+                                                        <div className="text-xs text-slate-500">Qty: {item.quantity}</div>
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                        {item.total_price ? `₹${item.total_price}` : ""}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                                        <div>
+                                            <div className="text-xs text-slate-500">Payment Mode</div>
+                                            <div className="font-semibold text-slate-900 flex items-center gap-2">
+                                                <FaCreditCard className="text-slate-500" />
+                                                {viewModal.data.payment_mode || "N/A"}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs text-slate-500">Total Amount</div>
+                                            <div className="text-lg font-bold text-slate-900">
+                                                {viewModal.data.total_amount ? `₹${viewModal.data.total_amount}` : "N/A"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

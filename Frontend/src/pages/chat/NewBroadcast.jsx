@@ -9,6 +9,7 @@ import api from "@/services/api";
 import { toast } from "react-hot-toast";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import { tokenService } from "@/services/tokenService";
+import SubscriptionNotice from "@/components/shared/SubscriptionNotice";
 
 export default function NewBroadcast() {
     const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function NewBroadcast() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [subscriptionError, setSubscriptionError] = useState("");
 
     // Form State
     const [groupName, setGroupName] = useState("");
@@ -51,6 +53,11 @@ export default function NewBroadcast() {
                 setSelectedUserIds(userIds);
             }
         } catch (err) {
+            const detail = err?.response?.data?.detail || err?.response?.data?.message;
+            if (err?.response?.status === 403 && typeof detail === "string" && detail.toLowerCase().includes("subscription")) {
+                setSubscriptionError(detail);
+                return;
+            }
             console.error("Failed to fetch group details", err);
             toast.error("Failed to load group details");
             navigate("/chat/broadcast");
@@ -60,10 +67,15 @@ export default function NewBroadcast() {
     const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await api.get("/business/users/");
+            const res = await api.get("/user/");
             const currentUserId = Number(tokenService.getId());
             setUsers((res.data || []).filter(u => u.id !== currentUserId));
         } catch (err) {
+            const detail = err?.response?.data?.detail || err?.response?.data?.message;
+            if (err?.response?.status === 403 && typeof detail === "string" && detail.toLowerCase().includes("subscription")) {
+                setSubscriptionError(detail);
+                return;
+            }
             console.error("Failed to fetch users", err);
             toast.error("Failed to load users");
         } finally {
@@ -138,8 +150,13 @@ export default function NewBroadcast() {
                 await api.post("/chat/broadcast/", payload);
                 toast.success("Group created successfully!");
             }
-            navigate("/chat/broadcast");
+            navigate(-1);
         } catch (err) {
+            const detail = err?.response?.data?.detail || err?.response?.data?.message;
+            if (err?.response?.status === 403 && typeof detail === "string" && detail.toLowerCase().includes("subscription")) {
+                setSubscriptionError(detail);
+                return;
+            }
             console.error("Failed to save group", err);
             toast.error("Failed to save group");
         } finally {
@@ -166,8 +183,24 @@ export default function NewBroadcast() {
         return `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` || user.username?.[0]?.toUpperCase() || "?";
     };
 
+    if (subscriptionError) {
+        return (
+            <div className="min-h-screen bg-slate-50">
+                <ProtectedHeader />
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                    <SubscriptionNotice
+                        title={subscriptionError}
+                        message="Broadcast groups are available only with an active plan. Please choose a plan to continue."
+                        ctaLabel="Choose Plan"
+                        ctaTo="/subscriptions"
+                    />
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-gray-50/50 flex flex-col font-sans text-slate-800 relative">
+        <div className="min-h-screen flex flex-col font-sans text-slate-800 relative bg-slate-50">
             <ProtectedHeader />
 
             <div className="flex-1 w-full max-w-[1400px] mx-auto p-4 lg:p-8">
@@ -176,12 +209,12 @@ export default function NewBroadcast() {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate("/chat/broadcast")}
-                            className="w-10 h-10 flex items-center justify-center bg-white rounded-xl text-slate-400 shadow-sm border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-200 transition-all active:scale-95"
+                            className="bg-white border border-slate-200 w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all active:scale-95"
                         >
                             <FaArrowLeft />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
                                 {isEditMode ? "Edit Broadcast Group" : "Create New Broadcast"}
                             </h1>
                             <p className="text-sm text-slate-500">
@@ -192,7 +225,7 @@ export default function NewBroadcast() {
                     <div className="flex flex-wrap gap-3">
                         <button
                             onClick={() => navigate("/chat/broadcast")}
-                            className="hidden sm:block px-6 py-2.5 text-slate-500 font-semibold hover:bg-slate-100 rounded-xl transition-all"
+                            className="hidden sm:block px-6 py-2.5 text-slate-500 font-semibold hover:bg-slate-50 rounded-xl transition-all"
                         >
                             Cancel
                         </button>
@@ -200,7 +233,7 @@ export default function NewBroadcast() {
                         {isEditMode && (
                             <button
                                 onClick={() => setShowDeleteConfirm(true)}
-                                className="px-5 py-2.5 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 rounded-xl font-bold transition-all flex items-center gap-2"
+                                className="px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-xl font-semibold transition-all flex items-center gap-2"
                             >
                                 <FaTrash size={14} /> <span className="hidden sm:inline">Delete</span>
                             </button>
@@ -209,10 +242,10 @@ export default function NewBroadcast() {
                         <button
                             onClick={handleSaveGroup}
                             disabled={saving}
-                            className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5
+                            className={`px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-sm
                                 ${saving
-                                    ? 'bg-indigo-400 cursor-wait'
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                                    ? 'bg-slate-400 cursor-wait text-white'
+                                    : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                         >
                             {saving ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -229,8 +262,8 @@ export default function NewBroadcast() {
                     {/* Left Column: Configuration */}
                     <div className="lg:col-span-4 flex flex-col gap-6 sticky top-24">
                         {/* Group Name Card */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 animate-fade-in-up">
-                            <label className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-4">
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 animate-fade-in-up shadow-sm">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider mb-4">
                                 <FaLayerGroup /> Step 1: Group Name
                             </label>
 
@@ -241,33 +274,30 @@ export default function NewBroadcast() {
                                     value={groupName}
                                     onChange={(e) => setGroupName(e.target.value)}
                                     placeholder="e.g. Sales Team Announcements"
-                                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:bg-white outline-none font-semibold text-lg transition-all placeholder:text-slate-300"
+                                    className="w-full pl-4 input-icon-right py-4 bg-white border border-slate-200 rounded-xl focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none font-semibold text-lg transition-all placeholder:text-slate-300"
                                     autoFocus={!isEditMode}
                                 />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-focus-within:text-indigo-500 transition-colors">
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none group-focus-within:text-slate-500 transition-colors">
                                     <FaPlus size={14} />
                                 </div>
                             </div>
                         </div>
 
                         {/* Summary Card */}
-                        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl shadow-xl shadow-indigo-200 p-6 text-white animate-fade-in-up delay-100 relative overflow-hidden">
-                            {/* Abstract Shapes */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-5 -mb-5"></div>
+                        <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 text-slate-900 animate-fade-in-up delay-100 relative overflow-hidden">
 
-                            <label className="flex items-center gap-2 text-xs font-bold text-indigo-100 uppercase tracking-wider mb-6 relative z-10">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-6 relative z-10">
                                 <FaCheckCircle /> Overview
                             </label>
 
                             <div className="flex items-end gap-2 mb-2 relative z-10">
-                                <span className="text-5xl font-bold">{selectedUserIds.size}</span>
-                                <span className="text-lg font-medium text-indigo-100 mb-1.5">users selected</span>
+                                <span className="text-5xl font-semibold text-slate-900">{selectedUserIds.size}</span>
+                                <span className="text-lg font-medium text-slate-500 mb-1.5">users selected</span>
                             </div>
 
-                            <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-6 relative z-10">
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-6 relative z-10">
                                 <div
-                                    className="h-full bg-white/90 transition-all duration-500 ease-out rounded-full"
+                                    className="h-full bg-slate-900 transition-all duration-500 ease-out rounded-full"
                                     style={{ width: `${Math.min((selectedUserIds.size / (users.length || 1)) * 100, 100)}%` }}
                                 ></div>
                             </div>
@@ -279,26 +309,26 @@ export default function NewBroadcast() {
                                             const u = users.find(user => user.id === id);
                                             if (!u) return null;
                                             return (
-                                                <span key={id} className="text-xs font-semibold bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg transition-colors cursor-default">
+                                                <span key={id} className="text-xs font-semibold bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg transition-colors cursor-default border border-slate-200">
                                                     {u.first_name}
                                                 </span>
                                             );
                                         })}
                                         {selectedUserIds.size > 5 && (
-                                            <span className="text-xs font-semibold bg-white/10 px-2 py-1 rounded-lg">
+                                            <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
                                                 +{selectedUserIds.size - 5} more
                                             </span>
                                         )}
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-indigo-100 italic">No users selected yet.</p>
+                                    <p className="text-sm text-slate-500 italic">No users selected yet.</p>
                                 )}
                             </div>
 
                             <button
                                 onClick={clearSelection}
                                 disabled={selectedUserIds.size === 0}
-                                className="mt-8 w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative z-10"
+                                className="mt-8 w-full py-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative z-10 border border-slate-200"
                             >
                                 <FaTimesCircle /> Clear Selection
                             </button>
@@ -307,14 +337,14 @@ export default function NewBroadcast() {
 
                     {/* Right Column: User Selection */}
                     <div className="lg:col-span-8 flex flex-col h-full min-h-[600px] animate-fade-in-up delay-200">
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+                        <div className="bg-white border border-slate-200 rounded-3xl flex flex-col h-full overflow-hidden shadow-sm">
                             {/* Toolbar */}
-                            <div className="p-5 border-b border-slate-50 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white z-10">
-                                <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                            <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50 z-10">
+                                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 uppercase tracking-wider">
                                     <FaUsers /> Step 2: Select Members
                                 </div>
 
-                                <div className="flex bg-slate-100 p-1 rounded-xl">
+                                <div className="flex bg-white p-1 rounded-xl border border-slate-200">
                                     {[
                                         { id: 'ALL', label: 'All', icon: FaUsers },
                                         { id: 'EMPLOYEE', label: 'Employees', icon: FaUser },
@@ -323,11 +353,7 @@ export default function NewBroadcast() {
                                         <button
                                             key={tab.id}
                                             onClick={() => setFilterRole(tab.id)}
-                                            className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all
-                                                ${filterRole === tab.id
-                                                    ? 'bg-white text-indigo-600 shadow-sm'
-                                                    : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
+                                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${filterRole === tab.id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
                                             <tab.icon size={12} /> {tab.label}
                                         </button>
                                     ))}
@@ -335,35 +361,35 @@ export default function NewBroadcast() {
                             </div>
 
                             {/* Search & Actions */}
-                            <div className="px-5 py-4 bg-slate-50/50 border-b border-slate-50 flex flex-col sm:flex-row gap-4">
+                            <div className="px-5 py-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row gap-4">
                                 <div className="relative flex-1 group">
-                                    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
                                     <input
                                         type="text"
                                         placeholder="Search by name or username..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none text-sm font-medium transition-all"
+                                        className="w-full input-icon-left pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-200 focus:border-slate-400 outline-none text-sm font-medium transition-all bg-white"
                                     />
                                 </div>
                                 <button
                                     onClick={selectAllFiltered}
-                                    className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
+                                    className="bg-white border border-slate-200 px-4 py-2.5 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0"
                                 >
-                                    <FaCheckCircle className="text-indigo-500" /> Select All {filterRole !== 'ALL' ? filterRole.toLowerCase() + 's' : ''}
+                                    <FaCheckCircle className="text-slate-700" /> Select All {filterRole !== 'ALL' ? filterRole.toLowerCase() + 's' : ''}
                                 </button>
                             </div>
 
                             {/* User Grid */}
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 bg-slate-50/30">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 bg-white">
                                 {loading ? (
                                     <div className="flex flex-col items-center justify-center h-64 gap-3">
-                                        <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                                        <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
                                         <p className="text-sm font-medium text-slate-400">Loading users...</p>
                                     </div>
                                 ) : filteredUsers.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-64 gap-4 text-center opacity-70">
-                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
+                                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 border border-slate-200">
                                             <FaFilter size={24} />
                                         </div>
                                         <div>
@@ -379,40 +405,22 @@ export default function NewBroadcast() {
                                                 <div
                                                     key={user.id}
                                                     onClick={() => toggleUser(user.id)}
-                                                    className={`
-                                                        p-4 rounded-2xl border flex items-center gap-4 cursor-pointer transition-all select-none relative overflow-hidden group
-                                                        ${isSelected
-                                                            ? 'bg-indigo-50 border-indigo-500 shadow-md ring-1 ring-indigo-500 transform scale-[1.02]'
-                                                            : 'bg-white border-transparent shadow-sm hover:shadow-md border-slate-100 hover:border-indigo-200'}
-                                                    `}
-                                                >
+                                                    className={`bg-white p-4 rounded-2xl flex items-center gap-4 cursor-pointer transition-all select-none relative overflow-hidden group border ${isSelected ? 'bg-slate-100 border-slate-300 ring-1 ring-slate-200 transform scale-[1.01]' : 'border-slate-200 hover:bg-slate-50'} `}>
                                                     {/* Selection Indicator */}
-                                                    <div className={`
-                                                        w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 shrink-0 relative z-10
-                                                        ${isSelected
-                                                            ? 'bg-indigo-600 border-indigo-600 scale-110'
-                                                            : 'bg-slate-50 border-slate-200 group-hover:border-indigo-300'}
-                                                    `}>
+                                                    <div className={` w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 shrink-0 relative z-10 ${isSelected ? 'bg-slate-900 border-slate-900 scale-110' : 'bg-white border-slate-200 group-hover:border-slate-400'} `}>
                                                         <FaCheck size={10} className={`text-white transition-transform duration-200 ${isSelected ? 'scale-100' : 'scale-0'}`} />
                                                     </div>
 
                                                     <div className="flex items-center gap-3 min-w-0 z-10 flex-1">
-                                                        <div className={`
-                                                            w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm transition-colors
-                                                            ${isSelected ? 'bg-white text-indigo-700' : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500'}
-                                                        `}>
+                                                        <div className={` w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'} `}>
                                                             {getInitials(user)}
                                                         </div>
                                                         <div className="min-w-0 flex-1">
-                                                            <h4 className={`text-sm font-bold truncate transition-colors ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>
+                                                            <h4 className={`text-sm font-semibold truncate transition-colors ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                                                                 {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
                                                             </h4>
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded capitalize flex items-center gap-1
-                                                                    ${user.role === 'MANAGER'
-                                                                        ? 'bg-violet-100 text-violet-700'
-                                                                        : 'bg-blue-50 text-blue-600'}
-                                                                `}>
+                                                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize flex items-center gap-1 border border-slate-200 bg-slate-100 text-slate-700`}>
                                                                     {user.role === 'MANAGER' ? <FaUserTie size={8} /> : <FaUser size={8} />}
                                                                     {user.role || 'User'}
                                                                 </span>
@@ -427,7 +435,7 @@ export default function NewBroadcast() {
                             </div>
 
                             {/* Footer stats */}
-                            <div className="px-5 py-3 border-t border-slate-50 bg-slate-50 text-xs text-slate-400 font-medium flex justify-between">
+                            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 font-medium flex justify-between">
                                 <span>Showing {filteredUsers.length} users</span>
                                 <span>Total: {users.length}</span>
                             </div>
@@ -440,12 +448,12 @@ export default function NewBroadcast() {
             {/* DELETE CONFIRMATION MODAL */}
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in-down p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-all">
+                    <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-all">
                         <div className="mb-6 flex flex-col items-center text-center">
-                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4 border border-red-200">
                                 <FaExclamationTriangle size={30} />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Group?</h3>
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Delete Group?</h3>
                             <p className="text-slate-500 text-sm leading-relaxed">
                                 Are you sure you want to delete <span className="font-bold text-slate-800">"{groupName}"</span>?
                                 This action cannot be undone.
@@ -454,14 +462,14 @@ export default function NewBroadcast() {
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
-                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors"
+                                className="flex-1 py-3 bg-white hover:bg-slate-100 text-slate-600 rounded-xl font-semibold transition-colors border border-slate-200"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleDeleteGroup}
                                 disabled={deleting}
-                                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-colors flex items-center justify-center gap-2"
+                                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold shadow-sm transition-colors flex items-center justify-center gap-2"
                             >
                                 {deleting ? "Deleting..." : "Yes, Delete"}
                             </button>

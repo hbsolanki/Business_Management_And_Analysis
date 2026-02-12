@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { managerService } from "@/features/manager/services/managerService";
 import OwnerHeader from "@/components/layout/OwnerHeader";
-import { FaUser, FaEnvelope, FaPhone, FaIdCard, FaCamera, FaSave, FaArrowLeft } from "react-icons/fa";
+import BackButton from "@/components/shared/BackButton";
+import { FaUser, FaEnvelope, FaPhone, FaIdCard, FaCamera, FaSave, FaMoneyBillWave } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
 export default function EditManager() {
@@ -15,6 +16,8 @@ export default function EditManager() {
         email: "",
         username: "",
         mobile_number: "",
+        salary: "",
+        role: "",
         password: "",
         description: "",
         image: null,
@@ -24,6 +27,7 @@ export default function EditManager() {
     const originalData = useRef({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [roleConfirm, setRoleConfirm] = useState({ open: false, nextRole: "" });
 
     useEffect(() => {
         const fetchManager = async () => {
@@ -37,6 +41,8 @@ export default function EditManager() {
                     email: data.email || "",
                     username: data.username || "",
                     mobile_number: data.mobile_number || "",
+                    salary: data.salary !== undefined && data.salary !== null ? String(data.salary) : "",
+                    role: data.role || "MANAGER",
                     description: data.description || "",
                 };
 
@@ -80,30 +86,40 @@ export default function EditManager() {
         }
     };
 
+    const roleRank = { EMPLOYEE: 1, MANAGER: 2, OWNER: 3 };
+    const shouldConfirmRoleChange = (nextRole) => {
+        const currentRole = formData.role || "MANAGER";
+        return (roleRank[nextRole] || 0) > (roleRank[currentRole] || 0);
+    };
+
+    const handleRoleChange = (nextRole) => {
+        if (shouldConfirmRoleChange(nextRole)) {
+            setRoleConfirm({ open: true, nextRole });
+            return;
+        }
+        setFormData((prev) => ({ ...prev, role: nextRole }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
 
-        const payload = new FormData();
-        const fieldsToCheck = ["first_name", "last_name", "email", "username", "mobile_number", "description"];
-        let hasChanges = false;
+        const normalize = (value) => (value === null || value === undefined ? "" : String(value));
+        const fieldsToCheck = ["first_name", "last_name", "email", "username", "mobile_number", "salary", "role", "description"];
+        const updates = {};
 
         fieldsToCheck.forEach((field) => {
-            if (formData[field] !== originalData.current[field]) {
-                payload.append(field, formData[field]);
-                hasChanges = true;
+            if (normalize(formData[field]) !== normalize(originalData.current[field])) {
+                updates[field] = formData[field];
             }
         });
 
         if (formData.password) {
-            payload.append("password", formData.password);
-            hasChanges = true;
+            updates.password = formData.password;
         }
 
-        if (formData.image) {
-            payload.append("profile_picture", formData.image);
-            hasChanges = true;
-        }
+        const hasFile = Boolean(formData.image);
+        const hasChanges = hasFile || Object.keys(updates).length > 0;
 
         if (!hasChanges) {
             toast("No changes to save", { icon: "ℹ️" });
@@ -111,10 +127,19 @@ export default function EditManager() {
             return;
         }
 
+        let payload = updates;
+        if (hasFile) {
+            payload = new FormData();
+            Object.entries(updates).forEach(([key, value]) => {
+                payload.append(key, value);
+            });
+            payload.append("profile_picture", formData.image);
+        }
+
         try {
             await managerService.update(id, payload);
             toast.success("Manager updated successfully");
-            navigate("/manager/manage");
+            navigate(-1);
         } catch (err) {
             console.error("Update failed", err);
             const errorMsg = err.response?.data?.detail || "Failed to update manager";
@@ -126,40 +151,46 @@ export default function EditManager() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+            <div className="min-h-screen flex items-center justify-center bg-transparent">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-12">
+        <div className="min-h-screen pb-12 bg-transparent">
             <OwnerHeader />
 
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="group flex items-center gap-2 text-gray-500 hover:text-blue-600 mb-6 transition-colors"
-                >
-                    <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
-                    <span>Back to Managers</span>
-                </button>
+            <main className="form-shell pt-8">
+                <div className="mb-6">
+                    <BackButton to="/manager/manage" label="Back to Managers" />
+                </div>
 
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                    {/* Header / Banner */}
-                    <div className="relative h-32 bg-gradient-to-r from-blue-600 to-indigo-700">
-                        <div className="absolute -bottom-12 left-8">
-                            <div className="relative">
+                <div className="form-card overflow-hidden">
+                    <div className="form-header">
+                        <div className="form-header-icon">
+                            <FaUser />
+                        </div>
+                        <div>
+                            <h1 className="form-title">Edit Manager</h1>
+                            <p className="form-subtitle">Update manager details and permissions.</p>
+                        </div>
+                    </div>
+
+                    <div className="form-section">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-8">
+                            <div className="relative h-20 w-20 rounded-2xl border border-slate-200 bg-slate-100 overflow-hidden">
                                 <img
                                     src={formData.imagePreview || "https://via.placeholder.com/150"}
                                     alt="Profile"
-                                    className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg bg-white"
+                                    className="h-full w-full object-cover"
                                 />
-                                <label
-                                    htmlFor="image-upload"
-                                    className="absolute -bottom-2 -right-2 p-2 bg-white text-blue-600 rounded-full shadow-md cursor-pointer hover:bg-gray-50 border border-gray-100 transition-all"
-                                >
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-semibold text-slate-900">Profile photo</p>
+                                <label htmlFor="image-upload" className="btn-secondary inline-flex items-center gap-2 cursor-pointer">
                                     <FaCamera size={14} />
+                                    Change photo
                                     <input
                                         id="image-upload"
                                         type="file"
@@ -169,17 +200,6 @@ export default function EditManager() {
                                         onChange={handleChange}
                                     />
                                 </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-16 pb-8 px-8">
-                        <div className="flex justify-between items-start mb-8">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">
-                                    {formData.first_name} {formData.last_name}
-                                </h1>
-                                <p className="text-gray-500 text-sm">Update manager details and permissions</p>
                             </div>
                         </div>
 
@@ -223,6 +243,43 @@ export default function EditManager() {
                                     icon={FaPhone}
                                 />
                                 <InputField
+                                    label="Salary"
+                                    name="salary"
+                                    type="number"
+                                    value={formData.salary}
+                                    onChange={handleChange}
+                                    icon={FaMoneyBillWave}
+                                    placeholder="Monthly salary"
+                                />
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                                    <div className="relative">
+                                        <FaUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <select
+                                            name="role"
+                                            value={formData.role}
+                                            onChange={(e) => handleRoleChange(e.target.value)}
+                                            className="block w-full rounded-xl text-sm input-icon-left pr-10 py-2.5 bg-white text-slate-700 border border-slate-200 shadow-sm appearance-none focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400 transition"
+                                        >
+                                            <option value="OWNER">Owner</option>
+                                            <option value="MANAGER">Manager</option>
+                                            <option value="EMPLOYEE">Employee</option>
+                                        </select>
+                                        <svg
+                                            className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                fillRule="evenodd"
+                                                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                                                clipRule="evenodd"
+                                            />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <InputField
                                     label="New Password"
                                     name="password"
                                     type="password"
@@ -241,41 +298,56 @@ export default function EditManager() {
                                     rows={3}
                                     value={formData.description}
                                     onChange={handleChange}
-                                    className="w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 resize-none bg-gray-50 focus:bg-white transition-all"
+                                    className="w-full rounded-xl resize-none"
                                     placeholder="Additional details about this manager..."
                                 />
                             </div>
 
                             {/* Action Bar */}
-                            <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={() => navigate(-1)}
-                                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-all"
-                                >
+                            <div className="form-actions">
+                                <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
                                     Cancel
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg shadow-blue-200 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
-                                >
-                                    {saving ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FaSave /> Save Changes
-                                        </>
-                                    )}
+                                <button type="submit" disabled={saving} className="btn-primary">
+                                    {saving ? "Saving..." : "Save Changes"}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             </main>
+
+            {roleConfirm.open && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+                    <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-900">Confirm Role Change</h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                You are about to set role to <span className="font-semibold text-slate-900">{roleConfirm.nextRole}</span>.
+                            </p>
+                        </div>
+                        <div className="p-6 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => setRoleConfirm({ open: false, nextRole: "" })}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-primary"
+                                onClick={() => {
+                                    setFormData((prev) => ({ ...prev, role: roleConfirm.nextRole }));
+                                    setRoleConfirm({ open: false, nextRole: "" });
+                                }}
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -288,14 +360,14 @@ function InputField({ label, name, type = "text", value, onChange, placeholder, 
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                     {Icon && <Icon size={16} />}
                 </div>
-                <input
-                    type={type}
-                    name={name}
-                    value={value}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    className="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-all shadow-sm"
-                />
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="block w-full input-icon-left pr-3 py-2.5 rounded-xl text-sm"
+        />
             </div>
         </div>
     );

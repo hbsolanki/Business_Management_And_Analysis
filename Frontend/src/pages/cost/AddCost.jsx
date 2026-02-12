@@ -1,11 +1,29 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaSave, FaLayerGroup } from "react-icons/fa";
+import {
+    FaSave,
+    FaLayerGroup,
+    FaBolt,
+    FaWifi,
+    FaTruck,
+    FaBullhorn,
+    FaTools,
+    FaUserTie,
+    FaShieldAlt,
+    FaMoneyBillWave,
+    FaUtensils,
+    FaStore,
+    FaCar,
+    FaHome,
+    FaBriefcase,
+    FaFileInvoiceDollar
+} from "react-icons/fa";
 import toast from "react-hot-toast";
 
 import costService from "@/features/cost/services/costService";
 import costCategoryService from "@/features/costCategory/services/costCategoryService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import BackButton from "@/components/shared/BackButton";
 
 export default function AddCost() {
     const navigate = useNavigate();
@@ -80,69 +98,143 @@ export default function AddCost() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+            <div className="min-h-screen flex items-center justify-center bg-transparent">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-900 border-t-transparent"></div>
             </div>
         );
     }
 
+    const totalAmount = Object.values(costs).reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const filledCount = Object.values(costs).filter((value) => Number(value) > 0).length;
+    const monthLabel = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+    const totalFormatted = new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+    }).format(totalAmount || 0);
+
+    const getCategoryIcon = (name = "") => {
+        const key = name.toLowerCase();
+        if (key.includes("rent") || key.includes("lease")) return FaHome;
+        if (key.includes("salary") || key.includes("payroll")) return FaUserTie;
+        if (key.includes("utility") || key.includes("electric") || key.includes("water")) return FaBolt;
+        if (key.includes("internet") || key.includes("wifi") || key.includes("network")) return FaWifi;
+        if (key.includes("transport") || key.includes("delivery") || key.includes("logistic")) return FaTruck;
+        if (key.includes("marketing") || key.includes("advert")) return FaBullhorn;
+        if (key.includes("maintenance") || key.includes("repair")) return FaTools;
+        if (key.includes("insurance")) return FaShieldAlt;
+        if (key.includes("tax")) return FaFileInvoiceDollar;
+        if (key.includes("food") || key.includes("refreshment")) return FaUtensils;
+        if (key.includes("store") || key.includes("shop")) return FaStore;
+        if (key.includes("fuel") || key.includes("vehicle") || key.includes("travel")) return FaCar;
+        if (key.includes("office")) return FaBriefcase;
+        if (key.includes("finance") || key.includes("bank") || key.includes("interest")) return FaMoneyBillWave;
+        return FaLayerGroup;
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen pb-20 bg-transparent">
             <ProtectedHeader />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-                <button
-                    onClick={() => navigate("/cost-category")}
-                    className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
-                >
-                    <FaArrowLeft /> Back to Dashboard
-                </button>
+                <div className="mb-6">
+                    <BackButton to="/cost-category" label="Back to Dashboard" />
+                </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                        <h1 className="text-2xl font-bold text-gray-900">Record  Expenses</h1>
-                        <p className="text-gray-500 mt-1">Enter amounts for the categories you want to record.</p>
+                <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                    <div className="px-8 py-7 border-b border-slate-200 bg-slate-50">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-slate-500"></span>
+                                    Monthly entry
+                                </div>
+                                <h1 className="text-2xl font-semibold text-slate-900 mt-3">Record Expenses</h1>
+                                <p className="text-slate-500 mt-1">Capture the remaining category costs for {monthLabel}.</p>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-slate-500">
+                                <FaLayerGroup className="text-slate-400 text-lg" />
+                                Keep entries clean and consistent.
+                            </div>
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Month</p>
+                                <p className="text-lg font-semibold text-slate-900 mt-2">{monthLabel}</p>
+                                <p className="text-xs text-slate-400 mt-1">Current entry window</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Categories</p>
+                                <p className="text-lg font-semibold text-slate-900 mt-2">
+                                    {filledCount}/{categories.length}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-1">Filled so far</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total Entered</p>
+                                <p className="text-lg font-semibold text-slate-900 mt-2">{totalFormatted}</p>
+                                <p className="text-xs text-slate-400 mt-1">Across visible categories</p>
+                            </div>
+                        </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {categories.length === 0 ? (
-                                <div className="col-span-full text-center py-10">
-                                    <FaLayerGroup className="mx-auto text-gray-300 text-4xl mb-4" />
-                                    <p className="text-gray-600 font-medium">All categories recorded!</p>
-                                    <p className="text-gray-400 text-sm mt-1">You've already added costs for all categories this month.</p>
+                                <div className="col-span-full text-center py-12 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <FaLayerGroup className="mx-auto text-slate-300 text-4xl mb-4" />
+                                    <p className="text-slate-700 font-semibold">All categories recorded!</p>
+                                    <p className="text-slate-400 text-sm mt-2">You have already added costs for every category this month.</p>
                                 </div>
                             ) : (
                                 categories.map((category) => (
-                                    <div key={category.id} className="relative group">
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                            <FaLayerGroup className="text-blue-400" />
+                                    <div key={category.id} className="bg-white rounded-2xl p-5 border border-slate-200 hover:bg-slate-50 transition-all">
+                                        <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                                                {(() => {
+                                                    const Icon = getCategoryIcon(category.name);
+                                                    return <Icon />;
+                                                })()}
+                                            </span>
                                             {category.name}
                                         </label>
                                         <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₹</span>
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 placeholder="0"
-                                                className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium text-gray-900"
+                                                className="w-full pl-12 pr-14 py-3 rounded-xl bg-white text-slate-900 font-semibold border border-slate-200 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                                 value={costs[category.id] || ""}
                                                 onChange={(e) => handleInputChange(category.id, e.target.value)}
                                             />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">INR</span>
                                         </div>
+                                        <p className="text-xs text-slate-400 mt-3">Add the {category.name} expense for {monthLabel}.</p>
                                     </div>
                                 ))
                             )}
                         </div>
 
-                        <div className="mt-8 flex justify-end pt-6 border-t border-gray-100">
-                            <button
-                                type="submit"
-                                disabled={submitting || categories.length === 0}
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {submitting ? "Saving..." : <><FaSave /> Save Entries</>}
-                            </button>
+                        <div className="mt-8 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-center pt-6 border-t border-slate-200">
+                            <div className="bg-white rounded-2xl p-5 border border-slate-200">
+                                <p className="text-sm font-semibold text-slate-700">Quick tips</p>
+                                <ul className="text-xs text-slate-500 mt-2 space-y-2">
+                                    <li>Enter only verified costs; you can edit later from the cost dashboard.</li>
+                                    <li>Use round numbers for recurring items to keep monthly comparisons clean.</li>
+                                    <li>Totals update instantly as you type.</li>
+                                </ul>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                                <button
+                                    type="submit"
+                                    disabled={submitting || categories.length === 0}
+                                    className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8 py-3.5 rounded-xl shadow-sm transition-all active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {submitting ? "Saving..." : <><FaSave /> Save Entries</>}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

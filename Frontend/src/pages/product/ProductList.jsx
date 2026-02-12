@@ -28,7 +28,7 @@ export default function ProductList() {
 
     const [deleteModal, setDeleteModal] = useState({
         isOpen: false,
-        type: null, // "PRODUCT" or "CATEGORY"
+        type: null,
         id: null,
     });
 
@@ -55,13 +55,13 @@ export default function ProductList() {
     return (
         <>
             <ProtectedHeader />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-                <Suspense fallback={<div className="h-10 bg-gray-100 rounded animate-pulse"></div>}>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+                <Suspense fallback={<div className="h-10 rounded-lg bg-slate-100 animate-pulse"></div>}>
                     <ProductHeader />
                 </Suspense>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-                    <Suspense fallback={<div className="h-20 bg-gray-100 rounded animate-pulse"></div>}>
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <Suspense fallback={<div className="h-20 rounded-lg bg-slate-100 animate-pulse"></div>}>
                         <CategoryList
                             categories={categories}
                             onAdd={openAdd}
@@ -69,14 +69,20 @@ export default function ProductList() {
                             onDelete={(id) => openDeleteModal("CATEGORY", id)}
                         />
                     </Suspense>
-                </div>
+                </section>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-                    <Suspense fallback={<div className="h-20 bg-gray-100 rounded animate-pulse"></div>}>
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+                    <Suspense fallback={<div className="h-20 rounded-lg bg-slate-100 animate-pulse"></div>}>
                         <ProductFilters categories={categories} onApply={applyFilters} />
                     </Suspense>
 
-                    <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+                    <Suspense
+                        fallback={
+                            <div className="h-64 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+                            </div>
+                        }
+                    >
                         <ProductSection
                             products={products}
                             loading={loading}
@@ -88,8 +94,8 @@ export default function ProductList() {
                             loadingMore={loadingMore}
                         />
                     </Suspense>
-                </div>
-            </div>
+                </section>
+            </main>
 
             {CategoryModalUI}
 

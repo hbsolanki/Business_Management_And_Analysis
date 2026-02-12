@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Toaster, toast } from "react-hot-toast";
 import { employeeService } from "@/features/employee/services/employeeService";
+import BackButton from "@/components/shared/BackButton";
 import { FaCamera, FaSave, FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard, FaFileAlt } from "react-icons/fa";
 
 export default function EditProfile() {
@@ -150,28 +151,36 @@ export default function EditProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-12 bg-transparent">
       <Toaster position="top-center" />
 
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-teal-600 px-8 py-6 text-white">
-            <h2 className="text-3xl font-extrabold">Edit Profile</h2>
-            <p className="mt-2 text-green-100 opacity-90">Update your personal information</p>
+      <div className="form-shell max-w-3xl">
+        <div className="mb-4">
+          <BackButton />
+        </div>
+        <div className="form-card overflow-hidden">
+          <div className="form-header">
+            <div className="form-header-icon">
+              <FaUser />
+            </div>
+            <div>
+              <h2 className="form-title">Edit Profile</h2>
+              <p className="form-subtitle">Update your personal information.</p>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+          <form onSubmit={handleSubmit} className="form-section space-y-8">
             {/* Profile Picture Section */}
             <div className="flex flex-col items-center justify-center space-y-4">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg ring-2 ring-green-100">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg ring-2 ring-slate-200">
                   {formData.profile_picture_preview || formData.profile_picture ? (
                     <img
                       src={
@@ -182,7 +191,7 @@ export default function EditProfile() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <div className="w-full h-full bg-white/90 flex items-center justify-center">
                       <FaUser className="text-gray-400 text-4xl" />
                     </div>
                   )}
@@ -192,7 +201,7 @@ export default function EditProfile() {
                 </div>
                 <label
                   htmlFor="profile-upload"
-                  className="absolute bottom-0 right-0 bg-green-600 text-white p-2.5 rounded-full cursor-pointer hover:bg-green-700 shadow-lg transform transition-transform hover:scale-105"
+                  className="absolute bottom-0 right-0 bg-slate-900 text-white p-2.5 rounded-full cursor-pointer hover:bg-slate-800 shadow-lg transform transition-transform hover:scale-105"
                 >
                   <FaCamera className="w-4 h-4" />
                 </label>
@@ -213,7 +222,7 @@ export default function EditProfile() {
               {/* Personal Information */}
               <div className="col-span-1 md:col-span-2">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 border-b pb-2">
-                  <FaUser className="text-green-600" /> Personal Details
+                  <FaUser className="text-slate-700" /> Personal Details
                 </h3>
               </div>
 
@@ -223,7 +232,7 @@ export default function EditProfile() {
                   name="first_name"
                   value={formData.first_name}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl"
                   placeholder="Enter your first name"
                 />
               </div>
@@ -234,7 +243,7 @@ export default function EditProfile() {
                   name="last_name"
                   value={formData.last_name}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl"
                   placeholder="Enter your last name"
                 />
               </div>
@@ -250,7 +259,7 @@ export default function EditProfile() {
                     value={formData.description}
                     onChange={handleChange}
                     rows="3"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white resize-none"
+                  className="w-full input-icon-left pr-4 py-2.5 rounded-xl resize-none"
                     placeholder="Tell us a bit about yourself..."
                   />
                 </div>
@@ -259,7 +268,7 @@ export default function EditProfile() {
               {/* Contact & Account */}
               <div className="col-span-1 md:col-span-2 mt-2">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 border-b pb-2">
-                  <FaIdCard className="text-green-600" /> Account Information
+                  <FaIdCard className="text-slate-700" /> Account Information
                 </h3>
               </div>
 
@@ -273,7 +282,7 @@ export default function EditProfile() {
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                    className="w-full input-icon-left pr-4 py-2.5 rounded-xl"
                     placeholder="Choose a username"
                   />
                 </div>
@@ -289,7 +298,7 @@ export default function EditProfile() {
                     name="mobile_number"
                     value={formData.mobile_number}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                    className="w-full input-icon-left pr-4 py-2.5 rounded-xl"
                     placeholder="Your mobile number"
                   />
                 </div>
@@ -305,7 +314,7 @@ export default function EditProfile() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                    className="w-full input-icon-left pr-4 py-2.5 rounded-xl"
                     placeholder="name@example.com"
                   />
                 </div>
@@ -323,13 +332,13 @@ export default function EditProfile() {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-20 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                    className="w-full input-icon-left input-icon-right pr-20 py-2.5 rounded-xl"
                     placeholder="Min 8 chars, 1 special"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-xs font-semibold text-green-600 hover:text-green-800 uppercase tracking-wide"
+                    className="absolute right-3 top-2.5 text-xs font-semibold text-slate-600 hover:text-slate-800 uppercase tracking-wide"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
@@ -339,32 +348,20 @@ export default function EditProfile() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+            <div className="form-actions">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all transform hover:-translate-y-0.5 ${isSubmitting
-                  ? "bg-green-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
-                  }`}
+                className={`btn-primary flex-1 ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <FaSave /> Save Changes
-                  </>
-                )}
+                {isSubmitting ? "Saving..." : <><FaSave /> Save Changes</>}
               </button>
             </div>
           </form>
@@ -373,5 +370,3 @@ export default function EditProfile() {
     </div>
   );
 }
-
-

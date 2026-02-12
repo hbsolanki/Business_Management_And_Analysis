@@ -7,12 +7,12 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
 
     const themeColors = {
         blue: {
-            border: 'border-blue-500',
-            bg: 'bg-blue-50/50',
-            iconBg: 'bg-blue-100 text-blue-600',
-            button: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
-            ring: 'focus:ring-blue-500',
-            toggle: 'bg-blue-600 border-blue-600'
+            border: 'border-brand-500',
+            bg: 'bg-brand-50/50',
+            iconBg: 'bg-brand-100 text-brand-600',
+            button: 'bg-brand-600 hover:bg-brand-700 focus:ring-brand-500',
+            ring: 'focus:ring-brand-500',
+            toggle: 'bg-brand-600 border-brand-600'
         },
         purple: {
             border: 'border-purple-500',
@@ -48,7 +48,7 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
                     onClick={onClose}
                 ></div>
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div className="glass-panel inline-block align-bottom rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                     <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div className="sm:flex sm:items-start">
                             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -70,7 +70,7 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
                                     <input
                                         type="text"
                                         placeholder="Search actions..."
-                                        className={`w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 ${theme.ring} focus:border-transparent transition-all sm:text-sm`}
+                                        className={`w-full input-icon-left pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 ${theme.ring} focus:border-transparent transition-all sm:text-sm`}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
@@ -84,17 +84,16 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
                                                 <div
                                                     key={action.id}
                                                     onClick={() => onToggleAction(action.id)}
-                                                    className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${isActive ? `${theme.border} ${theme.bg}` : 'border-gray-200 hover:bg-gray-50'}`}
-                                                >
+                                                    className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all border border-transparent ${isActive ? `${theme.border} ${theme.bg}` : 'hover:bg-white/70 hover:border-white/70'}`}>
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`p-2 rounded-lg ${isActive ? theme.iconBg : 'bg-gray-100 text-gray-500'}`}>
+                                                        <div className={`p-2 rounded-lg ${isActive ? theme.iconBg : 'bg-white/80 text-gray-500'}`}>
                                                             {action.icon}
                                                         </div>
                                                         <span className={`font-semibold ${isActive ? 'text-gray-900' : 'text-gray-600'}`}>
                                                             {action.label}
                                                         </span>
                                                     </div>
-                                                    <div className={`h-6 w-6 rounded-full flex items-center justify-center border ${isActive ? `${theme.toggle} text-white` : 'bg-white border-gray-300 text-gray-300'}`}>
+                                                    <div className={`h-6 w-6 rounded-full flex items-center justify-center ${isActive ? `${theme.toggle} text-white` : 'glass-panel text-gray-300'}`}>
                                                         {isActive ? <FaMinus size={10} /> : <FaPlus size={10} />}
                                                     </div>
                                                 </div>
@@ -109,7 +108,7 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
                             </div>
                         </div>
                     </div>
-                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <div className="bg-white/70 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                         <button
                             type="button"
                             className={`w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-5 py-2.5 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${theme.button}`}

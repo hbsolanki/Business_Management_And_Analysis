@@ -5,10 +5,11 @@ import CallToAction from "@/features/home/components/CallToAction";
 import FeaturesSection from "@/features/home/components/FeaturesSection";
 import HowItWorks from "@/features/home/components/HowItWorks";
 import InfoPromoSection from "@/features/home/components/InfoPromoSection";
+import PlansSection from "@/features/subscription/components/PlansSection";
 
 export default function Home() {
     return (
-        <div className="home-page overflow-x-hidden bg-gray-50/50">
+        <div className="home-page overflow-x-hidden bg-transparent">
             {/* Navbar */}
             <Header />
 
@@ -23,6 +24,13 @@ export default function Home() {
 
             {/* Info Promo Section */}
             <InfoPromoSection />
+
+            {/* Plans Section */}
+            <PlansSection
+                compact
+                title="Our Plans"
+                subtitle="Simple, transparent pricing built for growing teams."
+            />
 
             {/* Call-to-Action Section */}
             <CallToAction

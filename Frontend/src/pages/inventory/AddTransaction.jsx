@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { inventoryService } from "@/features/inventory/services/inventoryService";
 import ProductSearchList from "@/features/inventory/components/ProductSearchList";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import BackButton from "@/components/shared/BackButton";
 
 import {
   FaArrowUp,
@@ -53,13 +54,15 @@ export default function AddTransaction() {
 
     setLoading(true);
     try {
+      const items = selected.map((p) => ({
+        product_id: p.product_id ?? p.id,
+        quantity: Number(p.quantity),
+      }));
+
       await inventoryService.createTransaction({
         action,
         description,
-        items: selected.map((p) => ({
-          productId: p.id,
-          quantity: Number(p.quantity),
-        })),
+        items,
       });
 
       navigate(-1);
@@ -71,86 +74,95 @@ export default function AddTransaction() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-transparent">
       <ProtectedHeader />
 
-      <div className="container mx-auto px-4 py-10 max-w-5xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        <BackButton />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/30">
+            <h1 className="text-3xl font-semibold text-slate-900 flex items-center gap-3">
+              <span className="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
                 <FaClipboardList className="text-xl" />
-              </div>
+              </span>
               Inventory Transaction
             </h1>
-            <p className="text-gray-500 mt-2 font-medium">Record stock movements efficiently</p>
+            <p className="text-slate-500 mt-2 text-sm">Record stock movements efficiently.</p>
           </div>
 
-          <div className="flex bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
+          <div className="flex rounded-lg border border-slate-200 bg-white p-1">
             <button
               type="button"
               onClick={() => setAction("IN")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${action === "IN"
-                  ? "bg-green-100 text-green-700 shadow-sm"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+                action === "IN"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-slate-500 hover:bg-slate-50"
+              }`}
             >
-              <FaArrowUp className={action === "IN" ? "text-green-600" : ""} /> Stock In
+              <FaArrowUp className={action === "IN" ? "text-emerald-600" : ""} />
+              Stock In
             </button>
             <button
               type="button"
               onClick={() => setAction("OUT")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${action === "OUT"
-                  ? "bg-red-100 text-red-700 shadow-sm"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+                action === "OUT"
+                  ? "bg-rose-50 text-rose-700"
+                  : "text-slate-500 hover:bg-slate-50"
+              }`}
             >
-              <FaArrowDown className={action === "OUT" ? "text-red-600" : ""} /> Stock Out
+              <FaArrowDown className={action === "OUT" ? "text-rose-600" : ""} />
+              Stock Out
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* LEFT: Product Selection */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                <h2 className="font-bold text-gray-800 text-lg">Add Products</h2>
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="px-6 py-5 border-b border-slate-200">
+                <h2 className="text-lg font-semibold text-slate-900">Add Products</h2>
               </div>
               <div className="p-6">
                 <ProductSearchList selected={selected} setSelected={setSelected} />
               </div>
-            </div>
+            </section>
 
             {selected.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                  <h2 className="font-bold text-gray-800 text-lg">Selected Items <span className="text-gray-400 font-normal text-sm ml-2">({selected.length})</span></h2>
-                  <button onClick={() => setSelected([])} className="text-xs font-semibold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">Clear All</button>
+              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Selected Items <span className="text-slate-400 text-sm font-normal">({selected.length})</span>
+                  </h2>
+                  <button
+                    onClick={() => setSelected([])}
+                    className="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition"
+                  >
+                    Clear All
+                  </button>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-slate-100">
                   {selected.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 hover:bg-gray-50 transition-colors gap-4"
+                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 gap-4"
                     >
                       <div className="flex-1">
-                        <p className="font-bold text-gray-900">{item.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 text-xs font-medium border border-gray-200">SKU: {item.sku}</span>
-                        </div>
+                        <p className="font-semibold text-slate-900">{item.name}</p>
+                        <span className="mt-1 inline-flex text-xs text-slate-500 border border-slate-200 rounded-full px-2 py-0.5">
+                          SKU: {item.sku}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-4">
                         <div className="flex flex-col items-end">
-                          <label className="text-[10px] uppercase font-bold text-gray-400 mb-1">Quantity</label>
+                          <label className="text-[10px] uppercase font-semibold text-slate-400 mb-1">Quantity</label>
                           <input
                             type="number"
                             min="1"
                             placeholder="0"
-                            className="w-24 px-3 py-2 rounded-lg border border-gray-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-semibold text-center transition-all"
+                            className="w-24 px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 font-semibold text-center transition-all"
                             value={item.quantity}
                             onChange={(e) => updateQty(item.id, e.target.value)}
                             autoFocus
@@ -160,7 +172,7 @@ export default function AddTransaction() {
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
-                          className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all self-end mb-0.5"
+                          className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                           title="Remove Item"
                         >
                           <FaTrash />
@@ -169,46 +181,49 @@ export default function AddTransaction() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
           </div>
 
-          {/* RIGHT: Transaction Details */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
-              <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                <h2 className="font-bold text-gray-800 text-lg">Transaction Details</h2>
+          <aside className="space-y-6">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm sticky top-24">
+              <div className="px-6 py-5 border-b border-slate-200">
+                <h2 className="text-lg font-semibold text-slate-900">Transaction Details</h2>
               </div>
 
               <div className="p-6 space-y-6">
-                {/* Error Display */}
                 {error && (
-                  <div className="flex items-start gap-3 text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl p-4 animate-shake">
+                  <div className="flex items-start gap-3 text-sm font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-4">
                     <FaExclamationTriangle className="text-lg shrink-0 mt-0.5" />
                     <p>{error}</p>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                     Type
                   </label>
-                  <div className={`px-4 py-3 rounded-xl border font-semibold flex items-center gap-3 ${action === "IN" ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
-                    }`}>
+                  <div
+                    className={`px-4 py-3 rounded-lg border font-semibold flex items-center gap-3 ${
+                      action === "IN"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-rose-50 border-rose-200 text-rose-700"
+                    }`}
+                  >
                     {action === "IN" ? <FaArrowUp /> : <FaArrowDown />}
                     <span>{action === "IN" ? "Stock In (Addition)" : "Stock Out (Reduction)"}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Reason / Description <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Reason / Description <span className="text-rose-500">*</span>
                   </label>
                   <textarea
                     rows={4}
                     required
                     placeholder="e.g. Received new shipment from supplier..."
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition resize-none"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition resize-none"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
@@ -218,10 +233,11 @@ export default function AddTransaction() {
                   <button
                     onClick={handleSubmit}
                     disabled={loading || selected.length === 0}
-                    className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 ${loading || selected.length === 0
-                        ? "bg-gray-300 cursor-not-allowed shadow-none"
-                        : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/30"
-                      }`}
+                    className={`w-full py-3 rounded-lg font-semibold text-white transition flex items-center justify-center gap-2 ${
+                      loading || selected.length === 0
+                        ? "bg-slate-300 cursor-not-allowed"
+                        : "bg-slate-900 hover:bg-slate-800"
+                    }`}
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
@@ -233,17 +249,16 @@ export default function AddTransaction() {
                   </button>
                   <button
                     onClick={() => navigate(-1)}
-                    className="w-full py-3 mt-3 rounded-xl text-gray-600 font-semibold hover:bg-gray-100 transition"
+                    className="w-full py-3 mt-3 rounded-lg text-slate-600 font-semibold bg-slate-100 hover:bg-slate-200 transition"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
+          </aside>
         </div>
-
-      </div>
+      </main>
     </div>
   );
 }

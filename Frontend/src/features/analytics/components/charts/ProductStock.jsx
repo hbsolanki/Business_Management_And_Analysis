@@ -36,7 +36,7 @@ const BasicBars = React.forwardRef(({ data = [] }, ref) => {
               textAnchor: "end",
               fontSize: 11,
               fontWeight: 500,
-              fill: '#4b5563',
+              fill: '#334155',
             },
           }
         ]}
@@ -45,7 +45,7 @@ const BasicBars = React.forwardRef(({ data = [] }, ref) => {
             label: "Stock Quantity",
             labelStyle: {
               fontWeight: 600,
-              fill: '#374151',
+              fill: '#334155',
             }
           }
         ]}
@@ -53,7 +53,7 @@ const BasicBars = React.forwardRef(({ data = [] }, ref) => {
           {
             data: productValues,
             label: "Stock",
-            color: "#3b82f6", // Blue 500
+            color: "#14b8a6", // Brand 500
             highlightScope: { faded: 'global', highlighted: 'item' },
           }
         ]}

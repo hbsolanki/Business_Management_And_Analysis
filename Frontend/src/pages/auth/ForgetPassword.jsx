@@ -82,7 +82,7 @@ export default function ForgotPassword() {
     try {
       await authService.resetPassword(formData.username, formData.otp, formData.newPassword);
       toast.success("Password reset successfully! Please login.");
-      navigate("/login");
+      navigate(-1);
     } catch (err) {
       console.error(err);
       toast.error(getErrorMessage(err, "Failed to reset password"));
@@ -96,8 +96,8 @@ export default function ForgotPassword() {
     <form onSubmit={handleUsernameSubmit} className="space-y-6">
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
-        <div className="relative group">
-          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+        <div className="relative">
+          <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             name="username"
             type="text"
@@ -105,14 +105,14 @@ export default function ForgotPassword() {
             value={formData.username}
             onChange={handleChange}
             placeholder="Enter your username"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+            className="w-full input-icon-left pr-4 py-3"
           />
         </div>
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all disabled:opacity-50"
+        className={`btn-primary w-full ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
       >
         {loading ? "Sending..." : <><FaPaperPlane /> Send OTP</>}
       </button>
@@ -121,13 +121,13 @@ export default function ForgotPassword() {
 
   const renderStep2 = () => (
     <form onSubmit={handleOtpSubmit} className="space-y-6">
-      <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm text-center">
+      <div className="bg-slate-50 text-slate-700 p-3 rounded-lg text-sm text-center border border-slate-200">
         We sent an OTP to your email associated with <strong>{formData.username}</strong>
       </div>
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Enter OTP</label>
-        <div className="relative group">
-          <FaKey className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+        <div className="relative">
+          <FaKey className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             name="otp"
             type="text"
@@ -135,14 +135,14 @@ export default function ForgotPassword() {
             value={formData.otp}
             onChange={handleChange}
             placeholder="Enter 6-digit OTP"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all tracking-widest text-center font-mono text-lg"
+            className="w-full input-icon-left pr-4 py-3 tracking-widest text-center font-mono text-lg"
           />
         </div>
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all disabled:opacity-50"
+        className={`btn-primary w-full ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
       >
         {loading ? "Verifying..." : <><FaCheckCircle /> Verify OTP</>}
       </button>
@@ -153,8 +153,8 @@ export default function ForgotPassword() {
     <form onSubmit={handlePasswordSubmit} className="space-y-6">
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
-        <div className="relative group">
-          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+        <div className="relative">
+          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             name="newPassword"
             type="password"
@@ -162,14 +162,14 @@ export default function ForgotPassword() {
             value={formData.newPassword}
             onChange={handleChange}
             placeholder="New password"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+            className="w-full input-icon-left pr-4 py-3"
           />
         </div>
       </div>
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
-        <div className="relative group">
-          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+        <div className="relative">
+          <FaLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             name="confirmPassword"
             type="password"
@@ -177,14 +177,14 @@ export default function ForgotPassword() {
             value={formData.confirmPassword}
             onChange={handleChange}
             placeholder="Confirm new password"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+            className="w-full input-icon-left pr-4 py-3"
           />
         </div>
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all disabled:opacity-50"
+        className={`btn-primary w-full ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
       >
         {loading ? "Resetting..." : <><FaCheckCircle /> Reset Password</>}
       </button>
@@ -192,32 +192,30 @@ export default function ForgotPassword() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col">
+    <div className="min-h-screen flex flex-col bg-transparent">
       <Header />
 
-      {/* Background Decor */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 right-0 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="container mx-auto px-4 flex justify-center items-center flex-grow pt-20 pb-10 relative z-10">
-        <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-30 skew-x-12 transform -translate-x-1/2"></div>
-            <h2 className="text-2xl font-bold text-white mb-1 relative z-10">
-              {step === 1 && "Find Your Account"}
-              {step === 2 && "Enter OTP"}
-              {step === 3 && "Reset Password"}
-            </h2>
-            <p className="text-blue-100 text-sm relative z-10">
-              {step === 1 && "Enter your username to receive a reset code."}
-              {step === 2 && "Check your email for the verification code."}
-              {step === 3 && "Secure your account with a new password."}
-            </p>
+      <div className="flex-grow flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md form-card overflow-hidden">
+          <div className="form-header">
+            <div className="form-header-icon">
+              <FaKey />
+            </div>
+            <div>
+              <h2 className="form-title">
+                {step === 1 && "Find Your Account"}
+                {step === 2 && "Enter OTP"}
+                {step === 3 && "Reset Password"}
+              </h2>
+              <p className="form-subtitle">
+                {step === 1 && "Enter your username to receive a reset code."}
+                {step === 2 && "Check your email for the verification code."}
+                {step === 3 && "Secure your account with a new password."}
+              </p>
+            </div>
           </div>
 
-          <div className="p-8">
+          <div className="form-section">
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
@@ -225,7 +223,7 @@ export default function ForgotPassword() {
             <div className="text-center pt-6 mt-2 border-t border-gray-100">
               <Link
                 to="/login"
-                className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-blue-600 transition"
+                className="inline-flex items-center text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
               >
                 <FaArrowLeft className="mr-2" /> Back to Login
               </Link>
@@ -236,5 +234,3 @@ export default function ForgotPassword() {
     </div>
   );
 }
-
-

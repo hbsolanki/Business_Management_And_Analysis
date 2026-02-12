@@ -7,14 +7,29 @@ export const useTaskData = () => {
     const [loading, setLoading] = useState(false);
     const [creating, setCreating] = useState(false);
 
-    const fetchTasks = useCallback(async (type = 'assigned_to') => {
+    const fetchTasks = useCallback(async (type = 'assigned_to', filters = {}) => {
         try {
             setLoading(true);
             let data;
+            const params = {
+                title: filters.title || undefined,
+                from_date: filters.from_date || undefined,
+                to_date: filters.to_date || undefined,
+                remarks: filters.remarks || undefined,
+                ...filters // Allow other filters if any
+            };
+
+            // clean up empty params
+            Object.keys(params).forEach((key) => {
+                if (params[key] === undefined || params[key] === null || params[key] === "") {
+                    delete params[key];
+                }
+            });
+
             if (type === 'assigned_by') {
-                data = await taskService.getAssignedByTasks();
+                data = await taskService.getAssignedByTasks(params);
             } else {
-                data = await taskService.getAssigneeTasks();
+                data = await taskService.getAssigneeTasks(params);
             }
 
             if (Array.isArray(data)) {

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaSave, FaArrowLeft, FaCheck } from 'react-icons/fa';
+import { FaSave, FaInfoCircle } from 'react-icons/fa';
 import taskService from '@/features/task/services/taskService';
 import toast from 'react-hot-toast';
+import ProtectedHeader from '@/components/layout/ProtectedHeader';
+import BackButton from '@/components/shared/BackButton';
 
 const EditTask = () => {
     const { id } = useParams();
@@ -64,35 +66,70 @@ const EditTask = () => {
         }
     };
 
+    const statusConfig = {
+        PENDING: {
+            label: "Pending",
+            badge: "bg-slate-100 text-slate-700",
+            ring: "bg-slate-500",
+            desc: "Waiting to start.",
+        },
+        IN_PROGRESS: {
+            label: "In Progress",
+            badge: "bg-slate-100 text-slate-700",
+            ring: "bg-slate-500",
+            desc: "Actively being worked on.",
+        },
+        COMPLETED: {
+            label: "Completed",
+            badge: "bg-slate-100 text-slate-700",
+            ring: "bg-slate-500",
+            desc: "Marked as finished.",
+        },
+    };
+
+    const statusMeta = statusConfig[formData.status] || statusConfig.PENDING;
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            <div className="flex items-center justify-center min-h-screen bg-transparent">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-900"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
-            <div className="max-w-3xl mx-auto">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="mb-8 group flex items-center text-gray-500 hover:text-indigo-600 transition-colors font-medium"
-                >
-                    <div className="w-8 h-8 rounded-full bg-white border border-gray-200 group-hover:border-indigo-200 flex items-center justify-center mr-3 shadow-sm group-hover:shadow-md transition-all">
-                        <FaArrowLeft className="w-3 h-3" />
-                    </div>
-                    Back to Task Details
-                </button>
+        <div className="min-h-screen font-sans bg-transparent">
+            <ProtectedHeader />
 
-                <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-                    {/* Header with Gradient */}
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-10 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black/10 rounded-full blur-3xl"></div>
+            <main className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+                <div className="mb-6">
+                    <BackButton to={`/tasks/${id}`} label="Back to Task Details" />
+                </div>
 
-                        <h1 className="text-3xl font-bold relative z-10">Edit Task</h1>
-                        <p className="text-indigo-100 mt-2 relative z-10">Update task details, status, and remarks.</p>
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-200">
+                    {/* Header */}
+                    <div className="bg-slate-50 px-8 py-10 text-slate-900 relative overflow-hidden border-b border-slate-200">
+
+                        <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
+                            <div>
+                                <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-slate-500"></span>
+                                    Task update
+                                </div>
+                                <h1 className="text-3xl font-semibold mt-3">Edit Task</h1>
+                                <p className="text-slate-500 mt-2">Refine the details, status, and remarks with clarity.</p>
+                            </div>
+                            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide ${statusMeta.badge}`}>
+                                <span className={`h-2 w-2 rounded-full ${statusMeta.ring}`}></span>
+                                {statusMeta.label}
+                            </span>
+                        </div>
+
+                        <div className="mt-6 grid grid-cols-1 gap-4 relative z-10">
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status insight</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-2">{statusMeta.desc}</p>
+                            </div>
+                        </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="p-8 space-y-8">
@@ -107,9 +144,10 @@ const EditTask = () => {
                                 value={formData.title}
                                 onChange={handleChange}
                                 placeholder="e.g. Redesign Landing Page"
-                                className="w-full px-5 py-4 text-lg font-semibold rounded-2xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-900 placeholder-gray-400"
+                                className="w-full px-5 py-4 text-lg font-semibold rounded-2xl bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 transition-all outline-none text-slate-900 placeholder-slate-400"
                                 required
                             />
+                            <p className="text-xs text-gray-400">Use a short, actionable title for clarity.</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -123,16 +161,17 @@ const EditTask = () => {
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
-                                        className="w-full px-5 py-4 rounded-2xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-800 appearance-none cursor-pointer font-medium"
+                                        className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 transition-all outline-none text-slate-800 appearance-none cursor-pointer font-medium"
                                     >
                                         <option value="PENDING">Pending</option>
                                         <option value="IN_PROGRESS">In Progress</option>
                                         <option value="COMPLETED">Completed</option>
                                     </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                    <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-500">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </div>
                                 </div>
+                                <p className="text-xs text-gray-400">Keep status accurate for better team visibility.</p>
                             </div>
                         </div>
 
@@ -147,8 +186,9 @@ const EditTask = () => {
                                 onChange={handleChange}
                                 rows="5"
                                 placeholder="Describe the task requirements..."
-                                className="w-full px-5 py-4 rounded-2xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400 resize-none leading-relaxed"
+                                className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 transition-all outline-none text-slate-700 placeholder-slate-400 resize-none leading-relaxed"
                             />
+                            <p className="text-xs text-gray-400">Include success criteria, deliverables, and key deadlines.</p>
                         </div>
 
                         {/* Remarks */}
@@ -163,41 +203,58 @@ const EditTask = () => {
                                     onChange={handleChange}
                                     rows="3"
                                     placeholder="Add any final comments, blockers, or notes..."
-                                    className="w-full px-5 py-4 rounded-2xl border border-indigo-100 bg-indigo-50/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-indigo-300 resize-none"
+                                    className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 transition-all outline-none text-slate-700 placeholder-slate-400 resize-none"
                                 />
                             </div>
                         </div>
 
                         {/* Actions Divider */}
-                        <div className="border-t border-gray-100 pt-8 flex items-center justify-between">
-                            <button
-                                type="button"
-                                onClick={() => navigate(-1)}
-                                className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="flex items-center gap-3 px-8 py-3.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                            >
-                                {saving ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        <span>Saving...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <FaSave className="text-lg" />
-                                        <span>Save Changes</span>
-                                    </>
-                                )}
-                            </button>
+                        <div className="border-t border-slate-200 pt-6 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                                        <FaInfoCircle />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800">Update checklist</p>
+                                        <ul className="text-xs text-slate-500 mt-2 space-y-1">
+                                            <li>Confirm the task title is clear and actionable.</li>
+                                            <li>Update status so your team stays aligned.</li>
+                                            <li>Add remarks for blockers or next steps.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(-1)}
+                                    className="px-6 py-3 rounded-xl font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="flex items-center gap-3 px-8 py-3.5 rounded-xl font-semibold text-white bg-slate-900 hover:bg-slate-800 shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FaSave className="text-lg" />
+                                            <span>Save Changes</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };

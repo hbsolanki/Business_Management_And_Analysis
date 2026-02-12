@@ -11,12 +11,7 @@ export const tokenService = {
     },
 
     clearTokens: () => {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem("role");
-        localStorage.removeItem("id");
-        localStorage.removeItem("token"); // Legacy cleanup
-        localStorage.removeItem("type"); // Legacy cleanup
+        localStorage.clear();
     },
 
     getRole: () => localStorage.getItem("role"),

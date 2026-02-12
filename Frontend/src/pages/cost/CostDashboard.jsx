@@ -112,94 +112,160 @@ export default function CostDashboard() {
     };
 
     // Current Month Display
-    const currentMonth = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+    const currentMonth = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
 
     // Calculate total cost
     const totalMonthlyCost = Array.isArray(monthData)
         ? monthData.reduce((sum, item) => sum + Number(item.cost || 0), 0)
         : 0;
+    const totalMonthlyCostFormatted = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(totalMonthlyCost);
+
+    const totalCategories = categories.length;
+    const recordedCount = Array.isArray(monthData) ? monthData.length : 0;
+    const remainingCount = Math.max(totalCategories - recordedCount, 0);
+    const coveragePercent = totalCategories > 0 ? Math.round((recordedCount / totalCategories) * 100) : 0;
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+            <div className="min-h-screen flex items-center justify-center bg-transparent">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-900 border-t-transparent"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen pb-20 bg-transparent">
             <ProtectedHeader />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
 
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Cost Management</h1>
-                        <p className="text-gray-500 mt-1 flex items-center gap-2">
-                            <FaCalendarAlt /> {currentMonth}
-                        </p>
-                    </div>
-                    <div className="bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
-                        <div className="p-2 bg-red-50 text-red-600 rounded-lg">
-                            <FaMoneyBillWave />
+                <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="px-8 py-7 bg-slate-50 border-b border-slate-200">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                    <span className="h-2 w-2 rounded-full bg-slate-500"></span>
+                                    Cost management
+                                </div>
+                                <h1 className="text-3xl font-semibold text-slate-900 tracking-tight mt-3">Cost Dashboard</h1>
+                                <p className="text-slate-500 mt-1 flex items-center gap-2">
+                                    <FaCalendarAlt /> {currentMonth} overview and category tracking.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-3">
+                                <Link
+                                    to="/cost-category/month"
+                                    className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                                >
+                                    <FaPlus size={12} /> Record expenses
+                                </Link>
+                                <button
+                                    onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
+                                    className="inline-flex items-center gap-2 bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
+                                >
+                                    <FaLayerGroup size={14} /> New category
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase">Total Monthly Cost</p>
-                            <p className="text-2xl font-bold text-gray-900">
-                                {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(totalMonthlyCost)}
-                            </p>
+
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <div className="flex items-center gap-3">
+                                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                        <FaMoneyBillWave />
+                                    </span>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total monthly cost</p>
+                                        <p className="text-2xl font-semibold text-slate-900">{totalMonthlyCostFormatted}</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">All recorded costs for {currentMonth}.</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <div className="flex items-center gap-3">
+                                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
+                                        <FaLayerGroup />
+                                    </span>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Category coverage</p>
+                                        <p className="text-2xl font-semibold text-slate-900">{recordedCount}/{totalCategories}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                                    <div className="h-full bg-slate-900" style={{ width: `${coveragePercent}%` }}></div>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">{coveragePercent}% of categories recorded</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-200">
+                                <div className="flex items-center gap-3">
+                                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
+                                        <FaCalendarAlt />
+                                    </span>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Remaining categories</p>
+                                        <p className="text-2xl font-semibold text-slate-900">{remainingCount}</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">Add entries to keep totals accurate.</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left: Monthly Breakdown (Main Content) */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                                <h2 className="text-lg font-bold text-gray-900">Current Month Expenses</h2>
+                        <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-3">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-slate-900">Monthly entries</h2>
+                                    <p className="text-xs text-slate-500 mt-1">Manage recorded costs for {currentMonth}.</p>
+                                </div>
                                 <Link
                                     to="/cost-category/month"
-                                    className="flex items-center gap-1 text-blue-600 font-semibold text-sm hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                                    className="flex items-center gap-2 text-slate-700 font-semibold text-sm hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
                                 >
-                                    <FaPlus size={12} /> Add
+                                    <FaPlus size={12} /> Add entries
                                 </Link>
                             </div>
-                            <div className="p-6">
+                            <div className="p-6 space-y-3">
                                 {(!monthData || monthData.length === 0) ? (
-                                    <div className="text-center py-10">
-                                        <FaMoneyBillWave className="mx-auto text-gray-300 text-4xl mb-4" />
-                                        <p className="text-gray-500">No expenses recorded this month.</p>
-                                        <Link to="/cost-category/month" className="text-blue-600 font-medium text-sm hover:underline mt-2 inline-block">
+                                    <div className="text-center py-10 bg-slate-50 rounded-2xl border border-slate-200">
+                                        <FaMoneyBillWave className="mx-auto text-slate-300 text-4xl mb-4" />
+                                        <p className="text-slate-600 font-medium">No expenses recorded yet.</p>
+                                        <p className="text-slate-400 text-sm mt-1">Add entries to keep your monthly total accurate.</p>
+                                        <Link to="/cost-category/month" className="text-slate-700 font-semibold text-sm hover:underline mt-3 inline-block">
                                             Record your first expense →
                                         </Link>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
+                                    <>
                                         {monthData.map((item) => (
-                                            <div key={item.id} className="group flex justify-between items-center py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                            <div key={item.id} className="group flex flex-wrap justify-between items-center gap-4 px-5 py-4 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 transition-all">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                                                    <div className="w-11 h-11 bg-slate-100 text-slate-700 rounded-xl flex items-center justify-center">
                                                         <FaLayerGroup size={16} />
                                                     </div>
-                                                    <span className="font-medium text-gray-800">{item.cost_category?.name || "Unknown"}</span>
+                                                    <div>
+                                                        <span className="font-semibold text-slate-800 block">{item.cost_category?.name || "Unknown"}</span>
+                                                        <span className="text-xs text-slate-400">Recorded for {currentMonth}</span>
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-4">
-                                                    <span className="font-bold text-gray-900 text-lg">
+                                                    <span className="font-semibold text-slate-900 text-lg">
                                                         {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(item.cost))}
                                                     </span>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button
                                                             onClick={() => openEditCostModal(item)}
-                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                            className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
                                                         >
                                                             <FaPen size={12} />
                                                         </button>
                                                         <button
                                                             onClick={() => { setCostToDelete(item); setShowDeleteCostModal(true); }}
-                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                                                         >
                                                             <FaTrash size={12} />
                                                         </button>
@@ -207,13 +273,13 @@ export default function CostDashboard() {
                                                 </div>
                                             </div>
                                         ))}
-                                        <div className="pt-4 mt-4 border-t border-gray-100 flex justify-between items-center px-4">
-                                            <span className="font-bold text-gray-700">Total</span>
-                                            <span className="font-bold text-xl text-blue-600">
-                                                {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(totalMonthlyCost)}
+                                        <div className="pt-4 mt-4 border-t border-slate-200 flex justify-between items-center px-2">
+                                            <span className="font-semibold text-slate-700">Total</span>
+                                            <span className="font-semibold text-xl text-slate-900">
+                                                {totalMonthlyCostFormatted}
                                             </span>
                                         </div>
-                                    </div>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -221,45 +287,54 @@ export default function CostDashboard() {
 
                     {/* Right: Sidebar - Cost Categories */}
                     <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                                <h2 className="text-lg font-bold text-gray-900">Categories</h2>
+                        <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-3">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-slate-900">Categories</h2>
+                                    <p className="text-xs text-slate-500 mt-1">{totalCategories} active categories</p>
+                                </div>
                                 <button
                                     onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
-                                    className="flex items-center gap-1 text-blue-600 font-semibold text-sm hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                                    className="flex items-center gap-2 text-slate-700 font-semibold text-sm hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors"
                                 >
                                     <FaPlus size={12} /> New
                                 </button>
                             </div>
-                            <div className="p-4">
+                            <div className="p-4 space-y-2">
                                 {categories.length === 0 ? (
-                                    <div className="text-center py-8">
-                                        <FaLayerGroup className="mx-auto text-gray-300 text-3xl mb-3" />
-                                        <p className="text-gray-500 text-sm">No categories yet.</p>
+                                    <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-200">
+                                        <FaLayerGroup className="mx-auto text-slate-300 text-3xl mb-3" />
+                                        <p className="text-slate-500 text-sm">No categories yet.</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
-                                        {categories.map(category => (
-                                            <div key={category.id} className="group flex justify-between items-center px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                                                <span className="font-medium text-gray-700 text-sm">{category.name}</span>
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => { setSelectedCategory(category); setShowCategoryModal(true); }}
-                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                                    >
-                                                        <FaPen size={10} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => { setCategoryToDelete(category); setShowDeleteModal(true); }}
-                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                                    >
-                                                        <FaTrash size={10} />
-                                                    </button>
-                                                </div>
+                                    categories.map(category => (
+                                        <div key={category.id} className="group flex justify-between items-center px-4 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-all">
+                                            <span className="font-medium text-slate-700 text-sm">{category.name}</span>
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => { setSelectedCategory(category); setShowCategoryModal(true); }}
+                                                    className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded"
+                                                >
+                                                    <FaPen size={10} />
+                                                </button>
+                                                <button
+                                                    onClick={() => { setCategoryToDelete(category); setShowDeleteModal(true); }}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                >
+                                                    <FaTrash size={10} />
+                                                </button>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))
                                 )}
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+                            <p className="text-sm font-semibold text-slate-700">Category hygiene</p>
+                            <p className="text-xs text-slate-500 mt-2">Keep categories focused and non-overlapping to simplify monthly analysis.</p>
+                            <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 border border-slate-200">
+                                <span className="text-xs font-semibold text-slate-700">Remaining this month</span>
+                                <span className="text-sm font-semibold text-slate-900">{remainingCount}</span>
                             </div>
                         </div>
                     </div>
@@ -292,14 +367,14 @@ export default function CostDashboard() {
             {/* Edit Cost Modal */}
             {showEditCostModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Edit Cost</h3>
-                        <p className="text-sm text-gray-500 mb-4">
+                    <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm mx-4 border border-slate-200">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Edit Cost</h3>
+                        <p className="text-sm text-slate-500 mb-4">
                             Update the cost for <strong>{costToEdit?.cost_category?.name}</strong>
                         </p>
                         <input
                             type="number"
-                            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-100 outline-none"
+                            className="w-full rounded-xl px-4 py-3 mb-4 bg-white text-slate-900 font-semibold border border-slate-200 focus:ring-2 focus:ring-slate-200 outline-none"
                             value={editCostValue}
                             onChange={(e) => setEditCostValue(e.target.value)}
                             min="0"
@@ -307,13 +382,13 @@ export default function CostDashboard() {
                         <div className="flex gap-3 justify-end">
                             <button
                                 onClick={() => { setShowEditCostModal(false); setCostToEdit(null); }}
-                                className="px-4 py-2 text-gray-600 font-medium rounded-lg hover:bg-gray-100"
+                                className="px-4 py-2 text-slate-600 font-medium rounded-lg hover:bg-slate-100"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleUpdateCost}
-                                className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700"
+                                className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800"
                             >
                                 Save
                             </button>

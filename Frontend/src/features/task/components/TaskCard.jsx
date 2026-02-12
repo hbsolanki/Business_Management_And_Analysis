@@ -5,7 +5,7 @@ import { FaUser, FaClock, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrash, F
 import { Menu, Transition } from '@headlessui/react';
 import { tokenService } from '@/services/tokenService';
 
-const TaskCard = ({ task, onEdit, onDelete }) => {
+const TaskCard = ({ task, onDelete }) => {
     const currentUserId = tokenService.getId();
     const navigate = useNavigate();
 
@@ -21,10 +21,10 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'COMPLETED': return 'text-green-600 bg-green-50 border-green-100';
-            case 'PENDING': return 'text-yellow-600 bg-yellow-50 border-yellow-100';
-            case 'IN_PROGRESS': return 'text-blue-600 bg-blue-50 border-blue-100';
-            default: return 'text-gray-600 bg-gray-50 border-gray-100';
+            case 'COMPLETED': return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+            case 'PENDING': return 'text-amber-700 bg-amber-50 border-amber-200';
+            case 'IN_PROGRESS': return 'text-slate-700 bg-slate-100 border-slate-200';
+            default: return 'text-slate-600 bg-white border-slate-200';
         }
     };
 
@@ -33,19 +33,19 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
     return (
         <div
             onClick={() => navigate(`/tasks/${task.id}`)}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-200 flex flex-col h-full relative overflow-visible group cursor-pointer"
+            className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow duration-200 flex flex-col h-full relative overflow-visible group cursor-pointer"
         >
-            <div className={`absolute top-0 left-0 w-1 h-full ${task.status === 'COMPLETED' ? 'bg-green-500' : task.status === 'PENDING' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
+            <div className={`absolute top-0 left-0 w-1 h-full ${task.status === 'COMPLETED' ? 'bg-emerald-500' : task.status === 'PENDING' ? 'bg-amber-500' : 'bg-slate-900'}`}></div>
 
             <div className="flex justify-between items-start mb-3 pl-2">
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${statusStyle}`}>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusStyle}`}>
                     {task.status || 'PENDING'}
                 </span>
 
                 {(canEdit || canDelete) && (
                     <Menu as="div" className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
                         <div>
-                            <Menu.Button className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none">
+                            <Menu.Button className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors focus:outline-none">
                                 <FaEllipsisV size={14} />
                             </Menu.Button>
                         </div>
@@ -58,7 +58,7 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
                             leaveFrom="transform opacity-100 scale-100"
                             leaveTo="transform opacity-0 scale-95"
                         >
-                            <Menu.Items className="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none overflow-hidden">
+                            <Menu.Items className="bg-white border border-slate-200 absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-xl shadow-lg focus:outline-none overflow-hidden">
                                 <div className="p-1">
                                     {canEdit && (
                                         <Menu.Item>
@@ -68,7 +68,7 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
                                                         e.stopPropagation(); // Stop menu close from triggering card click immediately if needed, though usually handled
                                                         navigate(`/tasks/${task.id}/edit`);
                                                     }}
-                                                    className={`${active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
+                                                    className={`${active ? 'bg-slate-100 text-slate-900' : 'text-slate-700'
                                                         } group flex w-full items-center rounded-lg px-2 py-2 text-sm font-medium transition-colors`}
                                                 >
                                                     <FaEdit className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -85,7 +85,7 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
                                                         e.stopPropagation();
                                                         onDelete(task.id);
                                                     }}
-                                                    className={`${active ? 'bg-red-50 text-red-600' : 'text-gray-700'
+                                                    className={`${active ? 'bg-red-50 text-red-600' : 'text-slate-700'
                                                         } group flex w-full items-center rounded-lg px-2 py-2 text-sm font-medium transition-colors`}
                                                 >
                                                     <FaTrash className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -101,16 +101,16 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
                 )}
             </div>
 
-            <h3 className="text-lg font-bold text-gray-800 mb-2 pl-2 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2 pl-2 line-clamp-2 leading-tight group-hover:text-slate-900 transition-colors">
                 {task.title}
             </h3>
 
-            <p className="text-sm text-gray-500 mb-4 pl-2 line-clamp-3 flex-1">
+            <p className="text-sm text-slate-500 mb-4 pl-2 line-clamp-3 flex-1">
                 {task.description}
             </p>
 
-            <div className="mt-auto pl-2 pt-3 border-t border-gray-50 flex items-center justify-between">
-                <span className="text-xs text-gray-400 font-medium flex items-center gap-1">
+            <div className="mt-auto pl-2 pt-3 border-t border-slate-200 flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
                     <FaClock size={10} />
                     {task.created_at ? format(new Date(task.created_at), 'MMM d, yyyy h:mm a') : 'Date N/A'}
                 </span>
@@ -121,27 +121,27 @@ const TaskCard = ({ task, onEdit, onDelete }) => {
                             <img
                                 src={task.assignee.profile_picture}
                                 alt={task.assignee.username}
-                                className="w-6 h-6 rounded-full object-cover shadow-sm border border-white"
+                                className="w-6 h-6 rounded-full object-cover shadow-sm border border-slate-200"
                             />
                         ) : (
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+                            <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
                                 {task.assignee?.username?.substring(0, 2).toUpperCase() || 'NA'}
                             </div>
                         )}
                     </div>
 
                     {task.assigned_by && (
-                        <div className="flex flex-col items-end text-right ml-2 border-l border-gray-200 pl-2">
-                            <span className="text-[9px] text-gray-400 font-semibold uppercase tracking-wider">By</span>
+                        <div className="flex flex-col items-end text-right ml-2 border-l border-slate-200 pl-2">
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">By</span>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] font-bold text-gray-600">
+                                <span className="text-[10px] font-semibold text-slate-700">
                                     {task.assigned_by.first_name ? `${task.assigned_by.first_name}` : task.assigned_by.username}
                                 </span>
                                 {task.assigned_by.profile_picture && (
                                     <img
                                         src={task.assigned_by.profile_picture}
                                         alt={task.assigned_by.username}
-                                        className="w-4 h-4 rounded-full object-cover shadow-sm"
+                                        className="w-4 h-4 rounded-full object-cover shadow-sm border border-slate-200"
                                     />
                                 )}
                             </div>

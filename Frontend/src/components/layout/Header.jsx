@@ -1,13 +1,6 @@
 import Logo from "@/assets/VISIONARY.png";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-    FaUserPlus,
-    FaSignInAlt,
-    FaBars,
-    FaTimes,
-    FaHome,
-} from "react-icons/fa";
 
 function Header() {
     const [isOpen, setIsOpen] = useState(false);
@@ -35,7 +28,7 @@ function Header() {
 
     return (
         <nav
-            className={`sticky top-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm`}
+            className={`sticky top-0 z-50 transition-all duration-300 backdrop-blur-xl ${scrolled ? "bg-white/90 shadow-soft border-b border-slate-200/70" : "bg-white/60 border-b border-white/40"}`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-24">
@@ -46,33 +39,30 @@ function Header() {
                             alt="BizVisionary Logo"
                             className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
                         />
-                        <span className="text-2xl font-bold text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors">
+                        <span className="text-2xl font-display font-semibold text-slate-900 tracking-tight group-hover:text-brand-700 transition-colors">
                             BizVisionary
                         </span>
                     </Link>
 
                     {/* Desktop Menu */}
-                    <div className="hidden md:flex items-center gap-8">
+                    <div className="hidden md:flex items-center gap-6">
                         <Link
                             to="/"
-                            className="text-gray-600 hover:text-blue-600 font-medium transition-colors flex items-center gap-2"
+                            className="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-brand-700 hover:bg-white/70 transition-colors"
                         >
-                            <FaHome />
                             Home
                         </Link>
                         <Link
                             to="/owner/register"
-                            className="text-gray-600 hover:text-blue-600 font-medium transition-colors flex items-center gap-2"
+                            className="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:text-brand-700 hover:bg-white/70 transition-colors"
                         >
-                            <FaUserPlus />
                             Business Register
                         </Link>
 
                         <Link
                             to="/login"
-                            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5"
+                            className="flex items-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-glow hover:bg-brand-700 transition-all hover:-translate-y-0.5"
                         >
-                            <FaSignInAlt />
                             Login
                         </Link>
                     </div>
@@ -80,37 +70,34 @@ function Header() {
                     {/* Mobile Menu Button */}
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className="md:hidden text-gray-700 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
+                        className="md:hidden text-slate-700 hover:text-brand-700 transition-colors px-3 py-2 rounded-xl hover:bg-white/70 text-sm font-semibold"
                     >
-                        {isOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
+                        {isOpen ? "Close" : "Menu"}
                     </button>
                 </div>
             </div>
 
             {/* Mobile Menu */}
             {isOpen && (
-                <div className="md:hidden absolute top-20 left-0 w-full bg-white border-b border-gray-200 shadow-xl animate-fade-in-down">
+                <div className="md:hidden absolute top-20 left-0 w-full bg-white/95 border-b border-slate-200/70 shadow-xl animate-fade-in-down backdrop-blur-xl">
                     <div className="px-6 py-6 space-y-4">
                         <Link
                             to="/"
-                            className="flex items-center gap-3 text-lg font-medium text-gray-700 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                            className="flex items-center text-lg font-semibold text-slate-700 hover:text-brand-700 p-2 rounded-xl hover:bg-brand-50/70 transition-colors"
                         >
-                            <FaHome className="text-blue-500" />
                             Home
                         </Link>
                         <Link
                             to="/owner/register"
-                            className="flex items-center gap-3 text-lg font-medium text-gray-700 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                            className="flex items-center text-lg font-semibold text-slate-700 hover:text-brand-700 p-2 rounded-xl hover:bg-brand-50/70 transition-colors"
                         >
-                            <FaUserPlus className="text-blue-500" />
                             Business Register
                         </Link>
 
                         <Link
                             to="/login"
-                            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 transition w-full"
+                            className="flex items-center justify-center bg-brand-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-brand-700 transition w-full"
                         >
-                            <FaSignInAlt />
                             Login
                         </Link>
                     </div>

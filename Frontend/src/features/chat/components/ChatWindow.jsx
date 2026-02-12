@@ -2,7 +2,6 @@ import React, { useRef, useState, useLayoutEffect, useEffect } from 'react';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
-import { FaArrowLeft } from 'react-icons/fa';
 
 const ChatWindow = ({
     selectedUser,
@@ -17,6 +16,7 @@ const ChatWindow = ({
     onFileUpload,
     onEditMessage,
     onDeleteMessage,
+    uploading,
     // Pagination
     loadingMore,
     onLoadMore,
@@ -34,17 +34,61 @@ const ChatWindow = ({
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
     const topSentinelRef = useRef(null);
+    const isAtBottomRef = useRef(true);
+    const prevMessageCountRef = useRef(0);
+    const prevLastMessageIdRef = useRef(null);
+    const smoothScrollRef = useRef(null);
 
     // Scroll Logic
+    const smoothScrollToBottom = () => {
+        const container = chatContainerRef.current;
+        if (!container) return;
+        const start = container.scrollTop;
+        const end = container.scrollHeight;
+        const distance = end - start;
+        const duration = 240;
+        const startTime = performance.now();
+
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const t = Math.min(1, elapsed / duration);
+            const eased = t * (2 - t);
+            container.scrollTop = start + distance * eased;
+            if (t < 1) {
+                smoothScrollRef.current = requestAnimationFrame(step);
+            }
+        };
+
+        if (smoothScrollRef.current) {
+            cancelAnimationFrame(smoothScrollRef.current);
+        }
+        smoothScrollRef.current = requestAnimationFrame(step);
+    };
+
     useLayoutEffect(() => {
         if (!loadingMore && messages.length > 0 && !prevScrollHeightRef.current) {
-            const behavior = isInitialLoadRef.current ? "auto" : "smooth";
-            messagesEndRef.current?.scrollIntoView({ behavior });
+            const lastMessage = messages[messages.length - 1];
+            const isNewMessage = prevMessageCountRef.current !== messages.length &&
+                prevLastMessageIdRef.current !== (lastMessage?.id ?? null);
+            const isMine = lastMessage?.sender_id === currentUserId;
+            const shouldScroll =
+                isInitialLoadRef.current || isAtBottomRef.current || (isNewMessage && isMine);
+
+            if (shouldScroll) {
+                if (isInitialLoadRef.current) {
+                    if (chatContainerRef.current) {
+                        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                    }
+                } else {
+                    smoothScrollToBottom();
+                }
+            }
+
             if (isInitialLoadRef.current) {
                 isInitialLoadRef.current = false;
             }
         }
-    }, [messages, loadingMore, isInitialLoadRef, prevScrollHeightRef]);
+    }, [messages, loadingMore, isInitialLoadRef, prevScrollHeightRef, currentUserId]);
 
     useLayoutEffect(() => {
         if (prevScrollHeightRef.current && chatContainerRef.current) {
@@ -55,11 +99,44 @@ const ChatWindow = ({
         }
     }, [messages, prevScrollHeightRef]);
 
+    useEffect(() => {
+        prevMessageCountRef.current = messages.length;
+        prevLastMessageIdRef.current = messages[messages.length - 1]?.id ?? null;
+    }, [messages]);
+
+    useEffect(() => {
+        return () => {
+            if (smoothScrollRef.current) {
+                cancelAnimationFrame(smoothScrollRef.current);
+            }
+        };
+    }, []);
+
+    // Track whether user is near bottom to control auto-scroll
+    useEffect(() => {
+        const container = chatContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            const threshold = 80;
+            const distanceFromBottom =
+                container.scrollHeight - container.scrollTop - container.clientHeight;
+            isAtBottomRef.current = distanceFromBottom <= threshold;
+        };
+
+        handleScroll();
+        container.addEventListener("scroll", handleScroll);
+        return () => container.removeEventListener("scroll", handleScroll);
+    }, []);
+
     // Intersection Observer
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && !loadingMore) {
+                    if (chatContainerRef.current) {
+                        prevScrollHeightRef.current = chatContainerRef.current.scrollHeight;
+                    }
                     onLoadMore();
                 }
             },
@@ -105,13 +182,13 @@ const ChatWindow = ({
 
     if (!selectedUser) {
         return (
-            <div className="hidden md:flex flex-col flex-1 bg-white md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#f8f9fc]">
-                    <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-gray-100">
-                        <span className="text-6xl animate-bounce-slow">💬</span>
+            <div className="hidden md:flex flex-col flex-1 md:rounded-2xl overflow-hidden relative bg-white border border-slate-200 shadow-sm">
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
+                    <div className="w-32 h-32 rounded-full flex items-center justify-center mb-6 bg-slate-50 border border-slate-200">
+                        <span className="text-6xl">💬</span>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Welcome to Chat</h2>
-                    <p className="text-gray-500 max-w-xs leading-relaxed">
+                    <h2 className="text-2xl font-semibold text-slate-900 mb-3 tracking-tight">Welcome to Chat</h2>
+                    <p className="text-slate-500 max-w-xs leading-relaxed">
                         Select a team member from the sidebar to start a conversation.
                     </p>
                 </div>
@@ -120,7 +197,7 @@ const ChatWindow = ({
     }
 
     return (
-        <div className="flex flex-col flex-1 bg-white md:rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+        <div className="flex flex-col flex-1 md:rounded-2xl overflow-hidden relative bg-white">
             <ChatHeader
                 selectedUser={selectedUser}
                 userStatus={userStatus}
@@ -151,7 +228,7 @@ const ChatWindow = ({
                 setNewMessage={setNewMessage}
                 handleSendMessage={handleSendMessageWrapped}
                 sendTyping={onSendTyping}
-                uploading={false} // pass from parent if needed
+                uploading={uploading}
                 handleFileUpload={onFileUpload}
                 editingMessage={editingMessage}
                 setEditingMessage={setEditingMessage}

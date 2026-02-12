@@ -19,7 +19,6 @@ export default function InventoryList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  /* ---------- INITIAL LOAD ---------- */
   useEffect(() => {
     const loadInitial = async () => {
       try {
@@ -43,7 +42,6 @@ export default function InventoryList() {
     loadInitial();
   }, []);
 
-  /* ---------- STOCK FILTER ---------- */
   const applyStockFilter = async ({ name, sku }) => {
     const params = new URLSearchParams();
     if (name) params.append("name", name);
@@ -62,20 +60,17 @@ export default function InventoryList() {
     setStockNext(res.data?.next || null);
   };
 
-  /* ---------- TRANSACTION FILTER ---------- */
-  const applyTransactionFilter = async ({ name, sku, action }) => {
+  const applyTransactionFilter = async ({ product_name, product_sku, action }) => {
     const params = new URLSearchParams();
-    if (name) params.append("name", name);
-    if (sku) params.append("sku", sku);
+    if (product_name) params.append("product_name", product_name);
+    if (product_sku) params.append("product_sku", product_sku);
     if (action) params.append("action", action);
 
     const res = await inventoryService.getTransactions(`?${params.toString()}`);
-
     setTransactions(res.data?.results || []);
     setTxNext(res.data?.next || null);
   };
 
-  /* ---------- INFINITE SCROLL (TRANSACTIONS) ---------- */
   const loadMoreTransactions = useCallback(async () => {
     if (!txNext || txLoading) return;
 
@@ -103,56 +98,60 @@ export default function InventoryList() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [loadMoreTransactions]);
 
-  /* ---------- STATES ---------- */
   if (loading) {
     return (
-      <div className="p-10 text-center text-gray-600">Loading inventory…</div>
+      <div className="min-h-screen bg-transparent">
+        <ProtectedHeader />
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+            <p className="text-slate-500 text-sm font-medium">Loading inventory...</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (error) {
-    return <div className="p-10 text-center text-red-600">{error}</div>;
+    return (
+      <div className="min-h-screen bg-transparent">
+        <ProtectedHeader />
+        <div className="p-10 text-center text-rose-600">{error}</div>
+      </div>
+    );
   }
 
-  /* ---------- UI ---------- */
   return (
     <>
       <ProtectedHeader />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <FiLayers className="text-blue-600 text-2xl" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+              <FiLayers className="text-xl" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                Inventory
-              </h1>
-              <p className="text-gray-500 mt-1">Track stocks and transactions</p>
+              <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">Inventory</h1>
+              <p className="text-slate-500 mt-1">Track stock levels and transaction history.</p>
             </div>
           </div>
 
           <Link
             to="/inventory/transaction/new"
-            className="
-            flex items-center gap-2
-            bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800
-            text-white font-medium
-            px-5 py-2.5
-            rounded-lg
-            shadow-lg shadow-blue-500/30
-            hover:scale-[1.02] transform transition-all
-          "
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition"
           >
             <FiPlus className="h-5 w-5" />
             New Transaction
           </Link>
         </div>
 
-        {/* Stock Section */}
-        {/* Stock Section */}
-        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+        <Suspense
+          fallback={
+            <div className="h-64 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+            </div>
+          }
+        >
           <StockSection
             stocks={stocks}
             hasMore={Boolean(stockNext)}
@@ -161,15 +160,20 @@ export default function InventoryList() {
           />
         </Suspense>
 
-        {/* Transaction Section */}
-        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+        <Suspense
+          fallback={
+            <div className="h-64 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+            </div>
+          }
+        >
           <TransactionSection
             transactions={transactions}
             loading={txLoading}
             onFilter={applyTransactionFilter}
           />
         </Suspense>
-      </div>
+      </main>
     </>
   );
 }

@@ -24,13 +24,13 @@ const ChatInput = ({
     };
 
     return (
-        <div className="p-4 sm:p-5 bg-white/80 backdrop-blur-md border-t border-gray-100 shrink-0 z-20 relative">
+        <div className="p-4 sm:p-5 bg-white border-t border-slate-200 shrink-0 z-20 relative">
             <form onSubmit={handleSendMessage} className="flex items-end gap-3 max-w-4xl mx-auto relative">
-                <div className="flex-1 bg-gray-100/60 hover:bg-gray-100 focus-within:bg-white focus-within:shadow-[0_4px_20px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 ease-out rounded-[28px] flex items-end p-2 border-none">
+                <div className="flex-1 bg-white border border-slate-200 hover:border-slate-300 focus-within:shadow-[0_4px_20px_-2px_rgba(0,0,0,0.08)] transition-all duration-300 ease-out rounded-[28px] flex items-end p-2">
                     <button
                         type="button"
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="p-2.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-full hover:bg-gray-200/50 active:scale-95 shrink-0"
+                        className="p-2.5 text-slate-400 hover:text-slate-700 transition-colors rounded-full hover:bg-slate-100 active:scale-95 shrink-0"
                     >
                         <FaSmile size={20} />
                     </button>
@@ -40,7 +40,7 @@ const ChatInput = ({
                             <div className="relative">
                                 <button
                                     onClick={() => setShowEmojiPicker(false)}
-                                    className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full p-1 z-50 shadow-md hover:bg-gray-700"
+                                    className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full p-1 z-50 shadow-md hover:bg-slate-800"
                                 >
                                     <FaTimes size={12} />
                                 </button>
@@ -65,7 +65,7 @@ const ChatInput = ({
                             }
                         }}
                         placeholder="Type a message..."
-                        className="flex-1 bg-transparent border-none outline-none focus:ring-0 text-gray-700 text-sm py-3 px-2 min-h-[44px] max-h-32 resize-none leading-relaxed placeholder-gray-400"
+                        className="flex-1 bg-transparent border-none outline-none focus:ring-0 text-slate-700 text-sm py-3 px-2 min-h-[44px] max-h-32 resize-none leading-relaxed placeholder-slate-400"
                         rows={1}
                         style={{ height: 'auto' }}
                     />
@@ -96,16 +96,16 @@ const ChatInput = ({
                     {/* Attachment Menu */}
                     {showAttachMenu && (
                         <div className="absolute bottom-16 right-0 z-50 animate-fade-in-up">
-                            <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 min-w-[150px]">
+                            <div className="bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex flex-col gap-1 min-w-[150px]">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setShowAttachMenu(false);
                                         docInputRef.current?.click();
                                     }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg text-gray-700 text-sm font-medium transition-colors text-left"
+                                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg text-slate-700 text-sm font-medium transition-colors text-left"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
                                         <FaFile size={14} />
                                     </div>
                                     Document
@@ -116,9 +116,9 @@ const ChatInput = ({
                                         setShowAttachMenu(false);
                                         imageInputRef.current?.click();
                                     }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg text-gray-700 text-sm font-medium transition-colors text-left"
+                                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg text-slate-700 text-sm font-medium transition-colors text-left"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
                                         <FaImage size={14} />
                                     </div>
                                     Image
@@ -129,9 +129,9 @@ const ChatInput = ({
                                         setShowAttachMenu(false);
                                         videoInputRef.current?.click();
                                     }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg text-gray-700 text-sm font-medium transition-colors text-left"
+                                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg text-slate-700 text-sm font-medium transition-colors text-left"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
                                         <FaVideo size={14} />
                                     </div>
                                     Video
@@ -144,30 +144,30 @@ const ChatInput = ({
                         type="button"
                         onClick={() => setShowAttachMenu(!showAttachMenu)}
                         disabled={uploading || !!editingMessage}
-                        className={`p-2.5 transition-colors rounded-full active:scale-95 shrink-0 ${showAttachMenu ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:text-indigo-500 hover:bg-gray-200/50'} ${editingMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`p-2.5 transition-colors rounded-full active:scale-95 shrink-0 ${showAttachMenu ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'} ${editingMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {uploading ? <FaSpinner className="animate-spin text-indigo-500" /> : <FaPaperclip size={18} />}
+                        {uploading ? <FaSpinner className="animate-spin text-slate-500" /> : <FaPaperclip size={18} />}
                     </button>
                 </div>
 
                 {editingMessage && (
                     <button
                         type="button"
-                        onClick={() => {
-                            setEditingMessage(null);
-                            setNewMessage("");
-                        }}
-                        className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-1 rounded-full shadow-md hover:bg-gray-700 transition-colors"
-                    >
-                        Cancel Editing
-                    </button>
+                    onClick={() => {
+                        setEditingMessage(null);
+                        setNewMessage("");
+                    }}
+                    className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1 rounded-full shadow-md hover:bg-slate-800 transition-colors"
+                >
+                    Cancel Editing
+                </button>
                 )}
 
                 <button
                     type="submit"
                     disabled={!newMessage.trim() || uploading}
-                    className={`p-3.5 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center shrink-0
-                            ${editingMessage ? 'bg-green-600 hover:bg-green-700 shadow-green-200 hover:shadow-green-300' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 hover:shadow-indigo-300'}
+                    className={`p-3.5 text-white rounded-full shadow-sm transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center shrink-0
+                            ${editingMessage ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-slate-800'}
                             disabled:opacity-50 disabled:shadow-none
                         `}
                 >

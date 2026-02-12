@@ -58,7 +58,7 @@ export default function CheckoutForm({ amount, onClose }) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
+            <div className="bg-white/70 p-4 rounded-xl border border-gray-100 mb-6">
                 <div className="flex justify-between items-center mb-1">
                     <span className="text-gray-500 text-sm">Amount to pay</span>
                     <span className="text-xl font-bold text-gray-900">
@@ -81,7 +81,7 @@ export default function CheckoutForm({ amount, onClose }) {
             <button
                 disabled={isLoading || !stripe || !elements}
                 id="submit"
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/30 disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`btn-primary w-full ${isLoading || !stripe || !elements ? "opacity-70 cursor-not-allowed" : ""}`}
             >
                 {isLoading ? (
                     <>

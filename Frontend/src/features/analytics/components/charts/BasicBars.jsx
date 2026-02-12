@@ -11,7 +11,7 @@ export default function BasicBars({ xAxis, series, height }) {
       slotProps={{
         legend: {
           direction: 'horizontal',
-          position: { vertical: 'top', horizontal: 'middle' },
+          position: { vertical: 'top', horizontal: 'center' },
         }
       }}
       sx={{

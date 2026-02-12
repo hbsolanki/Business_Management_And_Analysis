@@ -1,0 +1,1 @@
+import{a as t}from"./index-TGBChVvB.js";const p={getAll:e=>t.get(e),getById:e=>t.get(`/product/${e}/`),create:e=>t.post("/product/",e),update:(e,o)=>t.patch(`/product/${e}/`,o),delete:e=>t.delete(`/product/${e}/`),getCategories:()=>t.get("/product/category/"),deleteCategory:e=>t.delete(`/product/category/${e}/`)};export{p};

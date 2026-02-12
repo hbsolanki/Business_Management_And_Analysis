@@ -21,13 +21,13 @@ export default function InfoLayout() {
     });
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex min-h-screen bg-transparent">
             {/* Sidebar Navigation */}
             {/* Sidebar Navigation */}
             <aside className="w-72 bg-white border-r border-gray-100 hidden md:flex flex-col shrink-0 h-screen sticky top-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] z-20">
                 <div className="p-6">
                     <div className="flex items-center gap-3 mb-8 px-2">
-                        <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-600/20">
+                        <div className="bg-brand-600 p-2 rounded-xl text-white shadow-lg shadow-brand-600/20">
                             <Info className="h-6 w-6" />
                         </div>
                         <span className="font-bold text-xl text-gray-900 tracking-tight">Bizz Visionary Info</span>
@@ -45,14 +45,10 @@ export default function InfoLayout() {
                                 <Link
                                     key={item.path}
                                     to={item.path}
-                                    className={`group flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 font-medium text-sm border ${isActive
-                                        ? "bg-blue-50/50 border-blue-100 text-blue-600 shadow-sm"
-                                        : "border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-100"
-                                        }`}
-                                >
-                                    <Icon className={`h-5 w-5 transition-colors duration-300 ${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"}`} />
+                                    className={`group flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 font-medium text-sm border border-transparent ${isActive ? "bg-brand-50/50 text-brand-600 border-brand-100" : "text-slate-500 hover:bg-white/70 hover:border-white/70 hover:text-slate-900"}`}>
+                                    <Icon className={`h-5 w-5 transition-colors duration-300 ${isActive ? "text-brand-600" : "text-slate-400 group-hover:text-slate-600"}`} />
                                     {item.name}
-                                    {isActive && <ArrowRight className="h-4 w-4 ml-auto text-blue-500 animate-pulse" />}
+                                    {isActive && <ArrowRight className="h-4 w-4 ml-auto text-brand-500 animate-pulse" />}
                                 </Link>
                             );
                         })}
@@ -69,7 +65,7 @@ export default function InfoLayout() {
                             </p>
                             <Link
                                 to="/info/support"
-                                className="flex items-center justify-center w-full text-xs font-semibold bg-white text-gray-900 hover:bg-gray-50 transition-colors py-2.5 rounded-lg shadow-sm"
+                                className="glass-panel flex items-center justify-center w-full text-xs font-semibold text-gray-900 hover:bg-white/70 transition-colors py-2.5 rounded-lg"
                             >
                                 Contact Support
                             </Link>
@@ -80,7 +76,7 @@ export default function InfoLayout() {
 
             <main className="flex-1 min-w-0">
                 <div className="md:hidden bg-white/80 backdrop-blur-xl border-b border-gray-200 p-4 sticky top-0 z-30">
-                    <div className="flex items-center gap-2 text-blue-600 font-bold text-xl">
+                    <div className="flex items-center gap-2 text-brand-600 font-bold text-xl">
                         <Info className="h-6 w-6" />
                         <span>Bizz Visionary Info</span>
                     </div>

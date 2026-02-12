@@ -7,6 +7,7 @@ import PrivateRoute from "@/features/auth/routes/PrivateRoute";
 
 // lazy imports
 const Home = lazy(() => import("@/pages/Home"));
+const Subscriptions = lazy(() => import("@/pages/subscription/Subscriptions"));
 const OwnerRegistration = lazy(() =>
   import("@/pages/auth/OwnerRegister")
 );
@@ -76,8 +77,8 @@ const Support = lazy(() => import("@/pages/info/Support"));
 // loader
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+    <div className="min-h-screen flex items-center justify-center bg-transparent">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-brand-600"></div>
     </div>
   );
 }
@@ -95,6 +96,7 @@ const NewBroadcast = lazy(() => import("@/pages/chat/NewBroadcast"));
 const TaskDashboard = lazy(() => import("@/pages/task/TaskDashboard"));
 const TaskDetails = lazy(() => import("@/pages/task/TaskDetails"));
 const EditTask = lazy(() => import("@/pages/task/EditTask"));
+const CreateTask = lazy(() => import("@/pages/task/CreateTask"));
 
 import { useSelector } from "react-redux";
 import { useEffect } from "react";
@@ -177,6 +179,11 @@ function App() {
               <Route path="/manager/edit" element={<ManagerEditProfile />} />
             </Route>
 
+            {/* Owner & Manager Shared */}
+            <Route element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}>
+              <Route path="/subscriptions" element={<Subscriptions />} />
+            </Route>
+
             {/* Employee Only */}
             <Route element={<PrivateRoute allowedRoles={["EMPLOYEE"]} />}>
               <Route path="/employee" element={<Employee />} />
@@ -190,6 +197,7 @@ function App() {
               <Route path="/analytics" element={<Navigate to="/analytics/overview" replace />} />
               <Route path="/analytics/overview" element={<Analytics initialView="SUMMARY" />} />
               <Route path="/analytics/visual" element={<Analytics initialView="CHARTS" />} />
+              <Route path="/analytics/customers" element={<Analytics initialView="CUSTOMERS" />} />
 
               {/* Employee Management */}
               <Route path="/employees/manage" element={<EmployeesManage />} />
@@ -243,6 +251,7 @@ function App() {
               <Route path="/tasks" element={<TaskDashboard />} />
               <Route path="/tasks/created" element={<TaskDashboard />} />
               <Route path="/tasks/my-tasks" element={<TaskDashboard />} />
+              <Route path="/tasks/new" element={<CreateTask />} />
               <Route path="/tasks/:id" element={<TaskDetails />} />
               <Route path="/tasks/:id/edit" element={<EditTask />} />
             </Route>

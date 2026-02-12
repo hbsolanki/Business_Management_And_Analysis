@@ -23,7 +23,8 @@ import {
   FaArrowRight,
   FaBriefcase,
   FaComments,
-  FaShoppingBag
+  FaShoppingBag,
+  FaInfoCircle
 } from "react-icons/fa";
 
 export default function EmployeeDashboard() {
@@ -69,7 +70,7 @@ export default function EmployeeDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -112,7 +113,7 @@ export default function EmployeeDashboard() {
             </h1>
             <p className="text-gray-500 mt-2 font-medium">Here's what's happening today.</p>
           </div>
-          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+          <div className="glass-panel flex items-center gap-3 px-4 py-2 rounded-full">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <span className="text-sm font-semibold text-gray-700">{format(new Date(), "EEEE, MMMM do")}</span>
           </div>
@@ -122,7 +123,7 @@ export default function EmployeeDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-8 auto-rows-min">
 
           {/* 1. Profile Card (row-span-2) */}
-          <div className="md:col-span-2 md:row-span-2 bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden group">
+          <div className="glass-panel md:col-span-2 md:row-span-2 rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)] relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
 
             <div className="relative z-10 flex flex-col h-full justify-between">
@@ -144,10 +145,10 @@ export default function EmployeeDashboard() {
                 <h2 className="text-2xl font-bold text-gray-900">{employee.first_name} {employee.last_name}</h2>
                 <p className="text-gray-500 font-medium">{employee.email}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 text-sm font-semibold text-gray-600">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white/70 rounded-lg border border-gray-100 text-sm font-semibold text-gray-600">
                     <FaPhone size={12} className="text-gray-400" /> {employee.mobile_number}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 text-sm font-semibold text-gray-600">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white/70 rounded-lg border border-gray-100 text-sm font-semibold text-gray-600">
                     <FaCalendarAlt size={12} className="text-gray-400" /> Joined {new Date(employee.date_joined).getFullYear()}
                   </div>
                 </div>
@@ -168,13 +169,13 @@ export default function EmployeeDashboard() {
             title="In Progress"
             count={stats.inProgress}
             icon={FaTasks}
-            color="text-blue-600"
-            bg="bg-blue-50"
+            color="text-brand-600"
+            bg="bg-brand-50"
             trend="Active Now"
           />
 
           {/* Work Modules & Chat */}
-          <div className="md:col-span-2 bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-100">
+          <div className="glass-panel md:col-span-2 rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)]">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <FaBriefcase className="text-indigo-600" /> Work
             </h3>
@@ -187,40 +188,32 @@ export default function EmployeeDashboard() {
               {Array.isArray(employee.work) && employee.work.includes("product") && <AppIcon to="/product" icon={FaProductHunt} label="Products" color="bg-orange-500" shadow="shadow-orange-200" />}
               {Array.isArray(employee.work) && employee.work.includes("sale") && <AppIcon to="/sale" icon={FaShoppingBag} label="Sales" color="bg-green-500" shadow="shadow-green-200" />}
               {Array.isArray(employee.work) && employee.work.includes("invoice") && <AppIcon to="/invoice" icon={FaCashRegister} label="Invoices" color="bg-emerald-500" shadow="shadow-emerald-200" />}
-              {Array.isArray(employee.work) && employee.work.includes("analytics") && <AppIcon to="/analytics" icon={FaChartPie} label="Analytics" color="bg-blue-500" shadow="shadow-blue-200" />}
+              {Array.isArray(employee.work) && employee.work.includes("analytics") && <AppIcon to="/analytics" icon={FaChartPie} label="Analytics" color="bg-brand-500" shadow="shadow-brand-200" />}
             </div>
           </div>
 
-          {/* Business Info */}
-          <div className="md:col-span-2 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-8 shadow-xl text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm">
-                  <FaBuilding className="text-indigo-100" />
-                </div>
-                <h3 className="text-lg font-bold">{employee.business?.name || "No Business"}</h3>
+          {/* Role Guide */}
+          <div className="glass-panel md:col-span-2 rounded-3xl p-6 shadow-[0_2px_20px_rgb(0,0,0,0.04)]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center">
+                <FaInfoCircle size={20} />
               </div>
-
-              {employee.business ? (
-                <>
-                  <p className="text-indigo-100 text-sm mb-6 leading-relaxed line-clamp-2">
-                    {employee.business.description || "Welcome to the team workspace."}
-                  </p>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-black/20 px-4 py-2 rounded-xl backdrop-blur-md flex items-center gap-3 border border-indigo-400/30">
-                      <span className="text-xs font-mono text-indigo-200 tracking-wider">ID</span>
-                      <span className="font-mono font-bold tracking-widest">{employee.business.id}</span>
-                    </div>
-                    <button onClick={copyBusinessId} className="text-sm font-semibold hover:text-white text-indigo-200 transition-colors">
-                      Copy
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-indigo-200">Contact admin to link business.</p>
-              )}
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Employee Guide</h3>
+                <p className="text-xs text-gray-500">Learn daily tasks, tools, and best practices.</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase">Role</p>
+                <p className="text-sm font-bold text-gray-900">Employee</p>
+              </div>
+              <Link
+                to="/info/employee"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 transition-all"
+              >
+                Open Guide
+              </Link>
             </div>
           </div>
 
@@ -232,13 +225,13 @@ export default function EmployeeDashboard() {
 
 // Stats Card Component
 const StatsCard = ({ title, count, icon: Icon, color, bg, trend }) => (
-  <div className="bg-white rounded-3xl p-6 shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-md transition-shadow">
+  <div className="glass-panel rounded-3xl p-6 shadow-[0_2px_20px_rgb(0,0,0,0.04)] hover:shadow-md transition-shadow">
     <div className={`w-10 h-10 rounded-2xl ${bg} ${color} flex items-center justify-center mb-4`}>
       <Icon size={18} />
     </div>
     <p className="text-gray-500 text-sm font-medium">{title}</p>
     <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{count}</h3>
-    <p className={`text-xs font-semibold mt-3 ${color} bg-opacity-10 px-2 py-1 rounded-md inline-block bg-gray-50`}>
+    <p className={`text-xs font-semibold mt-3 ${color} bg-opacity-10 px-2 py-1 rounded-md inline-block bg-white/70`}>
       {trend}
     </p>
   </div>

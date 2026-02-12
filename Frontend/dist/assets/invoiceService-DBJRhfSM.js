@@ -1,1 +1,0 @@
-import{a as i}from"./api-BsG4zq5T.js";const t={getAll:(e="")=>i.get(`/invoice/${e}`),getByUrl:e=>i.get(e),create:e=>i.post("/invoice/",e),checkCustomer:e=>i.get(`/customer/mobile_number/?mobile_number=${e}`)};export{t as i};

@@ -10,18 +10,20 @@ const taskService = {
         }
     },
 
-    getAssigneeTasks: async () => {
+    getAssigneeTasks: async (params = {}) => {
         try {
-            const response = await api.get("/task/assignee/");
+            const hasParams = params && Object.keys(params).length > 0;
+            const response = await api.get("/task/assignee/", hasParams ? { params } : undefined);
             return response.data;
         } catch (error) {
             throw error;
         }
     },
 
-    getAssignedByTasks: async () => {
+    getAssignedByTasks: async (params = {}) => {
         try {
-            const response = await api.get("/task/assigned_by/");
+            const hasParams = params && Object.keys(params).length > 0;
+            const response = await api.get("/task/assigned_by/", hasParams ? { params } : undefined);
             return response.data;
         } catch (error) {
             throw error;

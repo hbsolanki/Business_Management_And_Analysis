@@ -26,8 +26,8 @@ export const OWNER_ACTIONS = {
         path: "/owner",
         icon: <FaCrown />,
         desc: "Overview & Stats",
-        color: "text-blue-600",
-        bg: "bg-blue-50 hover:bg-blue-100"
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
     analytics: {
         id: "analytics",
@@ -127,8 +127,8 @@ export const OWNER_ACTIONS = {
         path: "/employee/new",
         icon: <FaUserPlus />,
         desc: "Onboard Staff",
-        color: "text-blue-600",
-        bg: "bg-blue-50 hover:bg-blue-100"
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
     addManager: {
         id: "addManager",
@@ -185,8 +185,8 @@ export const MANAGER_ACTIONS = {
         path: "/employees/manage",
         icon: <FaUsers />,
         desc: "Staff List",
-        color: "text-blue-600",
-        bg: "bg-blue-50 hover:bg-blue-100"
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
     inventory: {
         id: "inventory",
@@ -259,8 +259,8 @@ export const MANAGER_ACTIONS = {
         path: "/employee/new",
         icon: <FaUserPlus />,
         desc: "New Hire",
-        color: "text-blue-600",
-        bg: "bg-blue-50 hover:bg-blue-100"
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
     recordCost: {
         id: "recordCost",

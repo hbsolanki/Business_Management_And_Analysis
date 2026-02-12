@@ -1,7 +1,5 @@
 import ProductCard from "./ProductCard";
 import EmptyState from "../EmptyState";
-import { PlusIcon } from "@heroicons/react/24/outline";
-import { Link } from "react-router-dom";
 
 export default function ProductGrid({
   products = [],
@@ -11,7 +9,14 @@ export default function ProductGrid({
   onDeleteProduct,
 }) {
   if (loading) {
-    return <p className="text-center">Loading...</p>;
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-500">Loading products...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!products.length) {
@@ -19,19 +24,16 @@ export default function ProductGrid({
   }
 
   return (
-    <>
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            expandedId={expandedId}
-            onToggle={onToggleRead}
-            onDelete={onDeleteProduct}
-          />
-        ))}
-      </div>
-    </>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          expandedId={expandedId}
+          onToggle={onToggleRead}
+          onDelete={onDeleteProduct}
+        />
+      ))}
+    </div>
   );
 }

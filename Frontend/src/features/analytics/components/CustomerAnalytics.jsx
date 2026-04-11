@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     FaChartLine,
     FaCrown,
     FaExclamationTriangle,
     FaUserCheck,
-    FaUsers,
     FaFilter,
 } from "react-icons/fa";
 import customerAnalyticsService from "../services/customerAnalyticsService";
@@ -35,12 +34,10 @@ export default function CustomerAnalytics() {
 
     // Data States with Pagination
     const [retentionData, setRetentionData] = useState(null);
-    const [isRetentionLocked, setIsRetentionLocked] = useState(false);
 
     const [leaderboardData, setLeaderboardData] = useState([]);
     const [leaderboardNext, setLeaderboardNext] = useState(null);
     const [loadingLeaderboardMore, setLoadingLeaderboardMore] = useState(false);
-    const [isLeaderboardLocked, setIsLeaderboardLocked] = useState(false);
 
     const [spendTrendData, setSpendTrendData] = useState([]);
     const [isSpendTrendLocked, setIsSpendTrendLocked] = useState(false);
@@ -48,7 +45,6 @@ export default function CustomerAnalytics() {
     const [preferencesData, setPreferencesData] = useState([]);
     const [preferencesNext, setPreferencesNext] = useState(null);
     const [loadingPreferencesMore, setLoadingPreferencesMore] = useState(false);
-    const [isPreferencesLocked, setIsPreferencesLocked] = useState(false);
 
     const [productsData, setProductsData] = useState([]);
     const [productsNext, setProductsNext] = useState(null);
@@ -83,31 +79,21 @@ export default function CustomerAnalytics() {
     // Toggle Filters
     const [showFilters, setShowFilters] = useState(false);
 
-    // Effect to fetch main data when filters change
-    useEffect(() => {
-        fetchAllData();
-    }, [filters.startDate, filters.endDate, filters.searchQuery, filters.productId]);
-
-    // Effect to fetch spend trend when trend filters change
-    useEffect(() => {
-        fetchSpendTrend();
-    }, [trendMonth, trendYear]);
-
-    const getCommonParams = () => {
+    const getCommonParams = useCallback(() => {
         const query = filters.searchQuery || "";
         const isNumeric = /^\d+$/.test(query);
         const isCustomerId = isNumeric && query.length < 6;
         const isMobile = isNumeric && query.length >= 6;
 
         const commonParams = {};
-        if (filters.startDate) commonParams.start_date = filters.startDate;
-        if (filters.endDate) commonParams.end_date = filters.endDate;
+        if (filters.startDate) commonParams.from_date = filters.startDate;
+        if (filters.endDate) commonParams.to_date = filters.endDate;
         if (isCustomerId) commonParams.customer_id = query;
         if (isMobile) commonParams.mobile_number = query;
         return commonParams;
-    };
+    }, [filters.startDate, filters.endDate, filters.searchQuery]);
 
-    const fetchAllData = async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
         setProductsPage(1); // Reset product page
@@ -125,46 +111,52 @@ export default function CustomerAnalytics() {
         productParams.page = 1;
 
         try {
-            const results = await Promise.allSettled([
-                customerAnalyticsService.getRetentionMetrics(retentionParams),
-                customerAnalyticsService.getLeaderboard(commonParams),
-                customerAnalyticsService.getProductPreferences(commonParams),
-                customerAnalyticsService.getCustomerProducts(productParams),
-            ]);
+            // 1) Retention
+            try {
+                const retention = await customerAnalyticsService.getRetentionMetrics(retentionParams);
+                setRetentionData(retention);
+            } catch (retentionErr) {
+                console.error("Retention fetch failed:", retentionErr);
+            }
 
-            const [retentionRes, leaderboardRes, preferencesRes, productsRes] = results;
-
-            // Helper to handle response
-            const handleResponse = (result, setData, setNext, setLocked) => {
-                if (result.status === "fulfilled") {
-                    setLocked && setLocked(false);
-                    const data = result.value;
-                    if (data.results) {
-                        setData(data.results);
-                        setNext && setNext(data.next);
-                    } else if (Array.isArray(data)) {
-                        setData(data);
-                        setNext && setNext(null);
-                    } else {
-                        setData(data); // For retention which is an object
-                        setNext && setNext(null);
-                    }
+            // 2) Leaderboard
+            try {
+                const leaderboard = await customerAnalyticsService.getLeaderboard(commonParams);
+                if (leaderboard?.results) {
+                    setLeaderboardData(leaderboard.results);
+                    setLeaderboardNext(leaderboard.next);
+                } else if (Array.isArray(leaderboard)) {
+                    setLeaderboardData(leaderboard);
+                    setLeaderboardNext(null);
                 } else {
-                    console.error("Analytics fetch failed:", result.reason);
-                    if (result.reason?.response?.data?.detail === "has_advanced_analytics not allow in your plan") {
-                        setLocked && setLocked(true);
-                    }
+                    setLeaderboardData([]);
+                    setLeaderboardNext(null);
                 }
-            };
+            } catch (leaderboardErr) {
+                console.error("Leaderboard fetch failed:", leaderboardErr);
+            }
 
-            handleResponse(retentionRes, setRetentionData, null, setIsRetentionLocked);
-            handleResponse(leaderboardRes, setLeaderboardData, setLeaderboardNext, setIsLeaderboardLocked);
-            handleResponse(preferencesRes, setPreferencesData, setPreferencesNext, setIsPreferencesLocked);
+            // 3) Product preferences
+            try {
+                const preferences = await customerAnalyticsService.getProductPreferences(commonParams);
+                if (preferences?.results) {
+                    setPreferencesData(preferences.results);
+                    setPreferencesNext(preferences.next);
+                } else if (Array.isArray(preferences)) {
+                    setPreferencesData(preferences);
+                    setPreferencesNext(null);
+                } else {
+                    setPreferencesData([]);
+                    setPreferencesNext(null);
+                }
+            } catch (preferencesErr) {
+                console.error("Preferences fetch failed:", preferencesErr);
+            }
 
-            // Products usually don't have premium lock, but treating same for consistency
-            if (productsRes.status === "fulfilled") {
-                const products = productsRes.value;
-                if (products.results) {
+            // 4) Customer products
+            try {
+                const products = await customerAnalyticsService.getCustomerProducts(productParams);
+                if (products?.results) {
                     setProductsData(products.results);
                     setProductsNext(products.next);
                 } else if (Array.isArray(products)) {
@@ -174,19 +166,18 @@ export default function CustomerAnalytics() {
                     setProductsData([]);
                     setProductsNext(null);
                 }
-            } else {
-                console.error("Products fetch failed", productsRes.reason);
+            } catch (productsErr) {
+                console.error("Products fetch failed", productsErr);
             }
-
         } catch (error) {
             console.error("Failed to fetch customer analytics:", error);
             setError("We couldn’t load customer analytics. Check your filters and try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters.startDate, filters.endDate, filters.productId, getCommonParams]);
 
-    const fetchSpendTrend = async (signal) => {
+    const fetchSpendTrend = useCallback(async (signal) => {
         setTrendLoading(true);
         try {
             const data = await customerAnalyticsService.getSpendTrend({
@@ -211,7 +202,19 @@ export default function CustomerAnalytics() {
                 setTrendLoading(false);
             }
         }
-    };
+    }, [trendMonth, trendYear]);
+
+    // Effect to fetch main data when filters change
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
+
+    // Effect to fetch spend trend when trend filters change
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchSpendTrend(controller.signal);
+        return () => controller.abort();
+    }, [fetchSpendTrend]);
 
     // --- Load More Handlers ---
 

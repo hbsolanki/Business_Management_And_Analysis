@@ -22,7 +22,7 @@ export default function InfoPromoSection() {
                             Master the Platform with <span className="text-gradient">BizVisionary Info</span>
                         </h2>
                         <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                            Whether you're an Owner, Manager, or Employee, our comprehensive documentation hub provides tailored guides to help you maximize your productivity and understand every feature in depth.
+                            Whether you&apos;re an Owner, Manager, or Employee, our comprehensive documentation hub provides tailored guides to help you maximize your productivity and understand every feature in depth.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -34,10 +34,10 @@ export default function InfoPromoSection() {
                                 Explore the Guide
                             </Link>
                             <Link
-                                to="/info/owner"
+                                to="/info/modules"
                                 className="glass-panel inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-slate-700 rounded-xl hover:bg-white/70 hover:border-slate-300 transition-all duration-300"
                             >
-                                View Role Guides <ArrowRight className="h-5 w-5" />
+                                Open Module Map <ArrowRight className="h-5 w-5" />
                             </Link>
                         </div>
 

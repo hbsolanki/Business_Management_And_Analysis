@@ -7,8 +7,11 @@ import {
   FaBuilding,
   FaIdBadge,
   FaAlignLeft,
-  FaSave,
+  FaTrash,
+  FaExclamationTriangle,
 } from "react-icons/fa";
+import { authService } from "@/services/authService";
+import { tokenService } from "@/services/tokenService";
 
 export default function EditBusiness() {
   const { bid } = useParams();
@@ -66,6 +69,43 @@ export default function EditBusiness() {
       toast.error("Update failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteBusiness = async () => {
+    if (!window.confirm("Are you sure you want to delete this business? This action cannot be undone.")) return;
+
+    try {
+      await businessService.delete(bid);
+      toast.success("Business deleted successfully");
+      navigate("/owner");
+    } catch (err) {
+      toast.error("Failed to delete business");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "CRITICAL ACTION: This will delete your ENTIRE business and your OWNER ACCOUNT permanently. \n\nAre you absolutely sure you want to proceed?"
+    );
+    if (!confirmed) return;
+
+    try {
+      // 1. Delete Business
+      await businessService.delete(bid);
+
+      // 2. Delete User account
+      const userId = tokenService.getId();
+      if (userId) {
+        await authService.deleteUser(userId);
+      }
+
+      toast.success("Account and Business deleted successfully");
+      await authService.logout();
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete account completely");
     }
   };
 
@@ -167,6 +207,42 @@ export default function EditBusiness() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-red-50/50 rounded-3xl border border-red-100 p-8 space-y-6">
+          <div className="flex items-center gap-3 text-red-600">
+            <FaExclamationTriangle className="text-xl" />
+            <h3 className="text-lg font-bold uppercase tracking-tight">Danger Zone</h3>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">Delete Business</h4>
+                <p className="text-xs text-slate-500 mt-1">Permanently remove this business. You can register a new one later.</p>
+              </div>
+              <button
+                onClick={handleDeleteBusiness}
+                className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+              >
+                <FaTrash className="text-xs" /> Delete Business
+              </button>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-red-200 shadow-sm flex flex-col justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-red-600">Delete Account & Business</h4>
+                <p className="text-xs text-slate-500 mt-1">Permanently delete your entire owner account and the business associated with it.</p>
+              </div>
+              <button
+                onClick={handleDeleteAccount}
+                className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors"
+              >
+                <FaTrash className="text-xs" /> Delete Entire Account
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

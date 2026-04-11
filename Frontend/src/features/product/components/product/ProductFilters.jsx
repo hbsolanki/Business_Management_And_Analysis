@@ -68,7 +68,7 @@ export default function ProductFilters({ categories = [], onApply }) {
             className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
           >
             <option value="">All categories</option>
-            {categories.map((c) => (
+            {Array.isArray(categories) && categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>

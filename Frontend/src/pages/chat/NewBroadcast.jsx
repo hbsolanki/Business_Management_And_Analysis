@@ -49,7 +49,8 @@ export default function NewBroadcast() {
             const group = res.data;
             if (group) {
                 setGroupName(group.name);
-                const userIds = new Set(group.users.map(u => u.user_id || u.id || u));
+                // GET returns users as [{user: {id, first_name, ...}}]
+                const userIds = new Set(group.users.map(u => Number(u.user?.id || u.user_id || u.id || u)));
                 setSelectedUserIds(userIds);
             }
         } catch (err) {
@@ -69,7 +70,7 @@ export default function NewBroadcast() {
             setLoading(true);
             const res = await api.get("/user/");
             const currentUserId = Number(tokenService.getId());
-            setUsers((res.data || []).filter(u => u.id !== currentUserId));
+            setUsers((res.data.results || []).filter(u => u.id !== currentUserId));
         } catch (err) {
             const detail = err?.response?.data?.detail || err?.response?.data?.message;
             if (err?.response?.status === 403 && typeof detail === "string" && detail.toLowerCase().includes("subscription")) {
@@ -99,7 +100,8 @@ export default function NewBroadcast() {
         const username = (u.username || "").toLowerCase();
         const query = searchQuery.toLowerCase();
         const matchesSearch = name.includes(query) || username.includes(query);
-        const matchesRole = filterRole === "ALL" || (u.role && u.role.toUpperCase() === filterRole);
+        const roleStr = typeof u.role === 'object' ? u.role.role : u.role;
+        const matchesRole = filterRole === "ALL" || (roleStr && roleStr.toUpperCase() === filterRole);
         return matchesSearch && matchesRole;
     });
 
@@ -140,7 +142,7 @@ export default function NewBroadcast() {
             setSaving(true);
             const payload = {
                 name: groupName,
-                users: Array.from(selectedUserIds).map(id => ({ user_id: id }))
+                users: Array.from(selectedUserIds).map(id => ({ user_id: Number(id) }))
             };
 
             if (isEditMode) {
@@ -181,6 +183,23 @@ export default function NewBroadcast() {
     const getInitials = (user) => {
         if (!user) return "?";
         return `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` || user.username?.[0]?.toUpperCase() || "?";
+    };
+
+    const renderUserAvatar = (user, isSelected = false) => {
+        if (user?.profile_picture) {
+            return (
+                <img
+                    src={user.profile_picture}
+                    alt={user.username || "User"}
+                    className={`w-10 h-10 rounded-full object-cover border ${isSelected ? "border-slate-300" : "border-slate-200"}`}
+                />
+            );
+        }
+        return (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                {getInitials(user)}
+            </div>
+        );
     };
 
     if (subscriptionError) {
@@ -412,16 +431,14 @@ export default function NewBroadcast() {
                                                     </div>
 
                                                     <div className="flex items-center gap-3 min-w-0 z-10 flex-1">
-                                                        <div className={` w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'} `}>
-                                                            {getInitials(user)}
-                                                        </div>
+                                                        {renderUserAvatar(user, isSelected)}
                                                         <div className="min-w-0 flex-1">
                                                             <h4 className={`text-sm font-semibold truncate transition-colors ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                                                                 {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
                                                             </h4>
                                                             <div className="flex items-center gap-2 mt-0.5">
                                                                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize flex items-center gap-1 border border-slate-200 bg-slate-100 text-slate-700`}>
-                                                                    {user.role === 'MANAGER' ? <FaUserTie size={8} /> : <FaUser size={8} />}
+                                                                    {(typeof user.role === 'object' ? user.role.role : user.role) === 'MANAGER' ? <FaUserTie size={8} /> : <FaUser size={8} />}
                                                                     {user.role || 'User'}
                                                                 </span>
                                                             </div>
@@ -455,7 +472,7 @@ export default function NewBroadcast() {
                             </div>
                             <h3 className="text-xl font-semibold text-slate-900 mb-2">Delete Group?</h3>
                             <p className="text-slate-500 text-sm leading-relaxed">
-                                Are you sure you want to delete <span className="font-bold text-slate-800">"{groupName}"</span>?
+                                Are you sure you want to delete <span className="font-bold text-slate-800">&quot;{groupName}&quot;</span>?
                                 This action cannot be undone.
                             </p>
                         </div>

@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { inventoryService } from "@/features/inventory/services/inventoryService";
+import { employeeService } from "@/features/employee/services/employeeService";
+import { branchService } from "@/features/business/services/branchService";
 import ProductSearchList from "@/features/inventory/components/ProductSearchList";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import BackButton from "@/components/shared/BackButton";
+import { tokenService } from "@/services/tokenService";
 
 import {
   FaArrowUp,
@@ -12,16 +16,188 @@ import {
   FaTrash,
   FaClipboardList,
   FaExclamationTriangle,
+  FaCodeBranch,
 } from "react-icons/fa";
+
+const resolveAssignedBranches = (profile, requiredWorkType = null) => {
+  if (!profile) return [];
+
+  const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
+  const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
+
+  const toBranchObject = (value, workType = null) => {
+    if (!value && value !== 0) return null;
+
+    const id = typeof value === "object" ? (value.id ?? value.branch_id) : value;
+    if (!id && id !== 0) return null;
+
+    // Filter by work type if restricted
+    if (requiredWorkType && isRestricted) {
+      const normalizedRequired = requiredWorkType.toUpperCase();
+      const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
+      if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
+        return null;
+      }
+    }
+
+    const source = typeof value === "object" ? value : null;
+    return {
+      id,
+      name: source?.name || source?.branch_name || `Branch #${id}`,
+      isMain: Boolean(source?.is_default)
+    };
+  };
+
+  const collected = [];
+
+  // 1. Primary: assigned_branches (new API structure)
+  if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
+    const allowedBranchIds = requiredWorkType && isRestricted
+      ? new Set(
+        (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
+      )
+      : null;
+
+    profile.assigned_branches.forEach(b => {
+      if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
+      const obj = toBranchObject(b);
+      if (obj) collected.push(obj);
+    });
+  } else if (Array.isArray(profile.assigned_works)) {
+    profile.assigned_works.forEach(w => {
+      const b = toBranchObject(w.branch_id || w, w.work_type);
+      if (b) collected.push(b);
+    });
+  }
+
+  // 2. Legacy fallback
+  if (collected.length === 0) {
+    const legacyRaw = [
+      ...(Array.isArray(profile.branches) ? profile.branches : []),
+      ...(Array.isArray(profile.branch_ids) ? profile.branch_ids : []),
+      ...(profile.branch ? [profile.branch] : []),
+      ...(profile.branch_id ? [profile.branch_id] : [])
+    ];
+    legacyRaw.forEach(b => {
+      const obj = toBranchObject(b);
+      if (obj) collected.push(obj);
+    });
+  }
+
+  const seen = new Set();
+  return collected.filter((b) => {
+    const key = String(b.id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 export default function AddTransaction() {
   const navigate = useNavigate();
+  const { profile } = useSelector((state) => state.user);
+  const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
+  const isOwner = userRole === "OWNER";
+  const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "INVENTORY"), [profile]);
+  const [liveAssignedBranches, setLiveAssignedBranches] = useState([]);
+  const effectiveAssignedBranches = liveAssignedBranches.length > 0 ? liveAssignedBranches : assignedBranches;
 
   const [action, setAction] = useState("IN");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Branch state
+  const [branches, setBranches] = useState([]);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
+  useEffect(() => {
+    if (isOwner) return;
+
+    const userId = tokenService.getId();
+    if (!userId) return;
+
+    let isMounted = true;
+    employeeService.getById(userId)
+      .then((res) => {
+        if (!isMounted) return;
+        const resolved = resolveAssignedBranches(res.data, "INVENTORY");
+        if (resolved.length > 0) {
+          setLiveAssignedBranches(resolved);
+        }
+      })
+      .catch(() => {
+        // ignore; fallback to redux profile branches
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOwner]);
+
+  // Load branches for branch name mapping and selection
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingBranches(true);
+
+    branchService.list()
+      .then((res) => {
+        if (!isMounted) return;
+        const list = Array.isArray(res.data)
+          ? res.data
+          : res.data?.results ?? [];
+
+        if (isOwner) {
+          setBranches(list);
+          if (list.length > 0) {
+            const defaultId = tokenService.getDefaultBranchId();
+            let finalSelectedBranch = null;
+
+            if (defaultId) {
+              finalSelectedBranch = list.find(b => String(b.id) === String(defaultId));
+            }
+
+            // If no defaultId or defaultId branch not found, fallback to is_default or first branch
+            if (!finalSelectedBranch) {
+              finalSelectedBranch = list.find(b => b.is_default) || list[0];
+            }
+
+            if (finalSelectedBranch) {
+              setSelectedBranchId(String(finalSelectedBranch.id));
+            }
+          }
+          return;
+        }
+
+        const assignedIdSet = new Set(effectiveAssignedBranches.map((branch) => String(branch.id)));
+        const visibleBranches = list.length > 0 && assignedIdSet.size > 0
+          ? list.filter((branch) => assignedIdSet.has(String(branch.id)))
+          : effectiveAssignedBranches;
+
+        setBranches(visibleBranches);
+        setSelectedBranchId((prev) => {
+          if (prev && visibleBranches.some((branch) => String(branch.id) === String(prev))) {
+            return prev;
+          }
+          const main = visibleBranches.find(b => b.isMain) || visibleBranches[0];
+          return main ? String(main.id) : "";
+        });
+      })
+      .catch(() => {/* silently ignore */ })
+      .finally(() => {
+        if (isMounted) setLoadingBranches(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [isOwner, effectiveAssignedBranches]);
+
+  useEffect(() => {
+    if (isOwner || selectedBranchId || branches.length > 0 || effectiveAssignedBranches.length === 0) return;
+    setBranches(effectiveAssignedBranches.map((branch) => ({ id: branch.id, name: branch.name })));
+    setSelectedBranchId(String(effectiveAssignedBranches[0].id));
+  }, [isOwner, selectedBranchId, branches, effectiveAssignedBranches]);
 
   const updateQty = (id, value) => {
     setSelected((prev) =>
@@ -52,6 +228,15 @@ export default function AddTransaction() {
       return;
     }
 
+    // Resolve branch_id
+    const selectedBranch = branches.find((branch) => String(branch.id) === String(selectedBranchId));
+    const branchId = Number(selectedBranch?.id ?? selectedBranchId);
+    console.log(branchId);
+    if (!branchId) {
+      setError("Branch is required");
+      return;
+    }
+
     setLoading(true);
     try {
       const items = selected.map((p) => ({
@@ -62,12 +247,14 @@ export default function AddTransaction() {
       await inventoryService.createTransaction({
         action,
         description,
+        branch_id: branchId,
         items,
       });
 
       navigate(-1);
-    } catch {
-      setError("Failed to create inventory transaction");
+    } catch (err) {
+      const { extractFirstError } = await import("@/features/supplier/utils/supplierHelpers");
+      setError(extractFirstError(err, "Failed to create inventory transaction"));
     } finally {
       setLoading(false);
     }
@@ -94,11 +281,10 @@ export default function AddTransaction() {
             <button
               type="button"
               onClick={() => setAction("IN")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
-                action === "IN"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-slate-500 hover:bg-slate-50"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${action === "IN"
+                ? "bg-emerald-50 text-emerald-700"
+                : "text-slate-500 hover:bg-slate-50"
+                }`}
             >
               <FaArrowUp className={action === "IN" ? "text-emerald-600" : ""} />
               Stock In
@@ -106,11 +292,10 @@ export default function AddTransaction() {
             <button
               type="button"
               onClick={() => setAction("OUT")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
-                action === "OUT"
-                  ? "bg-rose-50 text-rose-700"
-                  : "text-slate-500 hover:bg-slate-50"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition ${action === "OUT"
+                ? "bg-rose-50 text-rose-700"
+                : "text-slate-500 hover:bg-slate-50"
+                }`}
             >
               <FaArrowDown className={action === "OUT" ? "text-rose-600" : ""} />
               Stock Out
@@ -125,7 +310,11 @@ export default function AddTransaction() {
                 <h2 className="text-lg font-semibold text-slate-900">Add Products</h2>
               </div>
               <div className="p-6">
-                <ProductSearchList selected={selected} setSelected={setSelected} />
+                <ProductSearchList
+                  selected={selected}
+                  setSelected={setSelected}
+                  branchId={selectedBranchId}
+                />
               </div>
             </section>
 
@@ -204,14 +393,34 @@ export default function AddTransaction() {
                     Type
                   </label>
                   <div
-                    className={`px-4 py-3 rounded-lg border font-semibold flex items-center gap-3 ${
-                      action === "IN"
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                        : "bg-rose-50 border-rose-200 text-rose-700"
-                    }`}
+                    className={`px-4 py-3 rounded-lg border font-semibold flex items-center gap-3 ${action === "IN"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-rose-50 border-rose-200 text-rose-700"
+                      }`}
                   >
                     {action === "IN" ? <FaArrowUp /> : <FaArrowDown />}
                     <span>{action === "IN" ? "Stock In (Addition)" : "Stock Out (Reduction)"}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Branch
+                  </label>
+                  <div className="relative">
+                    <FaCodeBranch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => setSelectedBranchId(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-lg bg-white text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-500 disabled:bg-slate-50 disabled:text-slate-500"
+                      disabled={loadingBranches || (!isOwner && branches.length <= 1)}
+                    >
+                      {branches.map((branch) => (
+                        <option key={branch.id} value={branch.id}>
+                          {branch.name || branch.branch_name || `Branch #${branch.id}`}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -233,11 +442,10 @@ export default function AddTransaction() {
                   <button
                     onClick={handleSubmit}
                     disabled={loading || selected.length === 0}
-                    className={`w-full py-3 rounded-lg font-semibold text-white transition flex items-center justify-center gap-2 ${
-                      loading || selected.length === 0
-                        ? "bg-slate-300 cursor-not-allowed"
-                        : "bg-slate-900 hover:bg-slate-800"
-                    }`}
+                    className={`w-full py-3 rounded-lg font-semibold text-white transition flex items-center justify-center gap-2 ${loading || selected.length === 0
+                      ? "bg-slate-300 cursor-not-allowed"
+                      : "bg-slate-900 hover:bg-slate-800"
+                      }`}
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />

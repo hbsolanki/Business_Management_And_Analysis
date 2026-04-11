@@ -1,1 +1,0 @@
-import{a as t}from"./index-TGBChVvB.js";const r={getAll:()=>t.get("/business/employee/"),getById:e=>t.get(`/user/${e}/`),create:e=>t.post("/business/employee/",e),update:(e,s)=>{const a=typeof FormData<"u"&&s instanceof FormData;return t.patch(`/user/${e}/`,s,a?{headers:{"Content-Type":"multipart/form-data"}}:void 0)},delete:e=>t.delete(`/user/${e}/`)};export{r as e};

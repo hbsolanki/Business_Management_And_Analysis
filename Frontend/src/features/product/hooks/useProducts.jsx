@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { productService } from "@/features/product/services/productService";
+import { toast } from "react-hot-toast";
 
 export function useProducts() {
   const [products, setProducts] = useState([]);
@@ -18,9 +19,12 @@ export function useProducts() {
 
       const res = await productService.getAll(url);
 
-      setProducts((prev) =>
-        replace ? res.data.results : [...prev, ...res.data.results]
-      );
+      setProducts((prev) => {
+        if (replace) return res.data.results;
+        const existingIds = new Set(prev.map((p) => p.id));
+        const uniqueItems = res.data.results.filter((item) => !existingIds.has(item.id));
+        return [...prev, ...uniqueItems];
+      });
 
       setNextCursor(res.data.next);
     } catch (err) {
@@ -72,13 +76,35 @@ export function useProducts() {
     }
   };
 
+  /* ---------- Toggle Status ---------- */
+  const toggleProductStatus = async (product) => {
+    try {
+      const newStatus = product.is_active === false ? true : false;
+      const res = await productService.update(product.id, { is_active: newStatus });
+      toast.success(`Product marked as ${newStatus ? 'Active' : 'Inactive'}`);
+      setProducts((prev) =>
+        prev.map((p) => p.id === product.id ? { ...p, is_active: newStatus, ...res.data } : p)
+      );
+      return true;
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err.response?.data?.detail
+        || err.response?.data?.message
+        || err.response?.data?.non_field_errors?.[0]
+        || err.response?.data?.branch_id?.[0]
+        || "Failed to update product status";
+      toast.error(errorMessage);
+      return false;
+    }
+  };
+
   return {
     products,
     loading,
     expandedId,
     toggleRead,
-    toggleRead,
     removeProduct,
+    toggleProductStatus,
 
     loadMore,
     hasMore: Boolean(nextCursor),

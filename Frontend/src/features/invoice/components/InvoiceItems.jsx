@@ -1,7 +1,7 @@
 import { FaTrash, FaBoxOpen } from "react-icons/fa";
 import InvoiceProductSearch from "./InvoiceProductSearch";
 
-export default function InvoiceItems({ items, setItems }) {
+export default function InvoiceItems({ items, setItems, branchId }) {
   const addProduct = (product) => {
     setItems((prev) => {
       const exists = prev.find((i) => i.productId === product.id);
@@ -41,7 +41,7 @@ export default function InvoiceItems({ items, setItems }) {
           <p className="text-xs text-slate-500 mt-1">Add products and quantities</p>
         </div>
         <div className="w-full sm:w-[320px]">
-          <InvoiceProductSearch onSelect={addProduct} />
+          <InvoiceProductSearch onSelect={addProduct} branchId={branchId} />
         </div>
       </div>
 

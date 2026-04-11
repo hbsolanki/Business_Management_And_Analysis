@@ -8,9 +8,11 @@ export default function ProductSection({
   expandedId,
   toggleRead,
   onDeleteProduct,
+  onToggleStatus,
   loadMore,
   hasMore,
   loadingMore,
+  showFinancials,
 }) {
   const observerRef = useRef(null);
 
@@ -55,6 +57,8 @@ export default function ProductSection({
         expandedId={expandedId}
         onToggleRead={toggleRead}
         onDeleteProduct={onDeleteProduct}
+        onToggleStatus={onToggleStatus}
+        showFinancials={showFinancials}
       />
 
       {hasMore && (

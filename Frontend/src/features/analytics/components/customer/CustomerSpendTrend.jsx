@@ -1,6 +1,6 @@
-import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { FaCalendarAlt, FaChartBar, FaChevronDown } from "react-icons/fa";
+import PremiumOverlay from "@/components/common/PremiumOverlay";
 
 const parseNumber = (value) => {
     if (value === null || value === undefined) return 0;
@@ -14,8 +14,6 @@ const formatCurrency = (value) =>
         currency: "INR",
         maximumFractionDigits: 0,
     }).format(parseNumber(value));
-
-import PremiumOverlay from "@/components/common/PremiumOverlay";
 
 export default function CustomerSpendTrend({ data, loading, month, year, onDateChange, isLocked }) {
     const months = [

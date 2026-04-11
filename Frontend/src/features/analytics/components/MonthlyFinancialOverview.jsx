@@ -59,10 +59,10 @@ export default function MonthlyFinancialOverview() {
     const currentYear = currentDate.getFullYear();
 
     const defaultPeriod = useMemo(() => {
-        const prev = new Date(currentDate);
-        prev.setMonth(prev.getMonth() - 1);
-        return { month: prev.getMonth() + 1, year: prev.getFullYear() };
-    }, [currentDate]);
+        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+        return { month: prevMonth, year: prevYear };
+    }, [currentMonth, currentYear]);
 
     useEffect(() => {
         fetchAllData();

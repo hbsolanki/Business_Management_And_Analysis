@@ -1,4 +1,3 @@
-import React from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
 import toast from "react-hot-toast";

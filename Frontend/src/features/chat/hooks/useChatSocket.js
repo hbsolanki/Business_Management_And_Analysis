@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { API_BASE_URL } from '@/services/api';
 
-export const useChatSocket = (conversationId, token, currentUserId, otherUserId) => {
-    const [isConnected, setIsConnected] = useState(false);
+export const useChatSocket = (conversationId, token, otherUserId) => {
     const [typingUser, setTypingUser] = useState(null);
     const [userStatus, setUserStatus] = useState("offline");
     const [socketMessages, setSocketMessages] = useState([]);
@@ -17,17 +16,21 @@ export const useChatSocket = (conversationId, token, currentUserId, otherUserId)
         if (socketRef.current) {
             socketRef.current.close();
         }
+        if (heartbeatRef.current) {
+            clearInterval(heartbeatRef.current);
+            heartbeatRef.current = null;
+        }
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = null;
+        }
 
         const wsProtocol = API_BASE_URL.startsWith("https") ? "wss" : "ws";
         const wsHost = API_BASE_URL.replace(/^https?:\/\//, "");
         const wsUrl = `${wsProtocol}://${wsHost}/ws/chat/${conversationId}/?token=${token}`;
-
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-            console.log("WebSocket Connected");
-            setIsConnected(true);
-
             heartbeatRef.current = setInterval(() => {
                 if (ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ type: "ping" }));
@@ -49,16 +52,21 @@ export const useChatSocket = (conversationId, token, currentUserId, otherUserId)
                 }
 
                 if (data.type === "user_status") {
-                    console.log("other id user ", otherUserId);
                     if (otherUserId && String(data.user_id) === String(otherUserId)) {
-                        console.log("data user ", data);
-                        console.log("currentUserId Status Updated", currentUserId);
                         setUserStatus(data.status);
                     }
                     return;
                 }
 
-                if (data.type === "chat_message" || data.message || data.text) {
+                const hasMessagePayload =
+                    Boolean(data?.text) ||
+                    Boolean(data?.media_url) ||
+                    Boolean(data?.file) ||
+                    (data?.message && typeof data.message === "object") ||
+                    (data?.data && typeof data.data === "object") ||
+                    data?.type === "chat_message";
+
+                if (hasMessagePayload) {
                     setSocketMessages(prev => [...prev, data]);
                 }
             } catch (err) {
@@ -67,19 +75,18 @@ export const useChatSocket = (conversationId, token, currentUserId, otherUserId)
         };
 
         ws.onclose = () => {
-            console.log("WebSocket Disconnected");
-            setIsConnected(false);
             if (heartbeatRef.current) clearInterval(heartbeatRef.current);
             if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            heartbeatRef.current = null;
+            typingTimeoutRef.current = null;
         };
 
         ws.onerror = (error) => {
             console.error("WebSocket Error", error);
-            setIsConnected(false);
         };
 
         socketRef.current = ws;
-    }, [conversationId, token, currentUserId]);
+    }, [conversationId, token, otherUserId]);
 
     useEffect(() => {
         connect();
@@ -105,7 +112,6 @@ export const useChatSocket = (conversationId, token, currentUserId, otherUserId)
     }, []);
 
     return {
-        isConnected,
         typingUser,
         userStatus,
         socketMessages,

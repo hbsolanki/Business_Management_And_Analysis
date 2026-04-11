@@ -1,60 +1,43 @@
 import api from "@/services/api";
+import { tokenService } from "@/services/tokenService";
 
 const taskService = {
     createTask: async (data) => {
-        try {
-            const response = await api.post("/task/", data);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+        const response = await api.post("/task/", data);
+        return response.data;
     },
 
-    getAssigneeTasks: async (params = {}) => {
-        try {
-            const hasParams = params && Object.keys(params).length > 0;
-            const response = await api.get("/task/assignee/", hasParams ? { params } : undefined);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+    getTasks: async (params = {}) => {
+        const hasParams = params && Object.keys(params).length > 0;
+        const response = await api.get("/task/", hasParams ? { params } : undefined);
+        return response.data;
     },
 
-    getAssignedByTasks: async (params = {}) => {
-        try {
-            const hasParams = params && Object.keys(params).length > 0;
-            const response = await api.get("/task/assigned_by/", hasParams ? { params } : undefined);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+    getAssigneeTasks: async () => {
+        const id = tokenService.getId();
+        const response = await api.get("/task/", { params: { assignee: id } });
+        return response.data;
+    },
+
+    getAssignedByTasks: async () => {
+        const id = tokenService.getId();
+        const response = await api.get("/task/", { params: { assigned_by: id } });
+        return response.data;
     },
 
     updateTask: async (id, data) => {
-        try {
-            const response = await api.patch(`/task/${id}/`, data);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+        const response = await api.patch(`/task/${id}/`, data);
+        return response.data;
     },
 
     deleteTask: async (id) => {
-        try {
-            await api.delete(`/task/${id}/`);
-            return true;
-        } catch (error) {
-            throw error;
-        }
+        await api.delete(`/task/${id}/`);
+        return true;
     },
 
     getTaskById: async (id) => {
-        try {
-            const response = await api.get(`/task/${id}/`);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+        const response = await api.get(`/task/${id}/`);
+        return response.data;
     },
 };
 

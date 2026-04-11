@@ -10,10 +10,18 @@ import {
     CurrencyRupeeIcon,
     DocumentTextIcon,
 } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
+
+const normalizeCategories = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+};
 
 export default function AddProduct() {
     const navigate = useNavigate();
 
+    // Product categories logic
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -28,12 +36,24 @@ export default function AddProduct() {
         input_gst_rate: "",
         output_gst_rate: "",
         description: "",
+        low_stock_limit: "",
     });
 
     useEffect(() => {
-        productService.getCategories().then((res) => {
-            setCategories(res.data || []);
-        });
+        let isMounted = true;
+
+        const loadData = async () => {
+            try {
+                const catRes = await productService.getCategories();
+                if (!isMounted) return;
+                setCategories(normalizeCategories(catRes.data));
+            } catch (err) {
+                console.error("Failed to load AddProduct data", err);
+            }
+        };
+
+        loadData();
+        return () => { isMounted = false; };
     }, []);
 
     const handleChange = (e) => {
@@ -67,6 +87,7 @@ export default function AddProduct() {
             await productService.create({
                 ...formData,
                 product_category: formData.product_category,
+                low_stock_limit: formData.low_stock_limit ? parseInt(formData.low_stock_limit, 10) : 0,
             });
             navigate(-1);
         } catch (err) {
@@ -77,6 +98,10 @@ export default function AddProduct() {
             }
             if (err.response?.data) {
                 setErrors(err.response.data);
+                const errorMsg = err.response.data.detail ||
+                    err.response.data.non_field_errors?.[0] ||
+                    "Failed to add product";
+                toast.error(errorMsg);
             }
         } finally {
             setLoading(false);
@@ -84,10 +109,9 @@ export default function AddProduct() {
     };
 
     const inputClass = (name) =>
-        `mt-1 w-full rounded-lg border px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-            errors[name]
-                ? "border-rose-400 bg-rose-50"
-                : "border-slate-200 bg-white focus:border-brand-500"
+        `mt-1 w-full rounded-lg border px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${errors[name]
+            ? "border-rose-400 bg-rose-50"
+            : "border-slate-200 bg-white focus:border-brand-500"
         }`;
 
     return (
@@ -120,6 +144,8 @@ export default function AddProduct() {
 
                     <form onSubmit={handleSubmit} className="form-section space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Branch Selection Removed */}
+
                             <div className="md:col-span-2">
                                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                     <TagIcon className="h-4 w-4" />
@@ -173,7 +199,7 @@ export default function AddProduct() {
                                     className={inputClass("product_category")}
                                 >
                                     <option value="">Select category</option>
-                                    {categories.map((c) => (
+                                    {(Array.isArray(categories) ? categories : []).map((c) => (
                                         <option key={c.id} value={c.id}>
                                             {c.name}
                                         </option>
@@ -289,6 +315,29 @@ export default function AddProduct() {
                                 {errors.description && (
                                     <p className="text-rose-600 text-xs mt-1 font-medium">
                                         {errors.description[0]}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    <ClipboardDocumentIcon className="h-4 w-4" />
+                                    Low Stock Limit
+                                </label>
+                                <input
+                                    type="number"
+                                    name="low_stock_limit"
+                                    value={formData.low_stock_limit}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 10"
+                                    className={inputClass("low_stock_limit")}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Notify when stock falls below this amount.
+                                </p>
+                                {errors.low_stock_limit && (
+                                    <p className="text-rose-600 text-xs mt-1 font-medium">
+                                        {errors.low_stock_limit[0]}
                                     </p>
                                 )}
                             </div>

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { FaSearch, FaPlus, FaCheck, FaTimes, FaBoxOpen } from "react-icons/fa";
 import api from "@/services/api";
 
-export default function ProductSearchList({ selected, setSelected }) {
+export default function ProductSearchList({ selected, setSelected, branchId }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [next, setNext] = useState(null);
@@ -21,11 +21,17 @@ export default function ProductSearchList({ selected, setSelected }) {
 
     setLoading(true);
     searchTimeout.current = setTimeout(() => {
-      fetchProducts(`/product/?name=${encodeURIComponent(query)}`, true);
+      const params = new URLSearchParams();
+      params.set("name", query);
+      if (branchId) {
+        params.set("branch_id", String(branchId));
+        params.set("branch", String(branchId));
+      }
+      fetchProducts(`/product/?${params.toString()}`, true);
     }, 400);
 
     return () => clearTimeout(searchTimeout.current);
-  }, [query]);
+  }, [query, branchId]);
 
   const fetchProducts = async (url, isNewQuery = false) => {
     try {
@@ -164,7 +170,7 @@ export default function ProductSearchList({ selected, setSelected }) {
         ) : query ? (
           <div className="p-8 text-center text-slate-500 flex flex-col items-center">
             <FaBoxOpen className="text-3xl mb-2 text-slate-300" />
-            <p className="text-sm">No products found for "{query}"</p>
+            <p className="text-sm">No products found for &quot;{query}&quot;</p>
           </div>
         ) : (
           <div className="p-8 text-center text-slate-400 flex flex-col items-center">

@@ -63,10 +63,13 @@ function Footer() {
                             </h3>
                             <div className="text-sm text-slate-600 space-y-2">
                                 <Link to="/info" className="block hover:text-slate-900 transition-colors">
-                                    Product Overview
+                                    Info Overview
+                                </Link>
+                                <Link to="/info/modules" className="block hover:text-slate-900 transition-colors">
+                                    Module Directory
                                 </Link>
                                 <Link to="/info/support" className="block hover:text-slate-900 transition-colors">
-                                    Security & Support
+                                    Support
                                 </Link>
                                 <Link to="/owner/register" className="block hover:text-slate-900 transition-colors">
                                     Get Started

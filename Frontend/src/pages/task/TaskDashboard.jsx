@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from 'react-router-dom';
 import Modal from '@/components/ui/Modal';
 import ProtectedHeader from '@/components/layout/ProtectedHeader';
@@ -52,6 +52,8 @@ const TaskDashboard = () => {
         }, 500);
 
         return () => clearTimeout(timer);
+        // Intentionally skip `filters` to avoid auto-fetch on each keystroke.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fetchTasks, activeTab]); // Removed filters from dependency to prevent auto-fetch
 
     const handleFilterClick = () => {

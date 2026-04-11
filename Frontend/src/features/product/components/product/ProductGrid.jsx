@@ -7,6 +7,8 @@ export default function ProductGrid({
   expandedId,
   onToggleRead,
   onDeleteProduct,
+  onToggleStatus,
+  showFinancials,
 }) {
   if (loading) {
     return (
@@ -32,6 +34,8 @@ export default function ProductGrid({
           expandedId={expandedId}
           onToggle={onToggleRead}
           onDelete={onDeleteProduct}
+          onToggleStatus={onToggleStatus}
+          showFinancials={showFinancials}
         />
       ))}
     </div>

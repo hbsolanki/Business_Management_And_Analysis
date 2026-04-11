@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { FaFilter, FaTimes, FaSearch } from "react-icons/fa";
 
 const MONTHS = [

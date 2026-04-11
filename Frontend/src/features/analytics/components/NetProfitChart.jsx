@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import {
     FaChartLine,
@@ -6,6 +6,8 @@ import {
     FaRupeeSign,
     FaInfoCircle,
     FaCalendarAlt,
+    FaArrowUp,
+    FaArrowDown,
 } from "react-icons/fa";
 import api from "@/services/api";
 
@@ -37,10 +39,6 @@ export default function NetProfitChart() {
     const currentMonth = currentDate.getMonth() + 1;
     const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
-    useEffect(() => {
-        fetchNetProfit();
-    }, []);
-
     const fetchNetProfit = async () => {
         try {
             setLoading(true);
@@ -65,6 +63,12 @@ export default function NetProfitChart() {
         }
     };
 
+    useEffect(() => {
+        fetchNetProfit();
+        // Intentionally run once on mount; filter changes are applied manually.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleApplyFilter = () => {
         fetchNetProfit();
     };
@@ -76,12 +80,12 @@ export default function NetProfitChart() {
             maximumFractionDigits: 0,
         }).format(Number(val) || 0);
 
-    const getMonthName = (monthNum) => {
+    const getMonthName = useCallback((monthNum) => {
         const found = MONTHS.find((m) => m.value === monthNum);
         return found ? found.label : "Unknown";
-    };
+    }, []);
 
-    const resolveLabel = (item, index) => {
+    const resolveLabel = useCallback((item, index) => {
         if (item && typeof item === "object") {
             if (item.month && item.year && item.month >= 1 && item.month <= 12) {
                 return `${getMonthName(Number(item.month))} ${item.year}`;
@@ -97,7 +101,7 @@ export default function NetProfitChart() {
             }
         }
         return `Period ${index + 1}`;
-    };
+    }, [getMonthName]);
 
     const resolveValue = (item) => {
         if (!item || typeof item !== "object") return 0;
@@ -126,7 +130,7 @@ export default function NetProfitChart() {
         const labels = data.map((item, index) => resolveLabel(item, index));
         const values = data.map((item) => resolveValue(item));
         return { labels, values };
-    }, [data]);
+    }, [data, resolveLabel]);
 
     useEffect(() => {
         if (year === currentYear && month > currentMonth) {
@@ -135,23 +139,27 @@ export default function NetProfitChart() {
     }, [year, month, currentYear, currentMonth]);
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6">
-                <div>
-                    <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                        <FaChartLine className="text-slate-500" />
-                        Net Profit Analysis
-                    </h3>
-                    <p className="text-sm text-slate-500">Monthly net profit overview and trends</p>
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                        <FaChartLine />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            Net Profit Analysis
+                        </h3>
+                        <p className="text-sm text-slate-500">Monthly net profit overview and trends</p>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                        <FaCalendarAlt className="text-slate-400" size={14} />
+                    <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-1 border border-slate-200">
+                        <FaCalendarAlt className="ml-2 text-slate-400" size={14} />
                         <select
                             value={month}
                             onChange={(e) => setMonth(Number(e.target.value))}
-                            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+                            className="bg-transparent text-sm font-medium text-slate-700 outline-none px-2 py-1 cursor-pointer"
                         >
                             {MONTHS.map((m) => (
                                 <option
@@ -163,38 +171,40 @@ export default function NetProfitChart() {
                                 </option>
                             ))}
                         </select>
+                        <span className="text-slate-300">|</span>
+                        <select
+                            value={year}
+                            onChange={(e) => setYear(Number(e.target.value))}
+                            className="bg-transparent text-sm font-medium text-slate-700 outline-none px-2 py-1 cursor-pointer"
+                        >
+                            {yearOptions.map((y) => (
+                                <option key={y} value={y}>
+                                    {y}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                    <select
-                        value={year}
-                        onChange={(e) => setYear(Number(e.target.value))}
-                        className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
-                    >
-                        {yearOptions.map((y) => (
-                            <option key={y} value={y}>
-                                {y}
-                            </option>
-                        ))}
-                    </select>
+
                     <button
                         onClick={handleApplyFilter}
-                        className="px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2"
+                        className="p-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                        title="Apply"
                     >
-                        <FaSync size={12} />
-                        Apply
+                        <FaSync size={14} className={loading ? "animate-spin" : ""} />
                     </button>
                 </div>
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-16">
+                <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-3">
-                        <div className="w-10 h-10 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                         <p className="text-slate-500 font-medium">Loading net profit data...</p>
                     </div>
                 </div>
             ) : error ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="p-4 bg-rose-100 rounded-full mb-4">
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="p-4 bg-rose-50 rounded-full mb-4 border border-rose-100">
                         <FaChartLine className="text-rose-500 text-2xl" />
                     </div>
                     <p className="text-slate-700 font-medium mb-2">{error}</p>
@@ -205,44 +215,39 @@ export default function NetProfitChart() {
                         Try Again
                     </button>
                 </div>
-                ) : !hasValidData ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="p-4 bg-slate-100 rounded-full mb-4">
-                            <FaInfoCircle className="text-slate-400 text-3xl" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-slate-900 mb-2">No Net Profit Data</h4>
-                        <p className="text-slate-500 max-w-sm">
-                        No net profit records found for the selected month and year.
-                        </p>
+            ) : !hasValidData ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="p-4 bg-slate-50 rounded-full mb-4 border border-slate-100">
+                        <FaInfoCircle className="text-slate-400 text-3xl" />
                     </div>
-                ) : (
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">No Net Profit Data</h4>
+                    <p className="text-slate-500 max-w-sm">
+                        No net profit records found for the selected month and year.
+                    </p>
+                </div>
+            ) : (
                 <>
-                    <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="mb-6 rounded-xl border border-slate-100 bg-slate-50/50 p-5 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className={`h-12 w-12 rounded-lg border border-slate-200 bg-white flex items-center justify-center ${totalNetProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                                <FaRupeeSign size={20} />
+                            <div className={`h-12 w-12 rounded-xl flex items-center justify-center shadow-sm ${totalNetProfit >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                                <FaRupeeSign size={24} />
                             </div>
                             <div>
-                                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Net Profit</p>
-                                <p className={`text-2xl font-semibold ${totalNetProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Total Net Profit</p>
+                                <p className={`text-3xl font-bold ${totalNetProfit >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                                     {formatCurrency(totalNetProfit)}
                                 </p>
                             </div>
                         </div>
+                        {totalNetProfit !== 0 && (
+                            <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${totalNetProfit > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                {totalNetProfit > 0 ? <FaArrowUp /> : <FaArrowDown />}
+                                {totalNetProfit > 0 ? 'Profit' : 'Loss'}
+                            </div>
+                        )}
                     </div>
 
                     <div className="mb-8">
-                        <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-semibold text-slate-700">Profit Trend</h4>
-                            <div className="flex gap-2">
-                                <span className="px-3 py-1 rounded-full bg-emerald-50 text-xs font-medium text-emerald-700 border border-emerald-100">
-                                    Profit
-                                </span>
-                                <span className="px-3 py-1 rounded-full bg-rose-50 text-xs font-medium text-rose-700 border border-rose-100">
-                                    Loss
-                                </span>
-                            </div>
-                        </div>
                         <div className="w-full h-[350px]">
                             <BarChart
                                 xAxis={[
@@ -252,20 +257,22 @@ export default function NetProfitChart() {
                                         tickLabelStyle: {
                                             fontSize: 12,
                                             fontWeight: 500,
+                                            fill: '#64748b'
                                         },
                                     },
                                 ]}
                                 yAxis={[
                                     {
                                         label: "Amount (₹)",
-                                        tickLabelStyle: { fontSize: 12 },
+                                        tickLabelStyle: { fontSize: 12, fill: '#64748b' },
+                                        labelStyle: { fill: '#64748b', fontSize: 12 }
                                     },
                                 ]}
                                 series={[
                                     {
                                         data: chartData.values,
                                         label: "Net Profit",
-                                        color: "#0d9488",
+                                        color: "#10b981", // Emerald 500
                                         valueFormatter: (v) => formatCurrency(v),
                                     },
                                 ]}
@@ -283,9 +290,9 @@ export default function NetProfitChart() {
                     </div>
 
                     {chartData.values.length > 0 && (
-                        <div className="rounded-xl border border-slate-200 bg-white">
-                            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-                                <h4 className="text-sm font-semibold text-slate-700">Profit Details</h4>
+                        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                <h4 className="text-sm font-bold text-slate-700 uppercase">Profit Details</h4>
                             </div>
                             <div className="p-4">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -294,10 +301,10 @@ export default function NetProfitChart() {
                                         return (
                                             <div
                                                 key={index}
-                                                className={`rounded-lg p-3 border ${numValue >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"}`}
+                                                className={`rounded-xl p-4 border transition-all hover:shadow-md ${numValue >= 0 ? "bg-emerald-50/50 border-emerald-100 hover:border-emerald-200" : "bg-rose-50/50 border-rose-100 hover:border-rose-200"}`}
                                             >
-                                                <p className="text-xs text-slate-500 mb-1">{chartData.labels[index]}</p>
-                                                <p className={`text-lg font-semibold ${numValue >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                                <p className="text-xs text-slate-500 mb-1 font-medium uppercase">{chartData.labels[index]}</p>
+                                                <p className={`text-lg font-bold ${numValue >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                                                     {formatCurrency(numValue)}
                                                 </p>
                                             </div>

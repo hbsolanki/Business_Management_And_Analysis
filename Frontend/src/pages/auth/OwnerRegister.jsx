@@ -13,7 +13,9 @@ import {
     FaEye,
     FaEyeSlash,
 } from "react-icons/fa";
+import { setUserProfile } from "@/redux/slices/userSlice";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
+import { useDispatch } from "react-redux";
 
 /* ---------------- Reusable Input Comp ---------------- */
 const InputField = ({
@@ -66,10 +68,9 @@ const InputField = ({
 
 function OwnerRegister() {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [formData, setFormData] = useState({
-        name: "",
-        description: "",
         first_name: "",
         last_name: "",
         username: "",
@@ -88,7 +89,20 @@ function OwnerRegister() {
     /* ---------------- Handle Change ---------------- */
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        let newValue = value;
+
+        // Specific logic for mobile number to restrict to 10 digits
+        if (name === "mobile_number") {
+            const onlyNums = value.replace(/[^0-9]/g, "");
+            if (onlyNums.length <= 10) {
+                newValue = onlyNums;
+            } else {
+                // If more than 10 digits, keep the current 10 digits
+                newValue = formData.mobile_number;
+            }
+        }
+
+        setFormData((prev) => ({ ...prev, [name]: newValue }));
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: null }));
         }
@@ -101,6 +115,14 @@ function OwnerRegister() {
 
         setLoading(true);
         setErrors({});
+
+        // Frontend validation for mobile number
+        if (formData.mobile_number.length !== 10) {
+            setErrors({ mobile_number: ["Mobile number must be exactly 10 digits"] });
+            toast.error("Invalid mobile number. Please enter 10 digits.");
+            setLoading(false);
+            return;
+        }
 
         if (!validatePassword(formData.password)) {
             setErrors({
@@ -121,20 +143,39 @@ function OwnerRegister() {
         }
 
         // Remove confirm_password before sending to backend
-        const { confirm_password, ...dataToSend } = formData;
+        const dataToSend = { ...formData };
+        delete dataToSend.confirm_password;
 
         try {
-            await authService.registerBusiness(dataToSend);
-            toast.success("Business registered successfully");
-            navigate("/owner");
+            await authService.registerOwner(dataToSend);
+
+            // Auto-login after successful 201 registration
+            try {
+                const loginData = await authService.login({
+                    username: formData.username,
+                    password: formData.password
+                });
+
+                if (loginData.userProfile) {
+                    dispatch(setUserProfile(loginData.userProfile));
+                }
+
+                toast.success("Account created and logged in successfully");
+                navigate("/owner");
+            } catch (loginErr) {
+                console.error("Auto-login failed:", loginErr);
+                toast.success("Owner registered successfully. Please log in.");
+                navigate("/login");
+            }
         } catch (err) {
             const responseErrors = err.response?.data;
-            if (responseErrors && typeof responseErrors === "object") {
+            if (responseErrors && typeof responseErrors === "object" && !Array.isArray(responseErrors)) {
+                // If it's a structural error object, map it to the form errors
                 setErrors(responseErrors);
             } else if (err.response?.status === 409) {
                 toast.error("Username already exists");
             } else {
-                toast.error("Something went wrong");
+                toast.error(typeof responseErrors === 'string' ? responseErrors : "Something went wrong creating the account");
             }
         } finally {
             setLoading(false);
@@ -148,6 +189,11 @@ function OwnerRegister() {
         try {
             const data = await authService.googleLogin(codeResponse.code);
             const role = data.user.role;
+
+            if (data.userProfile) {
+                dispatch(setUserProfile(data.userProfile));
+            }
+
             toast.success("Successfully logged in with Google");
             if (role === "OWNER") {
                 navigate("/owner");
@@ -172,50 +218,16 @@ function OwnerRegister() {
                 <div className="w-full max-w-2xl form-card overflow-hidden">
                     <div className="form-header">
                         <div className="form-header-icon">
-                            <FaBuilding />
+                            <FaUser />
                         </div>
                         <div>
-                            <h1 className="form-title">Register Your Business</h1>
-                            <p className="form-subtitle">Set up your business profile and owner account.</p>
+                            <h1 className="form-title">Owner Register</h1>
+                            <p className="form-subtitle">Set up your owner account to get started.</p>
                         </div>
                     </div>
 
                     <div className="form-section">
                         <form className="space-y-5" onSubmit={handleSubmit}>
-                            <div className="space-y-5 p-5 bg-slate-50 rounded-2xl border border-slate-200">
-                                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
-                                    <FaBuilding /> Business Details
-                                </h3>
-                                <InputField
-                                    label="Business Name"
-                                    name="name"
-                                    icon={FaBuilding}
-                                    placeholder="e.g. Acme Corp"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    error={errors.name ? errors.name[0] : null}
-                                />
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">
-                                        Description
-                                    </label>
-                                    <div className="relative">
-                                        <FaInfoCircle className="absolute left-3 top-3 text-slate-400" />
-                                        <textarea
-                                            name="description"
-                                            value={formData.description}
-                                            onChange={handleChange}
-                                            required
-                                            placeholder="Tell us about your business..."
-                                            className={`w-full input-icon-left pr-4 py-3 text-sm min-h-[80px] ${errors.description ? "border-red-500 focus:ring-red-200" : "border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200"}`}
-                                        />
-                                    </div>
-                                    {errors.description && (
-                                        <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.description[0]}</p>
-                                    )}
-                                </div>
-                            </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <InputField
                                     label="First Name"
@@ -240,7 +252,7 @@ function OwnerRegister() {
                             <InputField
                                 label="Mobile Number"
                                 name="mobile_number"
-                                type="number"
+                                type="tel"
                                 icon={FaPhone}
                                 placeholder="1234567890"
                                 value={formData.mobile_number}
@@ -285,7 +297,7 @@ function OwnerRegister() {
                                 disabled={loading}
                                 className={`btn-primary w-full ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
                             >
-                                {loading ? "Creating Account..." : "Create Business Account"}
+                                {loading ? "Creating Account..." : "Create Owner Account"}
                             </button>
 
                             <div className="relative my-4">

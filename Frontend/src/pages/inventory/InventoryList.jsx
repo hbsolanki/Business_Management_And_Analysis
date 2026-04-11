@@ -1,14 +1,63 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense, useMemo } from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { FiLayers, FiPlus } from "react-icons/fi";
 
 import { inventoryService } from "@/features/inventory/services/inventoryService";
+import { branchService } from "@/features/business/services/branchService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import { FaCodeBranch } from "react-icons/fa";
 
 const StockSection = lazy(() => import("@/features/inventory/components/StockSection"));
 const TransactionSection = lazy(() => import("@/features/inventory/components/TransactionSection"));
 
+const getBranchId = (branch) => {
+  if (!branch && branch !== 0) return null;
+  if (typeof branch === "object") {
+    return branch.id ?? branch.branch_id ?? null;
+  }
+  return branch;
+};
+
+const getAssignedBranchIds = (profile) => {
+  if (!profile) return [];
+
+  const branchIds = [];
+
+  // Primary: assigned_branches (new API structure)
+  if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
+    profile.assigned_branches.forEach((branch) => {
+      const id = getBranchId(branch);
+      if (id || id === 0) branchIds.push(String(id));
+    });
+  } else {
+    // Legacy fallbacks
+    if (Array.isArray(profile.branches)) {
+      profile.branches.forEach((branch) => {
+        const branchId = getBranchId(branch);
+        if (branchId || branchId === 0) branchIds.push(String(branchId));
+      });
+    }
+    if (Array.isArray(profile.branch_ids)) {
+      profile.branch_ids.forEach((branchId) => {
+        if (branchId || branchId === 0) branchIds.push(String(branchId));
+      });
+    }
+    const directBranchId = getBranchId(profile.branch);
+    if (directBranchId || directBranchId === 0) branchIds.push(String(directBranchId));
+    const singleBranchId = profile.branch_id;
+    if (singleBranchId || singleBranchId === 0) branchIds.push(String(singleBranchId));
+  }
+
+  return [...new Set(branchIds)];
+};
+
 export default function InventoryList() {
+  const { profile } = useSelector((state) => state.user);
+  const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
+  const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
+  const assignedBranchIds = useMemo(() => getAssignedBranchIds(profile), [profile]);
+
   const [stocks, setStocks] = useState([]);
   const [stockNext, setStockNext] = useState(null);
 
@@ -17,14 +66,87 @@ export default function InventoryList() {
   const [txLoading, setTxLoading] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [fetchingBranches, setFetchingBranches] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadInitial = async () => {
+    async function fetchBranches() {
+      setFetchingBranches(true);
       try {
+        const res = await branchService.list();
+        const list = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+
+        if (isRestrictedRole) {
+          const allowedSet = new Set(assignedBranchIds);
+          const allowedBranches = allowedSet.size > 0
+            ? list.filter((branch) => allowedSet.has(String(branch.id)))
+            : list;
+
+          setBranches(allowedBranches);
+          setSelectedBranch((prev) => {
+            if (prev && allowedBranches.some((branch) => String(branch.id) === String(prev))) {
+              return prev;
+            }
+            if (allowedBranches.length > 0) return String(allowedBranches[0].id);
+            return "";
+          });
+          return;
+        }
+
+        if (Array.isArray(res.data)) {
+          setBranches(res.data);
+          const mainBranch = res.data.find(b => b.is_default);
+          if (mainBranch) {
+            setSelectedBranch(String(mainBranch.id));
+          } else if (res.data.length > 0) {
+            setSelectedBranch(String(res.data[0].id));
+          }
+        } else if (res.data?.results) {
+          setBranches(res.data.results);
+          const mainBranch = res.data.results.find(b => b.is_default);
+          if (mainBranch) {
+            setSelectedBranch(String(mainBranch.id));
+          } else if (res.data.results.length > 0) {
+            setSelectedBranch(String(res.data.results[0].id));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch branches", err);
+      } finally {
+        setFetchingBranches(false);
+      }
+    }
+    fetchBranches();
+  }, [isRestrictedRole, assignedBranchIds]);
+
+  useEffect(() => {
+    if (!isRestrictedRole || selectedBranch) return;
+    if (assignedBranchIds.length > 0) {
+      setSelectedBranch(String(assignedBranchIds[0]));
+    }
+  }, [isRestrictedRole, assignedBranchIds, selectedBranch]);
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      if (!selectedBranch) {
+        setLoading(false);
+        setStocks([]);
+        setTransactions([]);
+        setStockNext(null);
+        setTxNext(null);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const params = { branch: selectedBranch };
+        const query = `?${new URLSearchParams(params).toString()}`;
+
         const [stockRes, txRes] = await Promise.all([
-          inventoryService.getStock(),
-          inventoryService.getTransactions(),
+          inventoryService.getStock(query),
+          inventoryService.getTransactions(query),
         ]);
 
         setStocks(stockRes.data?.results || []);
@@ -40,12 +162,13 @@ export default function InventoryList() {
     };
 
     loadInitial();
-  }, []);
+  }, [selectedBranch]);
 
   const applyStockFilter = async ({ name, sku }) => {
     const params = new URLSearchParams();
     if (name) params.append("name", name);
     if (sku) params.append("sku", sku);
+    if (selectedBranch) params.append("branch", selectedBranch);
 
     const res = await inventoryService.getStock(`?${params.toString()}`);
     setStocks(res.data?.results || []);
@@ -56,7 +179,12 @@ export default function InventoryList() {
     if (!stockNext) return;
 
     const res = await inventoryService.getStockByUrl(stockNext);
-    setStocks((prev) => [...prev, ...(res.data?.results || [])]);
+    setStocks((prev) => {
+      const newItems = res.data?.results || [];
+      const existingIds = new Set(prev.map((s) => s.id));
+      const filtered = newItems.filter((s) => !existingIds.has(s.id));
+      return [...prev, ...filtered];
+    });
     setStockNext(res.data?.next || null);
   };
 
@@ -65,6 +193,7 @@ export default function InventoryList() {
     if (product_name) params.append("product_name", product_name);
     if (product_sku) params.append("product_sku", product_sku);
     if (action) params.append("action", action);
+    if (selectedBranch) params.append("branch", selectedBranch);
 
     const res = await inventoryService.getTransactions(`?${params.toString()}`);
     setTransactions(res.data?.results || []);
@@ -77,7 +206,12 @@ export default function InventoryList() {
     setTxLoading(true);
     try {
       const res = await inventoryService.getTransactionsByUrl(txNext);
-      setTransactions((prev) => [...prev, ...(res.data?.results || [])]);
+      setTransactions((prev) => {
+        const newItems = res.data?.results || [];
+        const existingIds = new Set(prev.map((t) => t.id));
+        const filtered = newItems.filter((t) => !existingIds.has(t.id));
+        return [...prev, ...filtered];
+      });
       setTxNext(res.data?.next || null);
     } finally {
       setTxLoading(false);
@@ -136,14 +270,42 @@ export default function InventoryList() {
             </div>
           </div>
 
-          <Link
-            to="/inventory/transaction/new"
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition"
-          >
-            <FiPlus className="h-5 w-5" />
-            New Transaction
-          </Link>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            {/* Branch Filter */}
+            <div className="relative min-w-[200px]">
+              <FaCodeBranch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all appearance-none cursor-pointer shadow-sm disabled:bg-slate-50 disabled:text-slate-500"
+                disabled={fetchingBranches || (isRestrictedRole && branches.length <= 1)}
+              >
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name} {b.is_default ? "(Main)" : ""}</option>
+                ))}
+              </select>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
+            </div>
+
+            <Link
+              to="/inventory/transaction/new"
+              className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition shadow-lg shadow-slate-200"
+            >
+              <FiPlus className="h-5 w-5" />
+              New Transaction
+            </Link>
+          </div>
         </div>
+
+        {!selectedBranch && !fetchingBranches && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            No branch assigned for this account. Ask owner/manager to assign at least one branch.
+          </div>
+        )}
 
         <Suspense
           fallback={

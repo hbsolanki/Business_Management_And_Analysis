@@ -37,7 +37,7 @@ export default function Broadcast() {
     const fetchGroups = async () => {
         try {
             const res = await api.get("/chat/broadcast/");
-            setGroups(res.data || []);
+            setGroups(res.data?.results || (Array.isArray(res.data) ? res.data : []));
         } catch (err) {
             const detail = err?.response?.data?.detail || err?.response?.data?.message;
             if (err?.response?.status === 403 && typeof detail === "string" && detail.toLowerCase().includes("subscription")) {
@@ -51,9 +51,11 @@ export default function Broadcast() {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const res = await api.get("/user/");
             const currentUserId = Number(tokenService.getId());
-            setUsers((res.data.results || []).filter(u => u.id !== currentUserId));
+            const res = await api.get("/user/");
+            // Filter out current user on frontend
+            const users = (res.data.results || []).filter(u => u.id !== currentUserId);
+            setUsers(users);
         } catch (err) {
             const detail = err?.response?.data?.detail || err?.response?.data?.message;
             if (err?.response?.status === 403 && typeof detail === "string" && detail.toLowerCase().includes("subscription")) {
@@ -83,7 +85,8 @@ export default function Broadcast() {
             const group = groups.find(g => g.id === activeGroupId);
             if (group) {
                 // Loose equality for ID matching
-                const isInGroup = group.users.some(gu => (gu.user_id || gu.id || gu) == u.id);
+                // GET returns users as [{user: {id, ...}}]
+                const isInGroup = group.users.some(gu => (gu.user?.id || gu.user_id || gu.id || gu) == u.id);
                 return matchesSearch && isInGroup;
             }
         }
@@ -104,7 +107,10 @@ export default function Broadcast() {
     const selectAll = (role = null) => {
         const newSelected = new Set(selectedUserIds);
         const usersToSelect = role
-            ? users.filter(u => u.role?.toUpperCase() === role.toUpperCase())
+            ? users.filter(u => {
+                const roleStr = typeof u.role === 'object' ? u.role.role : u.role;
+                return roleStr?.toUpperCase() === role.toUpperCase();
+            })
             : filteredUsers; // If no role, select all currently filtered
 
         usersToSelect.forEach(u => newSelected.add(u.id));
@@ -132,7 +138,8 @@ export default function Broadcast() {
 
     const handleGroupSelectToggle = (e, group) => {
         e.stopPropagation();
-        const groupUserIds = group.users.map(u => Number(u.user_id || u.id || u));
+        // GET returns users as [{user: {id, ...}}]
+        const groupUserIds = group.users.map(u => Number(u.user?.id || u.user_id || u.id || u));
         const validGroupUserIds = groupUserIds.filter(id => users.some(u => u.id === id));
 
         const allSelected = validGroupUserIds.length > 0 && validGroupUserIds.every(id => selectedUserIds.has(id));
@@ -147,7 +154,8 @@ export default function Broadcast() {
     };
 
     const getGroupSelectionState = (group) => {
-        const groupUserIds = group.users.map(u => Number(u.user_id || u.id || u));
+        // GET returns users as [{user: {id, ...}}]
+        const groupUserIds = group.users.map(u => Number(u.user?.id || u.user_id || u.id || u));
         const validGroupUserIds = groupUserIds.filter(id => users.some(u => u.id === id));
         if (validGroupUserIds.length === 0) return 'none';
 
@@ -169,7 +177,7 @@ export default function Broadcast() {
 
         const payload = {
             message: message,
-            users: Array.from(selectedUserIds).map(id => ({ user_id: id }))
+            users: Array.from(selectedUserIds).map(id => ({ user_id: Number(id) }))
         };
 
         try {
@@ -194,6 +202,23 @@ export default function Broadcast() {
     const getInitials = (user) => {
         if (!user) return "?";
         return `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` || user.username?.[0]?.toUpperCase() || "?";
+    };
+
+    const renderUserAvatar = (user, isSelected = false) => {
+        if (user?.profile_picture) {
+            return (
+                <img
+                    src={user.profile_picture}
+                    alt={user.username || "User"}
+                    className={`w-10 h-10 rounded-full object-cover border ${isSelected ? "border-slate-300" : "border-slate-200"}`}
+                />
+            );
+        }
+        return (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                {getInitials(user)}
+            </div>
+        );
     };
 
     if (subscriptionError) {
@@ -393,15 +418,13 @@ export default function Broadcast() {
                                                     </div>
 
                                                     <div className="flex items-center gap-3 min-w-0 z-10">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                            {getInitials(user)}
-                                                        </div>
+                                                        {renderUserAvatar(user, isSelected)}
                                                         <div className="min-w-0">
                                                             <h4 className={`text-sm font-semibold truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                                                                 {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
                                                             </h4>
                                                             <p className="text-xs text-slate-500 capitalize flex items-center gap-1">
-                                                                {user.role === 'MANAGER' ? <FaUserTie size={10} /> : <FaUser size={10} />}
+                                                                {(typeof user.role === 'object' ? user.role.role : user.role) === 'MANAGER' ? <FaUserTie size={10} /> : <FaUser size={10} />}
                                                                 {user.role || 'User'}
                                                             </p>
                                                         </div>

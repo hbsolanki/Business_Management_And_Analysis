@@ -1,7 +1,10 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import { invoiceService } from "@/features/invoice/services/invoiceService";
+import { branchService } from "@/features/business/services/branchService";
+import { tokenService } from "@/services/tokenService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import BackButton from "@/components/shared/BackButton";
 
@@ -10,20 +13,110 @@ import {
     FaPhone,
     FaEnvelope,
     FaMapMarkerAlt,
-    FaMoneyBillWave,
     FaVenusMars,
     FaBirthdayCake,
     FaFileInvoiceDollar,
     FaCreditCard,
-    FaWallet
+    FaWallet,
+    FaCodeBranch
 } from "react-icons/fa";
 
 // Lazy Imports
 const InvoiceItems = lazy(() => import("@/features/invoice/components/InvoiceItems"));
 const PaymentModal = lazy(() => import("@/features/payment/components/PaymentModal"));
 
+const resolveBranchId = (branch) => {
+    if (!branch && branch !== 0) return null;
+    if (typeof branch === "object") {
+        return branch.id ?? branch.branch_id ?? null;
+    }
+    return branch;
+};
+
+const resolveAssignedBranches = (profile, requiredWorkType = null) => {
+    if (!profile) return [];
+
+    const collected = [];
+    const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
+    const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
+
+    const pushBranch = (value, workType = null) => {
+        const id = resolveBranchId(value);
+        if (!id && id !== 0) return;
+
+        // If a specific work type is required, check if this branch/assignment matches
+        if (requiredWorkType && isRestricted) {
+            const normalizedRequired = requiredWorkType.toUpperCase();
+            const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
+
+            // If we have a structured assignment, it MUST match the required work type
+            if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
+                return;
+            }
+        }
+
+        const source = typeof value === "object" ? value : null;
+        const addr = source?.address || {};
+        collected.push({
+            id: String(id),
+            name: source?.name || source?.branch_name || `Branch #${id}`,
+            address: [
+                addr.address_line_1,
+                addr.address_line_2,
+                addr.city,
+                addr.state_name,
+                addr.country_name,
+                addr.pin_code,
+            ].filter(Boolean).join(", "),
+            is_default: Boolean(source?.is_default),
+        });
+    };
+
+    // 1. Primary: assigned_branches (new API structure)
+    if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
+        const allowedBranchIds = requiredWorkType && isRestricted
+            ? new Set(
+                (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
+            )
+            : null;
+
+        profile.assigned_branches.forEach(b => {
+            if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
+            pushBranch(b);
+        });
+    } else if (Array.isArray(profile.assigned_works)) {
+        // Fallback: use assigned_works if no assigned_branches
+        profile.assigned_works.forEach(w => pushBranch(w.branch_id || w, w.work_type));
+    }
+
+    // 2. Legacy fallbacks
+    if (collected.length === 0) {
+        if (Array.isArray(profile.branches)) profile.branches.forEach((branch) => pushBranch(branch));
+        if (Array.isArray(profile.branch)) profile.branch.forEach((branch) => pushBranch(branch));
+        if (profile.branch && typeof profile.branch !== 'object') pushBranch(profile.branch);
+        if (profile.branch_id || profile.branch_id === 0) pushBranch(profile.branch_id);
+    }
+
+    const seen = new Set();
+    return collected.filter((branch) => {
+        if (seen.has(branch.id)) return false;
+        seen.add(branch.id);
+        return true;
+    });
+};
+
 export default function AddInvoice() {
     const navigate = useNavigate();
+    const { profile } = useSelector((state) => state.user);
+    const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
+    const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
+    const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "INVOICE"), [profile]);
+    const [branches, setBranches] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState("");
+    const [fetchingBranches, setFetchingBranches] = useState(false);
+
+    const sanitizeMobileNumber = (value) =>
+        String(value ?? "").replace(/\D/g, "").slice(0, 10);
 
     const [customer, setCustomer] = useState({
         name: "",
@@ -39,30 +132,127 @@ export default function AddInvoice() {
     const [loading, setLoading] = useState(false);
     const [createdInvoice, setCreatedInvoice] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [errors, setErrors] = useState({});
 
-    const fetchCustomerByMobileNumber = async (mobile) => {
-        if (mobile.length !== 10) return;
+    /* ---------------- Fetch Branches ---------------- */
+    useEffect(() => {
+        async function fetchBranches() {
+            setFetchingBranches(true);
+            try {
+                const res = await branchService.list();
+                const branchData = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+
+                if (isRestrictedRole) {
+                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
+                    const visibleBranches = assignedIds.size > 0
+                        ? branchData.filter((branch) => assignedIds.has(String(branch.id)))
+                        : branchData;
+
+                    const resolvedBranches = visibleBranches.length > 0
+                        ? visibleBranches
+                        : assignedBranches;
+
+                    if (resolvedBranches.length > 0) {
+                        const defaultId = tokenService.getDefaultBranchId();
+                        const preSelected = defaultId
+                            ? resolvedBranches.find(b => String(b.id) === String(defaultId))
+                            : (resolvedBranches.find((b) => b.is_default) || resolvedBranches[0]);
+
+                        const finalBranch = preSelected || (resolvedBranches.find((b) => b.is_default) || resolvedBranches[0]);
+                        setSelectedBranch(finalBranch ? String(finalBranch.id) : "");
+                    } else {
+                        setSelectedBranch("");
+                    }
+                    setBranches(resolvedBranches);
+                    return;
+                }
+
+                setBranches(branchData);
+                setSelectedBranch((prev) => {
+                    if (prev && branchData.some((branch) => String(branch.id) === String(prev))) {
+                        return prev;
+                    }
+                    const mainBranch = branchData.find((branch) => branch.is_default) || branchData[0];
+                    return mainBranch ? String(mainBranch.id) : "";
+                });
+            } catch (err) {
+                console.error("Failed to fetch branches", err);
+            } finally {
+                setFetchingBranches(false);
+            }
+        }
+        fetchBranches();
+    }, [isRestrictedRole, assignedBranches]);
+
+    /* ---------------- Side Effects ---------------- */
+    useEffect(() => {
+        // Clear items when branch changes to avoid stock inconsistencies
+        setItems([]);
+        // Re-check customer if branch changes and mobile is valid
+        if (customer.mobile_number.length === 10) {
+            fetchCustomerByMobileNumber(customer.mobile_number, selectedBranch);
+        }
+        if (errors.branch_id) {
+            setErrors(prev => ({ ...prev, branch_id: null }));
+        }
+    }, [selectedBranch]);
+
+    const fetchCustomerByMobileNumber = async (mobile, branchId) => {
+        if (mobile.length !== 10) {
+            // Optional: reset fields if number is being edited/cleared
+            setCustomer(prev => ({
+                ...prev,
+                name: "",
+                email: "",
+                address: "",
+                age: "",
+                gender: "",
+            }));
+            return;
+        }
 
         try {
-            const res = await invoiceService.checkCustomer(mobile);
-            if (res.data?.exists) {
-                setCustomer(res.data.customer);
+            const res = await invoiceService.checkCustomer(mobile, branchId);
+            const customerData = res.data?.results?.[0];
+
+            if (customerData) {
+                setCustomer({
+                    ...customerData,
+                    gender: customerData.gender ? String(customerData.gender).toUpperCase() : ""
+                });
                 toast.success("Customer found");
+            } else {
+                // If 10 digits but NOT found, clear previous customer data
+                setCustomer(prev => ({
+                    ...prev,
+                    name: "",
+                    email: "",
+                    address: "",
+                    age: "",
+                    gender: "",
+                }));
             }
         } catch {
-            toast.error("Customer not found");
+            // Silently fail or log, don't toast error for every digit etc.
         }
     };
 
     const handleSubmit = async () => {
+        if (!selectedBranch) {
+            toast.error("Please select a branch");
+            return;
+        }
+
         if (
             !customer.name ||
-            !customer.mobile_number ||
-            !customer.address ||
-            !customer.age ||
-            !customer.gender
+            !customer.mobile_number
         ) {
             toast.error("Please complete customer details");
+            return;
+        }
+
+        if (sanitizeMobileNumber(customer.mobile_number).length !== 10) {
+            toast.error("Mobile number must be exactly 10 digits");
             return;
         }
 
@@ -78,16 +268,25 @@ export default function AddInvoice() {
         }
 
         setLoading(true);
+        setErrors({});
         try {
-            const res = await invoiceService.create({
-                items: items.map(({ productId, quantity }) => ({
-                    productId,
-                    quantity,
+            const payload = {
+                branch_id: Number(selectedBranch),
+                customer: {
+                    name: String(customer.name || "").trim(),
+                    mobile_number: String(customer.mobile_number || "").trim(),
+                    gender: customer.gender ? String(customer.gender).toUpperCase() : null,
+                    age: customer.age ? Number(customer.age) : null,
+                    email: customer.email ? String(customer.email).trim() : "",
+                },
+                invoice_items: items.map(({ productId, quantity }) => ({
+                    product_id: Number(productId),
+                    quantity: Number(quantity),
                 })),
-                payment_mode: paymentMode,
-                ...customer,
-                age: Number(customer.age),
-            });
+                payment_mode: String(paymentMode || "CASH").toUpperCase(),
+            };
+
+            const res = await invoiceService.create(payload);
 
             if (paymentMode === "ONLINE") {
                 setCreatedInvoice(res.data);
@@ -99,13 +298,14 @@ export default function AddInvoice() {
             }
         } catch (err) {
             const errorData = err?.response?.data;
-            if (errorData?.details) {
-                toast.error(errorData.details);
-            } else if (typeof errorData === "string") {
-                toast.error(errorData);
-            } else {
-                toast.error("Invoice creation failed");
+            if (errorData && typeof errorData === 'object' && !Array.isArray(errorData)) {
+                setErrors(errorData);
             }
+            const errorMsg = errorData?.detail ||
+                errorData?.non_field_errors?.[0] ||
+                errorData?.branch_id?.[0] ||
+                "Invoice creation failed";
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -133,7 +333,8 @@ export default function AddInvoice() {
                             </h1>
                             <p className="text-slate-500 mt-2 font-medium">Generate a new invoice for customer</p>
                         </div>
-                        <div className="hidden sm:flex gap-3">
+                        {/* Desktop Actions */}
+                        <div className="hidden md:flex gap-3">
                             <button
                                 onClick={() => navigate(-1)}
                                 className="bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 transition-all"
@@ -160,11 +361,40 @@ export default function AddInvoice() {
                                 <div className="p-6 border-b border-slate-200 bg-slate-50">
                                     <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
                                         <FaUser className="text-slate-900" />
-                                        Customer Details
                                     </h2>
                                 </div>
 
                                 <div className="p-6 space-y-5">
+                                    {(userRole === "OWNER" || isRestrictedRole) && (
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Branch <span className="text-red-500">*</span></label>
+                                            <div className="relative group">
+                                                <FaCodeBranch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition z-10" />
+                                                <select
+                                                    className={`${inputClass} appearance-none bg-transparent`}
+                                                    value={selectedBranch}
+                                                    onChange={(e) => setSelectedBranch(e.target.value)}
+                                                    disabled={fetchingBranches || (isRestrictedRole && branches.length <= 1)}
+                                                >
+                                                    <option value="">Select Branch</option>
+                                                    {branches.map(b => (
+                                                        <option key={b.id} value={b.id}>{b.name} {b.is_default ? "(Main)" : ""}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {errors.branch_id && (
+                                                <p className="mt-2 text-xs font-medium text-rose-600">
+                                                    {errors.branch_id[0]}
+                                                </p>
+                                            )}
+                                            {isRestrictedRole && !fetchingBranches && branches.length === 0 && (
+                                                <p className="mt-2 text-xs font-medium text-rose-600">
+                                                    No branch is assigned to your account.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Mobile */}
                                     <div>
                                         <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Mobile Number <span className="text-red-500">*</span></label>
@@ -172,13 +402,24 @@ export default function AddInvoice() {
                                             <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition" />
                                             <input
                                                 className={inputClass}
+                                                type="tel"
+                                                inputMode="numeric"
+                                                autoComplete="tel-national"
+                                                pattern="[0-9]{10}"
                                                 value={customer.mobile_number}
                                                 placeholder="10-digit number"
                                                 maxLength={10}
                                                 onChange={(e) => {
-                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    const val = sanitizeMobileNumber(e.target.value);
                                                     setCustomer({ ...customer, mobile_number: val });
-                                                    fetchCustomerByMobileNumber(val);
+                                                    fetchCustomerByMobileNumber(val, selectedBranch);
+                                                }}
+                                                onPaste={(e) => {
+                                                    e.preventDefault();
+                                                    const pasted = e.clipboardData.getData("text");
+                                                    const val = sanitizeMobileNumber(pasted);
+                                                    setCustomer({ ...customer, mobile_number: val });
+                                                    fetchCustomerByMobileNumber(val, selectedBranch);
                                                 }}
                                             />
                                         </div>
@@ -265,8 +506,8 @@ export default function AddInvoice() {
                                                     }
                                                 >
                                                     <option value="">Select</option>
-                                                    <option value="male">Male</option>
-                                                    <option value="female">Female</option>
+                                                    <option value="MALE">Male</option>
+                                                    <option value="FEMALE">Female</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -312,14 +553,15 @@ export default function AddInvoice() {
                                     </div>
                                 </div>
                             }>
-                                <InvoiceItems items={items} setItems={setItems} />
+                                <InvoiceItems items={items} setItems={setItems} branchId={selectedBranch} />
                             </Suspense>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 sm:hidden">
+            {/* Mobile Actions */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 md:hidden">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => navigate(-1)}

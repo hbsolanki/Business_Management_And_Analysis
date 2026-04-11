@@ -15,7 +15,11 @@ import {
     FaThLarge,
     FaExchangeAlt,
     FaComments,
-    FaUserTie
+    FaUserTie,
+    FaCodeBranch,
+    FaTruck,
+    FaFileExport,
+    FaRobot
 } from "react-icons/fa";
 
 export const OWNER_ACTIONS = {
@@ -37,6 +41,15 @@ export const OWNER_ACTIONS = {
         desc: "Performance Data",
         color: "text-indigo-600",
         bg: "bg-indigo-50 hover:bg-indigo-100"
+    },
+    branches: {
+        id: "branches",
+        label: "Manage Branches",
+        path: "/business/branch",
+        icon: <FaCodeBranch />,
+        desc: "Organization Units",
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
     chat: {
         id: "chat",
@@ -64,6 +77,15 @@ export const OWNER_ACTIONS = {
         desc: "Stock Levels",
         color: "text-orange-600",
         bg: "bg-orange-50 hover:bg-orange-100"
+    },
+    supplier: {
+        id: "supplier",
+        label: "Suppliers",
+        path: "/supplier",
+        icon: <FaTruck />,
+        desc: "Vendor & Purchase",
+        color: "text-amber-600",
+        bg: "bg-amber-50 hover:bg-amber-100"
     },
     invoices: {
         id: "invoices",
@@ -101,7 +123,6 @@ export const OWNER_ACTIONS = {
         color: "text-cyan-600",
         bg: "bg-cyan-50 hover:bg-cyan-100"
     },
-
     // Actions / Creation
     newInvoice: {
         id: "newInvoice",
@@ -147,6 +168,24 @@ export const OWNER_ACTIONS = {
         desc: "Track Expense",
         color: "text-rose-600",
         bg: "bg-rose-50 hover:bg-rose-100"
+    },
+    reportCenter: {
+        id: "reportCenter",
+        label: "Report Center",
+        path: "/analytics/report",
+        icon: <FaFileExport />,
+        desc: "Custom PDF Reports",
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
+    },
+    aiAgent: {
+        id: "aiAgent",
+        label: "AI Agent",
+        path: "/chat/agent",
+        icon: <FaRobot />,
+        desc: "AI Business Assistant",
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
 };
 
@@ -196,6 +235,15 @@ export const MANAGER_ACTIONS = {
         desc: "Stock Management",
         color: "text-orange-600",
         bg: "bg-orange-50 hover:bg-orange-100"
+    },
+    supplier: {
+        id: "supplier",
+        label: "Suppliers",
+        path: "/supplier",
+        icon: <FaTruck />,
+        desc: "Vendor & Purchase",
+        color: "text-amber-600",
+        bg: "bg-amber-50 hover:bg-amber-100"
     },
     invoices: {
         id: "invoices",
@@ -270,6 +318,24 @@ export const MANAGER_ACTIONS = {
         desc: "Log Expense",
         color: "text-rose-600",
         bg: "bg-rose-50 hover:bg-rose-100"
+    },
+    reportCenter: {
+        id: "reportCenter",
+        label: "Report Center",
+        path: "/analytics/report",
+        icon: <FaFileExport />,
+        desc: "Download Reports",
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
+    },
+    aiAgent: {
+        id: "aiAgent",
+        label: "AI Agent",
+        path: "/chat/agent",
+        icon: <FaRobot />,
+        desc: "AI Business Assistant",
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
     },
 };
 
@@ -358,5 +424,14 @@ export const EMPLOYEE_ACTIONS = {
         desc: "Move Stock",
         color: "text-purple-600",
         bg: "bg-purple-50 hover:bg-purple-100"
-    }
+    },
+    aiAgent: {
+        id: "aiAgent",
+        label: "AI Agent",
+        path: "/chat/agent",
+        icon: <FaRobot />,
+        desc: "AI Business Assistant",
+        color: "text-brand-600",
+        bg: "bg-brand-50 hover:bg-brand-100"
+    },
 };

@@ -105,7 +105,7 @@ export default function AnalyticsFilters({ currentFilters, onFilterChange }) {
                         <div>
                             <h3 className="text-base font-semibold text-slate-900">Filters</h3>
                             <p className="text-xs text-slate-500">
-                                Configure criteria and click "Apply" to update results.
+                                Configure criteria and click Apply to update results.
                             </p>
                         </div>
                     </div>

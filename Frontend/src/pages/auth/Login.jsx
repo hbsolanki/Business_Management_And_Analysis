@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import Header from "@/components/layout/Header";
 import toast from "react-hot-toast";
 import { authService } from "@/services/authService";
+import { setUserProfile } from "@/redux/slices/userSlice";
 import { FaUser, FaLock, FaSignInAlt, FaEye, FaEyeSlash } from "react-icons/fa";
 import GoogleLoginButton from "@/components/auth/GoogleLoginButton";
+import { getLandingPath } from "@/features/auth/utils/authUtils";
 
 function Login() {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [formData, setFormData] = useState({
         username: "",
@@ -31,17 +35,24 @@ function Login() {
         try {
             const data = await authService.login(formData);
             const role = data.user.role;
-            toast.success("Successfully logged in");
-            if (role === "OWNER") {
-                navigate("/owner");
-            } else if (role === "MANAGER") {
-                navigate("/manager");
-            } else {
-                navigate("/employee");
+
+            // Store user profile in Redux
+            if (data.userProfile) {
+                dispatch(setUserProfile(data.userProfile));
             }
+
+            toast.success("Successfully logged in");
+
+            // Use smart redirection
+            const { path } = getLandingPath(data.userProfile);
+            navigate(path, { replace: true });
         } catch (error) {
             console.error(error);
-            toast.error("Invalid username or password");
+            if (error?.response?.status === 409) {
+                toast.error("This user is already logged in from another session.");
+            } else {
+                toast.error(error?.response?.data?.error || "Invalid username or password");
+            }
         } finally {
             setLoading(false);
         }
@@ -53,14 +64,17 @@ function Login() {
         try {
             const data = await authService.googleLogin(codeResponse.code);
             const role = data.user.role;
-            toast.success("Successfully logged in with Google");
-            if (role === "OWNER") {
-                navigate("/owner");
-            } else if (role === "MANAGER") {
-                navigate("/manager");
-            } else {
-                navigate("/employee");
+
+            // Store user profile in Redux
+            if (data.userProfile) {
+                dispatch(setUserProfile(data.userProfile));
             }
+
+            toast.success("Successfully logged in with Google");
+
+            // Use smart redirection
+            const { path } = getLandingPath(data.userProfile);
+            navigate(path, { replace: true });
         } catch (error) {
             console.error(error);
             toast.error("Google Login Failed");
@@ -223,12 +237,12 @@ function Login() {
 
                                         <div className="text-center pt-4 border-t border-gray-100">
                                             <p className="text-sm text-gray-600">
-                                                Don't have an account?{" "}
+                                                Don&apos;t have an account?{" "}
                                                 <Link
                                                     to="/owner/register"
                                                     className="text-slate-900 font-bold hover:underline"
                                                 >
-                                                    Register Business
+                                                    Owner Register
                                                 </Link>
                                             </p>
                                         </div>

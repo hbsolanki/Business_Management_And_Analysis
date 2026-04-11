@@ -15,7 +15,7 @@ const loadState = (type) => {
         const parsed = JSON.parse(serialized);
         // Ensure we only return strings (filter out any malformed objects from previous bugs)
         return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
-    } catch (err) {
+    } catch {
         return [];
     }
 };

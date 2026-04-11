@@ -32,11 +32,10 @@ export default function TransactionSection({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <span
-                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded ${
-                      isIn
+                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded ${isIn
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-rose-50 text-rose-700"
-                    }`}
+                      }`}
                   >
                     {isIn ? <FiArrowUp /> : <FiArrowDown />}
                     {isIn ? "Stock In" : "Stock Out"}

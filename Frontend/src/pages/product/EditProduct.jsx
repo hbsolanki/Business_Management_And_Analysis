@@ -10,6 +10,13 @@ import {
     Squares2X2Icon,
     DocumentTextIcon,
 } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
+
+const normalizeCategories = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+};
 
 function EditProduct() {
     const { id } = useParams();
@@ -28,6 +35,7 @@ function EditProduct() {
         output_gst_rate: "",
         description: "",
         product_category: "",
+        low_stock_limit: "",
     });
 
     useEffect(() => {
@@ -49,9 +57,10 @@ function EditProduct() {
                     output_gst_rate: product.output_gst_rate || "",
                     description: product.description || "",
                     product_category: product.product_category?.id || "",
+                    low_stock_limit: product.low_stock_limit || "",
                 });
 
-                setCategories(categoryRes.data || []);
+                setCategories(normalizeCategories(categoryRes.data));
             } catch (err) {
                 console.error(err);
             } finally {
@@ -94,11 +103,17 @@ function EditProduct() {
                 output_gst_rate: formData.output_gst_rate || null,
                 description: formData.description,
                 product_category: formData.product_category || null,
+                low_stock_limit: formData.low_stock_limit ? parseInt(formData.low_stock_limit, 10) : 0,
             });
 
             navigate(-1);
         } catch (err) {
             console.error(err);
+            const errorMsg = err.response?.data?.non_field_errors?.[0]
+                || err.response?.data?.detail
+                || err.response?.data?.branch_id?.[0]
+                || "Failed to update product";
+            toast.error(errorMsg);
         } finally {
             setIsSubmitting(false);
         }
@@ -261,6 +276,23 @@ function EditProduct() {
                                     rows={3}
                                     className={inputClass}
                                 />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    <ClipboardDocumentIcon className="h-4 w-4" />
+                                    Low Stock Limit
+                                </label>
+                                <input
+                                    type="number"
+                                    name="low_stock_limit"
+                                    value={formData.low_stock_limit}
+                                    onChange={handleChange}
+                                    className={inputClass}
+                                />
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Notify when stock falls below this amount.
+                                </p>
                             </div>
                         </div>
 

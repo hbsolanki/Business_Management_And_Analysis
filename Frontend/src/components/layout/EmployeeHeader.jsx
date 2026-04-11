@@ -3,8 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import Modal from "@/components/ui/Modal";
 import { authService } from "@/services/authService";
+import { tokenService } from "@/services/tokenService";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchUserProfile, clearUserProfile } from "@/redux/slices/userSlice";
+import { clearUserProfile } from "@/redux/slices/userSlice";
 
 import NotificationBell from "@/components/shared/NotificationBell";
 import {
@@ -14,24 +15,79 @@ import {
     FaUserCircle,
     FaUserEdit,
     FaSignOutAlt,
+    FaHistory
 } from "react-icons/fa";
+
+const WORKSPACE_PRIORITY = [
+    { key: "inventory", path: "/inventory" },
+    { key: "product", path: "/product" },
+    { key: "invoice", path: "/invoice" },
+    { key: "analytics", path: "/analytics" },
+    { key: "supplier", path: "/supplier" },
+];
+
+const normalizeWorkList = (value) => {
+    if (!value && value !== 0) return [];
+
+    let items = [];
+
+    if (Array.isArray(value)) {
+        items = value;
+    } else if (typeof value === "string") {
+        const raw = value.trim();
+        if (!raw) return [];
+
+        if (raw.startsWith("[") && raw.endsWith("]")) {
+            try {
+                const parsed = JSON.parse(raw);
+                items = Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+                items = raw.split(",");
+            }
+        } else if (raw.includes(",")) {
+            items = raw.split(",");
+        } else {
+            items = [raw];
+        }
+    } else {
+        items = [value];
+    }
+
+    return items
+        .map((item) => {
+            if (!item && item !== 0) return null;
+            if (typeof item === "string") return item.trim().toLowerCase();
+            if (typeof item === "object") {
+                const valueFromObject = item.work_type || item.value || item.name || item.work || item.code || item.label;
+                return valueFromObject ? String(valueFromObject).trim().toLowerCase() : null;
+            }
+            return String(item).trim().toLowerCase();
+        })
+        .filter(Boolean);
+};
 
 function EmployeeHeader() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    // User state moved to Redux
     const [activeDropdown, setActiveDropdown] = useState(null);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
-
     const dispatch = useDispatch();
-    const { profile: user } = useSelector((state) => state.user);
 
-    useEffect(() => {
-        if (!user) {
-            dispatch(fetchUserProfile());
-        }
-    }, [dispatch, user]);
+    const { profile } = useSelector((state) => state.user);
+    const user = profile?.user || profile;
+    const businessData = profile?.role?.business || profile?.business || user?.role?.business || user?.business || null;
+    const businessName = typeof businessData === "object"
+        ? businessData?.name || businessData?.business_name || "Business Workspace"
+        : businessData || "Business Workspace";
+
+    const firstName = user?.first_name || localStorage.getItem("first_name") || "Employee";
+    const lastName = user?.last_name || localStorage.getItem("last_name") || "";
+    const email = user?.email || localStorage.getItem("email") || "";
+
+    // We already have the work set in localStorage and tokenService during login
+    const workspaceSet = new Set(normalizeWorkList(tokenService.getWork()));
+    const workspacePath = WORKSPACE_PRIORITY.find((item) => workspaceSet.has(item.key))?.path || null;
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -44,17 +100,22 @@ function EmployeeHeader() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleLogout = () => {
-        authService.logout();
-        dispatch(clearUserProfile());
-        navigate("/");
+    const handleLogout = async () => {
+        try {
+            await authService.logout();
+            dispatch(clearUserProfile()); // Optional, just to clear state if it exists
+            window.location.href = "/";
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
     };
 
     const getProfileImage = () => {
-        if (user?.profile_picture) {
-            return <img src={user.profile_picture} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-green-100" />;
+        const data = profile?.user || profile;
+        if (data?.profile_picture) {
+            return <img src={data.profile_picture} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-green-100" />;
         }
-        const initials = `${user?.first_name?.[0] || ""}${user?.last_name?.[0] || ""}`.trim() || "U";
+        const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.trim() || "U";
         return (
             <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-semibold">
                 {initials.toUpperCase()}
@@ -72,12 +133,16 @@ function EmployeeHeader() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
                         {/* Logo */}
-                        <div className="flex-shrink-0 flex items-center gap-3 cursor-pointer group" onClick={() => navigate("/employee")}>
+                        <div className="flex min-w-0 flex-shrink-0 items-center gap-3 cursor-pointer group" onClick={() => navigate("/employee")}>
                             <div className="relative">
                                 <div className="absolute inset-0 bg-brand-500 blur-lg opacity-20 rounded-full group-hover:opacity-30 transition-opacity"></div>
                                 <img src={Logo} alt="Logo" className="h-9 w-auto relative z-10" />
                             </div>
-                            <span className="hidden md:block font-display font-semibold text-xl text-slate-900 tracking-tight ml-1">BizVisionary</span>
+                            <div className="min-w-0">
+                                <p className="max-w-[160px] truncate text-sm font-bold tracking-tight text-slate-900 sm:max-w-[220px] md:text-base">
+                                    {businessName}
+                                </p>
+                            </div>
                         </div>
 
                         {/* Desktop Menu */}
@@ -85,11 +150,15 @@ function EmployeeHeader() {
                             <div className="flex items-center gap-1 bg-white/70 p-1.5 rounded-xl border border-gray-100 relative">
                                 <NavLink to="/" text="Home" icon={<FaHome />} />
                                 <NavLink to="/info" text="Info" icon={<FaInfoCircle />} />
-                                {user?.work && (
-                                    <NavLink to={`/${user.work.toLowerCase()}`} text="My Workspace" icon={<FaBriefcase />} />
+                                {workspacePath && (
+                                    <NavLink
+                                        to={workspacePath}
+                                        text="My Workspace"
+                                        icon={<FaBriefcase />}
+                                    />
                                 )}
 
-                                <NotificationBell />
+                                {(profile?.role?.business || profile?.business) && <NotificationBell />}
 
                             </div>
 
@@ -101,41 +170,51 @@ function EmployeeHeader() {
                                         className="glass-panel flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:shadow-md transition-all cursor-pointer"
                                     >
                                         <div className="flex flex-col items-end leading-none px-2">
-                                            <span className="text-sm font-bold text-gray-700">{user?.first_name || "Employee"}</span>
+                                            <span className="text-sm font-bold text-gray-700">{firstName}</span>
                                             <span className="text-[10px] uppercase font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md mt-0.5">Employee</span>
                                         </div>
                                         {getProfileImage()}
                                     </button>
 
                                     {activeDropdown === "profile" && (
-                                        <div className="glass-panel bg-white/90 absolute top-full right-0 mt-2 w-48 rounded-xl shadow-xl py-2 z-50 animate-fade-in-down">
-                                            <div className="px-4 py-3 border-b border-gray-50 mb-1">
-                                                <p className="text-sm font-bold text-gray-900 truncate">{user?.first_name} {user?.last_name}</p>
-                                                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                                        <div className="glass-panel backdrop-blur-xl bg-white/90 absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
+                                            <div className="px-5 py-4 border-b border-slate-100 mb-2">
+                                                <p className="text-sm font-bold text-slate-900 truncate">
+                                                    {firstName && lastName ? `${firstName} ${lastName}` : "Hardik Solanki"}
+                                                </p>
+                                                <p className="text-xs font-medium text-slate-500 truncate mt-0.5">
+                                                    {email || "hbsolanki0524@gmail.com"}
+                                                </p>
                                             </div>
-                                            <DropdownItem to="/profile" text="My Profile" icon={<FaUserCircle />} onClick={() => setActiveDropdown(null)} />
-                                            <DropdownItem to="/employee/edit" text="Edit Profile" icon={<FaUserEdit />} onClick={() => setActiveDropdown(null)} />
-                                            <div className="border-t border-gray-50 my-1"></div>
-                                            <button
-                                                onClick={() => {
-                                                    setActiveDropdown(null);
-                                                    setIsModalOpen(true);
-                                                }}
-                                                className="w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                                            >
-                                                <span className="flex items-center gap-2">
-                                                    <FaSignOutAlt /> Sign Out
-                                                </span>
-                                            </button>
+
+                                            <div className="space-y-0.5 px-2">
+                                                <DropdownItem to="/profile" text="My Profile" icon={<FaUserCircle />} onClick={() => setActiveDropdown(null)} />
+                                                <DropdownItem to="/activity-logs" text="Activity Logs" icon={<FaHistory />} onClick={() => setActiveDropdown(null)} />
+                                                <DropdownItem to="/employee/edit" text="Edit Profile" icon={<FaUserEdit />} onClick={() => setActiveDropdown(null)} />
+                                            </div>
+
+                                            <div className="border-t border-slate-100 my-2 mx-2"></div>
+
+                                            <div className="px-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setActiveDropdown(null);
+                                                        setIsModalOpen(true);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50/50 rounded-xl transition-all flex items-center gap-3"
+                                                >
+                                                    <FaSignOutAlt className="text-red-500" />
+                                                    Sign Out
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Mobile Menu Button */}
                         <div className="md:hidden flex items-center gap-3">
-                            <NotificationBell />
+                            {(profile?.role?.business || profile?.business) && <NotificationBell />}
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                 className="text-gray-700 hover:text-green-600 px-3 py-2 rounded-xl hover:bg-white/70 transition-colors text-sm font-semibold"
@@ -151,15 +230,15 @@ function EmployeeHeader() {
                     <div className="md:hidden bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl animate-fade-in-down max-h-[80vh] overflow-y-auto">
                         <div className="p-4 space-y-2">
                             <MobileNavLink to="/" text="Home" icon={<FaHome />} onClick={() => setIsMobileMenuOpen(false)} />
-                            {user?.work && (
-                                <MobileNavLink to={`/${user.work.toLowerCase()}`} text="My Workspace" icon={<FaBriefcase />} onClick={() => setIsMobileMenuOpen(false)} />
+                            {workspacePath && (
+                                <MobileNavLink to={workspacePath} text="My Workspace" icon={<FaBriefcase />} onClick={() => setIsMobileMenuOpen(false)} />
                             )}
                         </div>
                         <div className="p-4 border-t border-gray-100 bg-white/60">
                             <div className="flex items-center gap-4 mb-4">
                                 {getProfileImage()}
                                 <div>
-                                    <div className="font-bold text-gray-900">{user?.first_name} {user?.last_name}</div>
+                                    <div className="font-bold text-gray-900">{firstName} {lastName}</div>
                                     <div className="text-xs text-green-600 font-bold uppercase">Employee</div>
                                 </div>
                             </div>
@@ -226,9 +305,9 @@ function DropdownItem({ to, text, icon, onClick }) {
         <Link
             to={to}
             onClick={onClick}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-white/70 hover:text-green-600 transition-colors"
+            className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-green-600 rounded-xl transition-all group"
         >
-            {icon && <span className="text-gray-400">{icon}</span>}
+            {icon && <span className="text-slate-400 group-hover:text-green-500 transition-colors">{icon}</span>}
             {text}
         </Link>
     );

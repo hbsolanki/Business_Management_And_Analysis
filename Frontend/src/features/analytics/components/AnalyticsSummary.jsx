@@ -29,7 +29,6 @@ export default function AnalyticsSummary({ stockData = [], detailsData = [] }) {
             if (qty < 10) lowStockCount++;
 
             if (detail) {
-                const cost = Number(detail.cost_price) || 0;
                 const base = Number(detail.base_price) || 0;
                 const profitPerUnit = Number(detail.net_profit) || 0;
 

@@ -1,19 +1,15 @@
-import * as React from "react";
-import { PieChart } from "@mui/x-charts/PieChart";
+import AppPieChart from "@/components/charts/AppPieChart";
 
-// eslint-disable-next-line react/prop-types
 export default function PieActiveArc({ data, valueFormatter }) {
     return (
-        <PieChart
-            series={[
-                {
-                    data: data,
-                    highlightScope: { fade: "global", highlight: "item" },
-                    faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                    valueFormatter,
-                },
-            ]}
+        <AppPieChart
+            data={data}
             height={200}
+            seriesProps={{
+                highlightScope: { fade: "global", highlight: "item" },
+                faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
+                valueFormatter,
+            }}
         />
     );
 }

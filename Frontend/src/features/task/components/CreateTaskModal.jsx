@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { FaSearch, FaUserPlus, FaClipboardList, FaTimes } from 'react-icons/fa';
 import api from '@/services/api';
 import Modal from '@/components/ui/Modal';
@@ -15,6 +15,13 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, task, onUpdate }) => {
     const [loadingSearch, setLoadingSearch] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const isEditMode = Boolean(task);
+
+    const getUserInitials = (user) => {
+        if (!user) return "U";
+        const first = user.first_name?.[0] || "";
+        const last = user.last_name?.[0] || "";
+        return `${first}${last}`.trim().toUpperCase() || user.username?.[0]?.toUpperCase() || "U";
+    };
 
     // Reset or Pre-fill form
     useEffect(() => {
@@ -157,9 +164,17 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, task, onUpdate }) => {
                     {selectedUser && (
                         <div className="bg-white mb-3 rounded-xl p-3 border border-slate-200 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                    {(selectedUser.username || "U").substring(0, 2).toUpperCase()}
-                                </div>
+                                {selectedUser.profile_picture ? (
+                                    <img
+                                        src={selectedUser.profile_picture}
+                                        alt={selectedUser.username}
+                                        className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                                    />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                        {getUserInitials(selectedUser)}
+                                    </div>
+                                )}
                                 <div>
                                     <p className="text-sm font-semibold text-slate-900">
                                         {selectedUser.first_name} {selectedUser.last_name}
@@ -213,12 +228,20 @@ const CreateTaskModal = ({ isOpen, onClose, onCreate, task, onUpdate }) => {
                                     onClick={() => handleSelectUser(user)}
                                     className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 border-b border-slate-100 last:border-0"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                        {user.username.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-semibold text-slate-800">{user.first_name} {user.last_name}</div>
-                                        <div className="text-xs text-slate-500">{user.email} • {user.role}</div>
+                                    {user.profile_picture ? (
+                                        <img
+                                            src={user.profile_picture}
+                                            alt={user.username}
+                                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                                        />
+                                    ) : (
+                                        <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                            {getUserInitials(user)}
+                                        </div>
+                                    )}
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-slate-800 truncate">{user.first_name} {user.last_name}</div>
+                                        <div className="text-xs text-slate-500 truncate">@{user.username} • {user.role}</div>
                                     </div>
                                 </div>
                             ))}

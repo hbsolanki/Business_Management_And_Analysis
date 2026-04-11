@@ -2,9 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { businessService } from "@/features/business/services/businessService";
 import BackButton from "@/components/shared/BackButton";
+import { useDispatch } from "react-redux";
+import { fetchUserProfile } from "@/redux/slices/userSlice";
+import { toast } from "react-hot-toast";
 
 export default function CreateBusiness() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -20,9 +24,11 @@ export default function CreateBusiness() {
 
     try {
       await businessService.create(formData);
-      navigate(-1);
-    } catch (error) {
-      alert("Failed to create business");
+      dispatch(fetchUserProfile());
+      toast.success("Business created successfully!");
+      navigate("/owner");
+    } catch {
+      toast.error("Failed to create business");
     } finally {
       setLoading(false);
     }

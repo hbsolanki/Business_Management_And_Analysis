@@ -1,9 +1,5 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FaSpinner } from 'react-icons/fa';
 import MessageBubble from './MessageBubble';
-
-const ESTIMATED_ROW_HEIGHT = 96;
-const OVERSCAN = 20;
 
 const MessageList = ({
     messages,
@@ -16,12 +12,14 @@ const MessageList = ({
     // Actions
     activeActionMessageId,
     setActiveActionMessageId,
-    editingMessage,
     setEditingMessage,
     setNewMessage,
     handleDeleteMessage,
     messageMenu,
-    setMessageMenu
+    setMessageMenu,
+    isSelectionMode,
+    selectedMessageIds,
+    onToggleMessageSelection
 }) => {
     const formatDayLabel = (dateString) => {
         if (!dateString) return "";
@@ -55,73 +53,19 @@ const MessageList = ({
     };
 
     const handleEdit = (msg) => {
+        if (msg.sender_id !== currentUserId) return;
+        const messageType = String(msg.message_type || (msg.text ? "TEXT" : "")).toUpperCase();
+        if (messageType !== "TEXT") return;
         setEditingMessage(msg);
-        setNewMessage(msg.text);
-        document.querySelector('textarea')?.focus();
+        setNewMessage(msg.text || "");
+        document.querySelector('textarea')?.focus({ preventScroll: true });
     };
-
-    const [scrollTop, setScrollTop] = useState(0);
-    const [containerHeight, setContainerHeight] = useState(0);
-    const scrollRafRef = useRef(null);
-
-    useLayoutEffect(() => {
-        if (!chatContainerRef.current) return;
-        const updateSize = () => setContainerHeight(chatContainerRef.current.clientHeight || 0);
-        updateSize();
-        window.addEventListener('resize', updateSize);
-        return () => window.removeEventListener('resize', updateSize);
-    }, [chatContainerRef]);
-
-    useLayoutEffect(() => {
-        return () => {
-            if (scrollRafRef.current) {
-                cancelAnimationFrame(scrollRafRef.current);
-                scrollRafRef.current = null;
-            }
-        };
-    }, []);
-
-    const handleScroll = (e) => {
-        const nextScrollTop = e.currentTarget.scrollTop;
-        if (scrollRafRef.current) return;
-        scrollRafRef.current = requestAnimationFrame(() => {
-            setScrollTop(nextScrollTop);
-            scrollRafRef.current = null;
-        });
-    };
-
-    const { visibleMessages, paddingTop, paddingBottom, startIndex } = useMemo(() => {
-        if (!messages || messages.length === 0) {
-            return { visibleMessages: [], paddingTop: 0, paddingBottom: 0, startIndex: 0 };
-        }
-
-        const startIndex = Math.max(
-            0,
-            Math.floor(scrollTop / ESTIMATED_ROW_HEIGHT) - OVERSCAN
-        );
-        const endIndex = Math.min(
-            messages.length,
-            Math.ceil((scrollTop + containerHeight) / ESTIMATED_ROW_HEIGHT) + OVERSCAN
-        );
-
-        const paddingTopCalc = startIndex * ESTIMATED_ROW_HEIGHT;
-        const paddingBottomCalc = (messages.length - endIndex) * ESTIMATED_ROW_HEIGHT;
-
-        return {
-            visibleMessages: messages.slice(startIndex, endIndex),
-            paddingTop: paddingTopCalc,
-            paddingBottom: paddingBottomCalc,
-            startIndex
-        };
-    }, [messages, scrollTop, containerHeight]);
 
     return (
         <div
             ref={chatContainerRef}
-            onScroll={handleScroll}
             className="flex-1 overflow-y-auto p-4 sm:p-6 bg-white custom-scrollbar"
         >
-            {/* Pagination Loader / Sentinel */}
             <div ref={topSentinelRef} className="h-4 flex justify-center items-center shrink-0">
                 {loadingMore && <FaSpinner className="animate-spin text-slate-400 text-xs" />}
             </div>
@@ -134,14 +78,13 @@ const MessageList = ({
                 </div>
             ) : (
                 <>
-                    <div style={{ height: paddingTop }} />
-                    {visibleMessages.map((msg, index) => {
+                    {messages.map((msg, index) => {
                         const isMe = msg.sender_id === currentUserId;
-                        const globalIndex = startIndex + index;
-                        const prevMsg = globalIndex > 0 ? messages[globalIndex - 1] : null;
+                        const prevMsg = index > 0 ? messages[index - 1] : null;
                         const showDay =
                             !prevMsg ||
                             formatDayLabel(prevMsg.created_at) !== formatDayLabel(msg.created_at);
+
                         return (
                             <div key={msg.id || index} className="mb-6 last:mb-0">
                                 {showDay && (
@@ -160,14 +103,13 @@ const MessageList = ({
                                     onDelete={handleDeleteMessage}
                                     messageMenu={messageMenu}
                                     onCloseMenu={() => setMessageMenu(null)}
-                                    onMenuClick={(e, msg) => {
-                                        // Logic usually in container? We can pass simpler handler
-                                    }}
+                                    isSelectionMode={isSelectionMode}
+                                    isSelected={selectedMessageIds.includes(msg.id)}
+                                    onToggleSelection={() => onToggleMessageSelection(msg.id)}
                                 />
                             </div>
                         );
                     })}
-                    <div style={{ height: paddingBottom }} />
                 </>
             )}
 

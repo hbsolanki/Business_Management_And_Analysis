@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from "react";
 import { FaSearch, FaBullhorn, FaEllipsisV, FaTrash, FaCheckCircle, FaRegCircle, FaTimes } from 'react-icons/fa';
 import { tokenService } from '@/services/tokenService';
 import { getInitials } from '../utils/chatHelpers';
 import Modal from '@/components/ui/Modal';
 
 const ChatSidebar = ({
-    users,
     filteredUsers,
     selectedUser,
     onSelectUser,
@@ -13,7 +12,7 @@ const ChatSidebar = ({
     setSearchQuery,
     mobileShowChat,
     loading,
-    navigate, // passed from parent or use hook inside
+    navigate,
     onDeleteConversations
 }) => {
 
@@ -52,6 +51,29 @@ const ChatSidebar = ({
         }
     };
 
+    const handleSelectAll = () => {
+        const allConvIds = filteredUsers
+            .map(u => u.conversation_id)
+            .filter(Boolean);
+
+        if (selectedIds.length === allConvIds.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(allConvIds);
+        }
+    };
+
+    const handleDeleteAll = () => {
+        const allConvIds = filteredUsers
+            .map(u => u.conversation_id)
+            .filter(Boolean);
+
+        if (allConvIds.length === 0) return;
+        setIsSelectionMode(true);
+        setSelectedIds(allConvIds);
+        setIsDeleteModalOpen(true);
+    };
+
     return (
         <div className={` ${mobileShowChat ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 lg:w-96 bg-white border border-slate-200 rounded-2xl overflow-hidden transition-all duration-300 shadow-sm `}>
 
@@ -74,10 +96,18 @@ const ChatSidebar = ({
                             <button
                                 onClick={toggleSelectionMode}
                                 className="text-slate-500 hover:text-slate-700 p-1"
+                                title="Exit Selection"
                             >
                                 <FaTimes />
                             </button>
                             <span className="font-semibold text-slate-800">{selectedIds.length} Selected</span>
+
+                            <button
+                                onClick={handleSelectAll}
+                                className="ml-2 text-[10px] font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2 py-1 rounded-lg hover:bg-brand-100 transition-colors"
+                            >
+                                {selectedIds.length === filteredUsers.filter(u => u.conversation_id).length ? "Deselect All" : "Select All"}
+                            </button>
                         </div>
                         <button
                             onClick={handleDeleteClick}
@@ -127,6 +157,13 @@ const ChatSidebar = ({
                                             >
                                                 <FaCheckCircle className="text-slate-400" />
                                                 Select Conversations
+                                            </button>
+                                            <button
+                                                onClick={handleDeleteAll}
+                                                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                            >
+                                                <FaTrash className="text-red-400" />
+                                                Delete All
                                             </button>
                                         </div>
                                     </>

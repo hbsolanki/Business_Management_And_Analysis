@@ -7,7 +7,15 @@ const ownerItems = [
         path: '/analytics',
         icon: 'analytics',
         group: 'Insights',
-        keywords: ['reports', 'overview', 'charts'],
+        keywords: ['reports', 'overview', 'charts', 'data', 'stats'],
+    },
+    {
+        label: 'Branches',
+        desc: 'Manage your organization units',
+        path: '/business/branch',
+        icon: 'branches',
+        group: 'Company',
+        keywords: ['branch', 'units', 'locations', 'outlets', 'offices'],
     },
     {
         label: 'Employees',
@@ -15,7 +23,7 @@ const ownerItems = [
         path: '/employees/manage',
         icon: 'employees',
         group: 'People',
-        keywords: ['staff', 'team'],
+        keywords: ['staff', 'team', 'workers', 'users'],
     },
     {
         label: 'Managers',
@@ -23,7 +31,7 @@ const ownerItems = [
         path: '/manager/manage',
         icon: 'managers',
         group: 'People',
-        keywords: ['team leads'],
+        keywords: ['team leads', 'admin', 'management'],
     },
     {
         label: 'Products',
@@ -31,7 +39,7 @@ const ownerItems = [
         path: '/product',
         icon: 'products',
         group: 'Catalog',
-        keywords: ['items', 'catalog'],
+        keywords: ['items', 'catalog', 'inventory', 'pricing'],
     },
     {
         label: 'Inventory',
@@ -39,7 +47,15 @@ const ownerItems = [
         path: '/inventory',
         icon: 'inventory',
         group: 'Operations',
-        keywords: ['stock'],
+        keywords: ['stock', 'items', 'warehouse'],
+    },
+    {
+        label: 'Suppliers',
+        desc: 'Manage vendors and purchase orders',
+        path: '/supplier',
+        icon: 'supplier',
+        group: 'Operations',
+        keywords: ['supplier', 'vendor', 'purchase order', 'procurement'],
     },
     {
         label: 'Invoices',
@@ -47,7 +63,7 @@ const ownerItems = [
         path: '/invoice',
         icon: 'invoices',
         group: 'Finance',
-        keywords: ['billing', 'payments'],
+        keywords: ['billing', 'payments', 'sales', 'tax', 'receipts'],
     },
     {
         label: 'Costs',
@@ -55,7 +71,23 @@ const ownerItems = [
         path: '/cost-category',
         icon: 'costs',
         group: 'Finance',
-        keywords: ['expenses', 'cost'],
+        keywords: ['expenses', 'cost', 'spending', 'money', 'bills'],
+    },
+    {
+        label: 'Subscriptions',
+        desc: 'Manage your plan and billing',
+        path: '/subscriptions',
+        icon: 'subscriptions',
+        group: 'Finance',
+        keywords: ['billing', 'plan', 'payment', 'upgrade', 'pricing'],
+    },
+    {
+        label: 'Activity Logs',
+        desc: 'Track system audit trials',
+        path: '/activity-logs',
+        icon: 'history',
+        group: 'System',
+        keywords: ['audit', 'history', 'logs', 'security', 'trails'],
     },
     {
         label: 'Chat',
@@ -63,7 +95,7 @@ const ownerItems = [
         path: '/chat',
         icon: 'chat',
         group: 'Comms',
-        keywords: ['messages', 'broadcast'],
+        keywords: ['messages', 'broadcast', 'communication'],
     },
     {
         label: 'Tasks',
@@ -71,7 +103,7 @@ const ownerItems = [
         path: '/tasks',
         icon: 'tasks',
         group: 'Work',
-        keywords: ['todo', 'work'],
+        keywords: ['todo', 'work', 'project', 'delegation'],
     },
     {
         label: 'My Profile',
@@ -79,7 +111,7 @@ const ownerItems = [
         path: '/profile',
         icon: 'profile',
         group: 'Account',
-        keywords: ['account'],
+        keywords: ['account', 'user', 'personal', 'me'],
     },
     {
         label: 'Edit Profile',
@@ -87,7 +119,7 @@ const ownerItems = [
         path: '/owner/edit',
         icon: 'edit_profile',
         group: 'Account',
-        keywords: ['settings', 'account edit'],
+        keywords: ['settings', 'account edit', 'profile update'],
     },
 ];
 
@@ -98,7 +130,15 @@ const managerItems = [
         path: '/analytics',
         icon: 'analytics',
         group: 'Insights',
-        keywords: ['reports', 'overview', 'charts'],
+        keywords: ['reports', 'overview', 'charts', 'data', 'stats'],
+    },
+    {
+        label: 'Branches',
+        desc: 'View organization units',
+        path: '/business/branch',
+        icon: 'branches',
+        group: 'Company',
+        keywords: ['branch', 'units', 'locations', 'outlets', 'offices'],
     },
     {
         label: 'Employees',
@@ -106,7 +146,7 @@ const managerItems = [
         path: '/employees/manage',
         icon: 'employees',
         group: 'People',
-        keywords: ['staff', 'team'],
+        keywords: ['staff', 'team', 'workers', 'users'],
     },
     {
         label: 'Products',
@@ -114,7 +154,7 @@ const managerItems = [
         path: '/product',
         icon: 'products',
         group: 'Catalog',
-        keywords: ['items', 'catalog'],
+        keywords: ['items', 'catalog', 'inventory', 'pricing'],
     },
     {
         label: 'Inventory',
@@ -122,7 +162,15 @@ const managerItems = [
         path: '/inventory',
         icon: 'inventory',
         group: 'Operations',
-        keywords: ['stock'],
+        keywords: ['stock', 'items', 'warehouse'],
+    },
+    {
+        label: 'Suppliers',
+        desc: 'Manage vendors and purchase orders',
+        path: '/supplier',
+        icon: 'supplier',
+        group: 'Operations',
+        keywords: ['supplier', 'vendor', 'purchase order', 'procurement'],
     },
     {
         label: 'Invoices',
@@ -130,7 +178,7 @@ const managerItems = [
         path: '/invoice',
         icon: 'invoices',
         group: 'Finance',
-        keywords: ['billing', 'payments'],
+        keywords: ['billing', 'payments', 'sales', 'tax', 'receipts'],
     },
     {
         label: 'Costs',
@@ -138,7 +186,7 @@ const managerItems = [
         path: '/cost-category',
         icon: 'costs',
         group: 'Finance',
-        keywords: ['expenses', 'cost'],
+        keywords: ['expenses', 'cost', 'spending', 'money', 'bills'],
     },
     {
         label: 'Tasks',
@@ -146,7 +194,7 @@ const managerItems = [
         path: '/tasks',
         icon: 'tasks',
         group: 'Work',
-        keywords: ['todo', 'work'],
+        keywords: ['todo', 'work', 'project', 'delegation'],
     },
     {
         label: 'Chat',
@@ -154,7 +202,7 @@ const managerItems = [
         path: '/chat',
         icon: 'chat',
         group: 'Comms',
-        keywords: ['messages', 'broadcast'],
+        keywords: ['messages', 'broadcast', 'communication'],
     },
     {
         label: 'My Profile',
@@ -162,7 +210,7 @@ const managerItems = [
         path: '/profile',
         icon: 'profile',
         group: 'Account',
-        keywords: ['account'],
+        keywords: ['account', 'user', 'personal', 'me'],
     },
     {
         label: 'Edit Profile',
@@ -170,7 +218,7 @@ const managerItems = [
         path: '/manager/edit',
         icon: 'edit_profile',
         group: 'Account',
-        keywords: ['settings', 'account edit'],
+        keywords: ['settings', 'account edit', 'profile update'],
     },
 ];
 

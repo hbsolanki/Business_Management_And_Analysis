@@ -1,1 +1,0 @@
-import{a as s}from"./index-TGBChVvB.js";const a={create:e=>s.post("/business/",e),get:e=>s.get(`/business/${e}/`),update:(e,t)=>s.patch(`/business/${e}/`,t),delete:e=>s.delete(`/business/${e}/`)};export{a as b};

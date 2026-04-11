@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import taskService from '../services/taskService';
 import { toast } from 'react-hot-toast';
+import { tokenService } from '@/services/tokenService';
 
 export const useTaskData = () => {
     const [tasks, setTasks] = useState([]);
@@ -26,11 +27,15 @@ export const useTaskData = () => {
                 }
             });
 
+            const currentUserId = tokenService.getId();
+
             if (type === 'assigned_by') {
-                data = await taskService.getAssignedByTasks(params);
+                params.assigned_by = currentUserId;
             } else {
-                data = await taskService.getAssigneeTasks(params);
+                params.assignee = currentUserId;
             }
+
+            data = await taskService.getTasks(params);
 
             if (Array.isArray(data)) {
                 setTasks(data);
@@ -50,7 +55,7 @@ export const useTaskData = () => {
     const createTask = useCallback(async (taskData) => {
         try {
             setCreating(true);
-            const newTask = await taskService.createTask(taskData);
+            await taskService.createTask(taskData);
             // We assume if you create a task, you might want to see it in "assigned_by" list
             // or if we are in "assigned_to", we might not see it immediately unless we are assigned to ourselves.
             // For simplicity, we just trigger a toast. The UI should refresh or handle state.

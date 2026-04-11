@@ -1,7 +1,7 @@
-import React, { Fragment } from 'react';
+import { Fragment } from "react";
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { FaUser, FaClock, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrash, FaEllipsisV } from 'react-icons/fa';
+import { FaClock, FaEdit, FaTrash, FaEllipsisV } from 'react-icons/fa';
 import { Menu, Transition } from '@headlessui/react';
 import { tokenService } from '@/services/tokenService';
 

@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import PlansSection from "@/features/subscription/components/PlansSection";
+import PaymentModal from "@/features/payment/components/PaymentModal";
 import api, { API_BASE_URL } from "@/services/api";
+import toast from "react-hot-toast";
 import {
     FaCheckCircle,
-    FaClock,
     FaCrown,
     FaFileInvoice,
     FaBoxOpen,
     FaUsers,
-    FaChartBar
+    FaChartBar,
+    FaCodeBranch
 } from "react-icons/fa";
 
 export default function Subscriptions() {
@@ -17,10 +19,21 @@ export default function Subscriptions() {
     const [loading, setLoading] = useState(true);
     const [usage, setUsage] = useState(null);
     const [usageLoading, setUsageLoading] = useState(false);
+    const [renewing, setRenewing] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [renewSubscriptionId, setRenewSubscriptionId] = useState(null);
+    const [renewAmount, setRenewAmount] = useState(0);
 
     const usageStats = useMemo(() => {
         if (!purchased || !usage) return [];
         return [
+            {
+                key: "branches",
+                label: "Branches",
+                used: Number(usage.branches_created || 0),
+                max: Number(purchased.max_branches || 0),
+                Icon: FaCodeBranch
+            },
             {
                 key: "products",
                 label: "Products",
@@ -52,27 +65,26 @@ export default function Subscriptions() {
         return data;
     };
 
+    const fetchPurchased = useCallback(async (isMounted = true) => {
+        try {
+            const res = await api.get("/subscription/plan/purchased/");
+            if (!isMounted) return;
+            setPurchased(normalizeOne(res.data));
+        } catch {
+            if (!isMounted) return;
+            setPurchased(null);
+        } finally {
+            if (isMounted) setLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         let isMounted = true;
-
-        const fetchPurchased = async () => {
-            try {
-                const res = await api.get("/subscription/plan/purchased/");
-                if (!isMounted) return;
-                setPurchased(normalizeOne(res.data));
-            } catch {
-                if (!isMounted) return;
-                setPurchased(null);
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        };
-
-        fetchPurchased();
+        fetchPurchased(isMounted);
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [fetchPurchased]);
 
     useEffect(() => {
         let isMounted = true;
@@ -101,6 +113,35 @@ export default function Subscriptions() {
         };
     }, [purchased?.subscription_id, purchased?.id]);
 
+    const handleRenew = useCallback(async () => {
+        if (!purchased?.plan && !purchased?.plan_id) {
+            toast.error("Plan information not available");
+            return;
+        }
+
+        const planId = purchased.plan || purchased.plan_id;
+        setRenewing(true);
+
+        try {
+            const res = await api.post("/subscription/plan/purchase/", { plan_id: planId });
+            const { subscription_id } = res.data;
+
+            setRenewSubscriptionId(subscription_id);
+            setRenewAmount(parseFloat(purchased.price || 0));
+            setIsPaymentModalOpen(true);
+        } catch (err) {
+            toast.error(err?.response?.data?.detail || "Failed to initiate renewal");
+        } finally {
+            setRenewing(false);
+        }
+    }, [purchased]);
+
+    const handlePaymentSuccess = useCallback(() => {
+        setIsPaymentModalOpen(false);
+        toast.success("Subscription renewed successfully!");
+        fetchPurchased(true);
+    }, [fetchPurchased]);
+
     return (
         <div className="min-h-screen bg-transparent">
             <ProtectedHeader />
@@ -124,12 +165,16 @@ export default function Subscriptions() {
                                 </a>
                             )}
                             {!loading && purchased && purchased.remaining_days !== null && purchased.remaining_days !== undefined && purchased.remaining_days < 10 && (
-                                <a
-                                    href={`${API_BASE_URL}/subscription/plan/purchase/`}
-                                    className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-400 transition-all"
+                                <button
+                                    onClick={handleRenew}
+                                    disabled={renewing}
+                                    className={`inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${renewing
+                                        ? "bg-slate-400 text-white cursor-wait"
+                                        : "bg-amber-500 text-white hover:bg-amber-400"
+                                        }`}
                                 >
-                                    Renew Now
-                                </a>
+                                    {renewing ? "Processing..." : "Renew Now"}
+                                </button>
                             )}
                         </div>
 
@@ -168,13 +213,13 @@ export default function Subscriptions() {
                                     <div className="border border-slate-200 rounded-xl p-4">
                                         <p className="text-[10px] uppercase text-slate-400 font-semibold">Start Date</p>
                                         <p className="font-semibold text-slate-900">
-                                            {purchased.start_date ? new Date(purchased.start_date).toLocaleDateString() : "—"}
+                                            {purchased.start_date ? new Date(purchased.start_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : "—"}
                                         </p>
                                     </div>
                                     <div className="border border-slate-200 rounded-xl p-4">
                                         <p className="text-[10px] uppercase text-slate-400 font-semibold">End Date</p>
                                         <p className="font-semibold text-slate-900">
-                                            {purchased.end_date ? new Date(purchased.end_date).toLocaleDateString() : "—"}
+                                            {purchased.end_date ? new Date(purchased.end_date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : "—"}
                                         </p>
                                     </div>
                                     <div className="border border-slate-200 rounded-xl p-4">
@@ -204,6 +249,7 @@ export default function Subscriptions() {
                                     </div>
                                     <div className="border border-slate-200 rounded-xl p-4 space-y-2">
                                         <Feature label="Team chat" enabled={purchased.has_chat} />
+                                        <Feature label="AI Agent" enabled={purchased.has_ai_agent} />
                                         <Feature label="Advanced analytics" enabled={purchased.has_advanced_analytics} />
                                         <Feature label="API access" enabled={purchased.has_api_access} />
                                     </div>
@@ -278,8 +324,17 @@ export default function Subscriptions() {
                     title="Subscription Plans"
                     subtitle="Compare plan limits and choose what fits your business today."
                     currentPlan={purchased}
+                    onSuccess={fetchPurchased}
                 />
             </div>
+
+            <PaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                subscriptionId={renewSubscriptionId}
+                amount={renewAmount}
+                onPaymentSuccess={handlePaymentSuccess}
+            />
         </div>
     );
 }

@@ -1,8 +1,8 @@
 import { useState, useEffect, Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { FaTimes, FaComments, FaSearch, FaUser, FaUserTie, FaIdBadge } from "react-icons/fa";
+import { FaTimes, FaComments, FaSearch, FaUser, FaUserTie } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import api, { API_BASE_URL } from "@/services/api";
+import api from "@/services/api";
 import SubscriptionNotice from "@/components/shared/SubscriptionNotice";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -82,15 +82,18 @@ export default function ChatUserModal({ isOpen, onClose }) {
         const term = searchTerm.toLowerCase();
         const fullName = `${user.first_name || ""} ${user.last_name || ""}`.toLowerCase();
         const username = (user.username || "").toLowerCase();
-        const userRole = (user.role || "").toLowerCase();
+        const roleObj = user.role;
+        const roleStr = (typeof roleObj === "object" ? roleObj.role : roleObj) || "";
+        const userRole = roleStr.toLowerCase();
 
         return fullName.includes(term) || username.includes(term) || userRole.includes(term);
     });
 
     const getRoleBadge = (userRole) => {
-        switch (userRole) {
+        const roleStr = typeof userRole === "object" ? userRole.role : userRole;
+        switch (roleStr) {
             case "OWNER":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded textxs font-medium bg-purple-100 text-purple-800">Owner</span>;
+                return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Owner</span>;
             case "MANAGER":
                 return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Manager</span>;
             case "EMPLOYEE":
@@ -104,7 +107,7 @@ export default function ChatUserModal({ isOpen, onClose }) {
         if (user.profile_picture) {
             return (
                 <img
-                    src={user.profile_picture.startsWith("http") ? user.profile_picture : `${API_BASE_URL}${user.profile_picture}`}
+                    src={user.profile_picture}
                     alt={user.username}
                     className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
                 />
@@ -114,8 +117,9 @@ export default function ChatUserModal({ isOpen, onClose }) {
         // Fallback initials
         const initial = (user.first_name?.[0] || user.username?.[0] || "?").toUpperCase();
         let bgClass = "bg-slate-100 text-slate-600";
-        if (user.role === "OWNER") bgClass = "bg-purple-100 text-purple-600";
-        else if (user.role === "MANAGER") bgClass = "bg-amber-100 text-amber-600";
+        const roleStr = typeof user.role === "object" ? user.role.role : user.role;
+        if (roleStr === "OWNER") bgClass = "bg-purple-100 text-purple-600";
+        else if (roleStr === "MANAGER") bgClass = "bg-amber-100 text-amber-600";
 
         return (
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${bgClass} ring-2 ring-white shadow-sm`}>

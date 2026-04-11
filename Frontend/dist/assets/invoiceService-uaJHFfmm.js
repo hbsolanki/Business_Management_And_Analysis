@@ -1,1 +1,0 @@
-import{a as i}from"./index-TGBChVvB.js";const o={getAll:(e="")=>i.get(`/invoice/${e}`),getByUrl:e=>i.get(e),getById:e=>i.get(`/invoice/${e}/`),create:e=>i.post("/invoice/",e),checkCustomer:e=>i.get(`/customer/mobile_number/?mobile_number=${e}`)};export{o as i};

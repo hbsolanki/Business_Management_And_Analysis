@@ -9,7 +9,6 @@ import toast from "react-hot-toast";
 
 export default function AddSale() {
   let { sid } = useParams();
-  const [saleData, setSaleData] = useState(null);
   const [productData, setProductData] = useState([]);
   const [inventoryStockData, setInventoryStockData] = useState([]);
   const [formData, setFormData] = useState({});
@@ -23,7 +22,6 @@ export default function AddSale() {
       try {
         const saleResponse = await saleService.getById(sid);
         const data = saleResponse.data;
-        setSaleData(data);
 
         // Fetch products
         const productResponse = await productService.getById(data.productsid);

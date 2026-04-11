@@ -1,152 +1,211 @@
 import { Link } from "react-router-dom";
-import { User, Briefcase, Users, ArrowRight, ShieldCheck, TrendingUp, Wallet, CheckCircle2 } from "lucide-react";
+import { ArrowRight, BookMarked, Compass, LifeBuoy, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import ModuleCard from "@/features/info/components/ModuleCard";
+import PlaybookCard from "@/features/info/components/PlaybookCard";
+import {
+    INFO_KEY_METRICS,
+    PLATFORM_PHASES,
+    PRODUCT_MODULES,
+    ROLE_PLAYBOOKS,
+} from "@/features/info/data/infoModules";
+import { tokenService } from "@/services/tokenService";
+import { parseWork } from "@/features/info/utils/moduleAccess";
+
+const ROLE_GUIDES = [
+    {
+        key: "OWNER",
+        title: "Owner Guide",
+        description: "Strategy, governance, subscriptions, and financial visibility.",
+        path: "/info/owner",
+    },
+    {
+        key: "MANAGER",
+        title: "Manager Guide",
+        description: "Execution control, employee supervision, and daily operations.",
+        path: "/info/manager",
+    },
+    {
+        key: "EMPLOYEE",
+        title: "Employee Guide",
+        description: "Assigned work process for tasks, products, stock, and invoicing.",
+        path: "/info/employee",
+    },
+];
 
 export default function InfoLanding() {
-    return (
-        <div className="space-y-16 pb-12">
-            {/* Hero Section */}
-            <div className="glass-panel relative overflow-hidden rounded-3xl shadow-xl shadow-brand-900/5 p-8 md:p-12 lg:p-16 text-center">
-                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-brand-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
-                <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-indigo-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+    const role = (tokenService.getRole() || "").toUpperCase() || null;
+    const workSet = parseWork(tokenService.getWork());
+    const [search, setSearch] = useState("");
 
-                <div className="relative z-10 max-w-3xl mx-auto">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-600 text-xs font-bold uppercase tracking-wider mb-6">
-                        <span className="w-2 h-2 rounded-full bg-brand-600 animate-pulse"></span>
-                        Documentation
-                    </div>
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">
-                        Master your business with <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600">Visionary</span>
-                    </h1>
-                    <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto mb-10">
-                        Your comprehensive guide to executing role-specific tasks, analyzing performance, and scaling your operations efficiently.
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-4">
-                        <Link to="/info/owner" className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-semibold hover:bg-brand-700 transition-all shadow-lg shadow-brand-600/20 hover:shadow-brand-600/30 hover:-translate-y-0.5">
-                            Start as Owner <ArrowRight className="h-4 w-4" />
-                        </Link>
-                        <a href="#roles" className="glass-panel flex items-center gap-2 px-6 py-3 text-gray-700 rounded-xl font-semibold hover:bg-white/70 transition-all hover:border-gray-300">
-                            Explore Roles
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            {/* Role Guides */}
-            <div id="roles" className="scroll-mt-24">
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="h-px flex-1 bg-white/90"></div>
-                    <h2 className="text-xl font-bold text-gray-400 uppercase tracking-widest">Select Your Guide</h2>
-                    <div className="h-px flex-1 bg-white/90"></div>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-6">
-                    <RoleCard
-                        to="/info/owner"
-                        icon={User}
-                        title="Owner Guide"
-                        description="Complete control over business settings, team management, and financial insights."
-                        color="blue"
-                        features={["Business Profile", "Team Management", "Full Analytics"]}
-                    />
-                    <RoleCard
-                        to="/info/manager"
-                        icon={Briefcase}
-                        title="Manager Guide"
-                        description="Oversee daily operations, manage employee rosters, and track performance."
-                        color="emerald"
-                        features={["Staff Oversight", "Inventory Tracking", "Operational Views"]}
-                    />
-                    <RoleCard
-                        to="/info/employee"
-                        icon={Users}
-                        title="Employee Guide"
-                        description="Execute assigned tasks in sales, inventory, and management efficiently."
-                        color="purple"
-                        features={["Point of Sale", "Stock Updates", "Product Entry"]}
-                    />
-                </div>
-            </div>
-
-            {/* Platform Highlights */}
-            <div className="bg-gray-900 rounded-3xl p-8 md:p-12 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600 rounded-full mix-blend-overlay filter blur-[128px] opacity-20"></div>
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600 rounded-full mix-blend-overlay filter blur-[128px] opacity-20"></div>
-
-                <div className="relative z-10">
-                    <h2 className="text-3xl font-bold mb-12 text-center">Why Visionary?</h2>
-                    <div className="grid md:grid-cols-3 gap-12">
-                        <FeatureHighlight
-                            icon={ShieldCheck}
-                            title="Secure & Scalable"
-                            description="Enterprise-grade role-based security ensures each team member accesses only what they need."
-                        />
-                        <FeatureHighlight
-                            icon={TrendingUp}
-                            title="Real-time Analytics"
-                            description="Make data-driven decisions with instant insights into sales, profits, and inventory movement."
-                        />
-                        <FeatureHighlight
-                            icon={Wallet}
-                            title="Finance Tracking"
-                            description="Keep your books balanced with comprehensive cost categorization and automated invoice management."
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
+    const modulesById = useMemo(
+        () => new Map(PRODUCT_MODULES.map((item) => [item.id, item])),
+        [],
     );
-}
 
-function RoleCard({ to, icon: Icon, title, description, color, features }) {
-    const colorStyles = {
-        blue: "bg-brand-50 text-brand-600 group-hover/card:bg-brand-600 group-hover/card:text-white",
-        emerald: "bg-emerald-50 text-emerald-600 group-hover/card:bg-emerald-600 group-hover/card:text-white",
-        purple: "bg-purple-50 text-purple-600 group-hover/card:bg-purple-600 group-hover/card:text-white",
-    };
+    const filteredPreviewModules = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        const source = PRODUCT_MODULES.filter((module) => module.id !== "support");
 
-    const checkColors = {
-        blue: "text-brand-600 group-hover/card:text-brand-100",
-        emerald: "text-emerald-600 group-hover/card:text-emerald-100",
-        purple: "text-purple-600 group-hover/card:text-purple-100",
-    }
+        if (!term) return source.slice(0, 6);
+
+        return source
+            .filter((module) => {
+                const haystack = [
+                    module.title,
+                    module.category,
+                    module.description,
+                    ...(module.highlights || []),
+                ]
+                    .join(" ")
+                    .toLowerCase();
+                return haystack.includes(term);
+            })
+            .slice(0, 6);
+    }, [search]);
+
+    const currentPlaybook = role ? ROLE_PLAYBOOKS[role] : null;
 
     return (
-        <Link to={to} className="glass-panel group/card block p-8 rounded-3xl hover:shadow-2xl hover:shadow-brand-900/5 transition-all duration-300 transform hover:-translate-y-2 relative overflow-hidden">
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-50 to-transparent rounded-bl-full transition-opacity opacity-50 group-hover/card:opacity-100`}></div>
+        <div className="space-y-8 pb-10">
+            <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 md:p-10">
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    <BookMarked className="h-3.5 w-3.5" />
+                    Platform Knowledge Hub
+                </div>
 
-            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-6 transition-colors duration-300 relative z-10 ${colorStyles[color]}`}>
-                <Icon className="h-7 w-7" />
-            </div>
+                <h1 className="mt-4 text-3xl md:text-4xl font-bold text-slate-900">
+                    End-to-end product guide with module-level navigation
+                </h1>
+                <p className="mt-3 max-w-3xl text-slate-600 leading-relaxed">
+                    Use this section to understand every module from setup to daily operations and analytics. Open role guides, browse modules, and jump directly to the exact screen.
+                </p>
 
-            <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover/card:text-brand-600 transition-colors relative z-10">{title}</h3>
-            <p className="text-gray-500 leading-relaxed mb-6 group-hover/card:text-gray-600 relative z-10">{description}</p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                    <Link to="/info/modules" className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors">
+                        Explore All Modules
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link to="/info/support" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors">
+                        Contact Support
+                        <LifeBuoy className="h-4 w-4" />
+                    </Link>
+                </div>
 
-            <div className="space-y-2 mb-8 relative z-10 border-t border-gray-50 pt-6 group-hover/card:border-gray-100">
-                {features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm font-medium text-gray-500 group-hover/card:text-gray-700">
-                        <CheckCircle2 className={`h-4 w-4 ${checkColors[color]}`} />
-                        {feature}
+                <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {INFO_KEY_METRICS.map((metric) => (
+                        <div key={metric.label} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p className="text-2xl font-bold text-slate-900">{metric.value}</p>
+                            <p className="mt-1 text-sm text-slate-600">{metric.label}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 md:p-8">
+                <div className="flex items-center gap-2">
+                    <Compass className="h-5 w-5 text-slate-700" />
+                    <h2 className="text-xl font-bold text-slate-900">Zero to Production Flow</h2>
+                </div>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    {PLATFORM_PHASES.map((phase) => (
+                        <div key={phase.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <h3 className="text-base font-semibold text-slate-900">{phase.title}</h3>
+                            <p className="mt-1 text-sm text-slate-600">{phase.description}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {phase.modules.map((moduleId) => {
+                                    const module = modulesById.get(moduleId);
+                                    if (!module) return null;
+                                    return (
+                                        <span
+                                            key={moduleId}
+                                            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600"
+                                        >
+                                            {module.title}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="space-y-4">
+                {currentPlaybook ? (
+                    <PlaybookCard
+                        playbook={currentPlaybook}
+                        role={role}
+                        modulesById={modulesById}
+                        workSet={workSet}
+                    />
+                ) : (
+                    <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 md:p-8">
+                        <h2 className="text-xl font-bold text-slate-900">Role-specific Guides</h2>
+                        <p className="mt-2 text-sm text-slate-600">
+                            Open your role guide for detailed workflow instructions and module responsibilities.
+                        </p>
+                        <div className="mt-5 grid gap-4 md:grid-cols-3">
+                            {ROLE_GUIDES.map((guide) => (
+                                <Link
+                                    key={guide.key}
+                                    to={guide.path}
+                                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-white hover:shadow-sm transition-all"
+                                >
+                                    <h3 className="text-base font-semibold text-slate-900">{guide.title}</h3>
+                                    <p className="mt-1 text-sm text-slate-600">{guide.description}</p>
+                                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-slate-700">
+                                        Open guide
+                                        <ArrowRight className="h-4 w-4" />
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
-                ))}
-            </div>
+                )}
+            </section>
 
-            <div className="flex items-center text-sm font-bold text-gray-400 group-hover/card:text-brand-600 transition-colors relative z-10">
-                Read Guide <ArrowRight className="h-4 w-4 ml-2 group-hover/card:translate-x-1 transition-transform" />
-            </div>
-        </Link>
-    );
-}
+            <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 md:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900">Module Preview</h2>
+                        <p className="text-sm text-slate-600">Click `Guide` on any module to read full meaning, when to use, and workflow.</p>
+                    </div>
+                    <div className="relative w-full sm:w-80">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Search modules"
+                            className="w-full pl-9"
+                        />
+                    </div>
+                </div>
 
-function FeatureHighlight({ icon: Icon, title, description }) {
-    return (
-        <div className="flex flex-col items-center text-center gap-4">
-            <div className="shrink-0 h-16 w-16 rounded-2xl bg-white/10 flex items-center justify-center text-white ring-1 ring-white/20 shadow-lg shadow-black/10">
-                <Icon className="h-8 w-8" />
-            </div>
-            <div>
-                <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                <p className="text-base text-gray-400 leading-relaxed">{description}</p>
-            </div>
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {filteredPreviewModules.length > 0 ? (
+                        filteredPreviewModules.map((module) => (
+                            <ModuleCard key={module.id} module={module} role={role} workSet={workSet} />
+                        ))
+                    ) : (
+                        <div className="md:col-span-2 xl:col-span-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                            <p className="text-sm font-semibold text-slate-700">No modules matched your search.</p>
+                            <p className="text-xs text-slate-500 mt-1">Try product, invoice, analytics, subscription, or support.</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-6">
+                    <Link
+                        to="/info/modules"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-brand-700"
+                    >
+                        View full module directory
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </section>
         </div>
     );
 }

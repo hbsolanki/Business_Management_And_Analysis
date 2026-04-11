@@ -4,7 +4,11 @@ import { Toaster, toast } from "react-hot-toast";
 import api from "@/services/api";
 import { tokenService } from "@/services/tokenService";
 import BackButton from "@/components/shared/BackButton";
-import { FaCamera, FaSave, FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard } from "react-icons/fa";
+import { FaCamera, FaSave, FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard, FaExclamationTriangle, FaTrash } from "react-icons/fa";
+import { authService } from "@/services/authService";
+import { useDispatch } from "react-redux";
+import { fetchUserProfile, setUserProfile } from "@/redux/slices/userSlice";
+import { useSelector } from "react-redux";
 
 function EditProfile() {
     const [showPassword, setShowPassword] = useState(false);
@@ -24,38 +28,36 @@ function EditProfile() {
     });
 
     const [initialData, setInitialData] = useState({});
+    const dispatch = useDispatch();
+    const { profile: userProfile, loading: profileLoading } = useSelector((state) => state.user);
 
     const navigate = useNavigate();
     const userId = tokenService.getId();
 
     useEffect(() => {
-        async function fetchUser() {
-            try {
-                const res = await api.get(`/user/${userId}/`);
-                const user = res.data;
-
-                const initialUserData = {
-                    first_name: user.first_name || "",
-                    last_name: user.last_name || "",
-                    email: user.email || "",
-                    username: user.username || "",
-                    mobile_number: user.mobile_number || "",
-                    password: "",
-                    profile_picture: user.profile_picture || null,
-                    profile_picture_preview: null,
-                };
-                setFormData(initialUserData);
-                setInitialData(initialUserData);
-            } catch (error) {
-                toast.error("Failed to load user data");
-            } finally {
-                setLoading(false);
-            }
+        if (!userProfile && !profileLoading && userId) {
+            dispatch(fetchUserProfile());
         }
 
-        if (userId) fetchUser();
-        else setLoading(false);
-    }, [userId]);
+        if (userProfile) {
+            const baseUser = userProfile.user || userProfile;
+            const initialUserData = {
+                first_name: baseUser.first_name || "",
+                last_name: baseUser.last_name || "",
+                email: baseUser.email || "",
+                username: baseUser.username || "",
+                mobile_number: baseUser.mobile_number || "",
+                password: "",
+                profile_picture: baseUser.profile_picture || null,
+                profile_picture_preview: null,
+            };
+            setFormData(initialUserData);
+            setInitialData(initialUserData);
+            setLoading(false);
+        } else if (!profileLoading && !userId) {
+            setLoading(false);
+        }
+    }, [userId, userProfile, profileLoading, dispatch]);
 
     const validateEmail = (email) =>
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -133,7 +135,7 @@ function EditProfile() {
                 return;
             }
 
-            await api.patch(`/user/${userId}/`, data, {
+            const response = await api.patch(`/user/${userId}/`, data, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
@@ -141,6 +143,12 @@ function EditProfile() {
             });
 
             toast.success("Profile updated successfully");
+            // Sync updated profile with Redux
+            if (response.data) {
+                dispatch(setUserProfile(response.data));
+            } else {
+                dispatch(fetchUserProfile());
+            }
             navigate(-1);
         } catch (error) {
             toast.error("Failed to update profile");
@@ -150,24 +158,41 @@ function EditProfile() {
         }
     };
 
+    const handleDeleteAccount = async () => {
+        if (!window.confirm("CRITICAL: This will permanently delete your entire owner account and all associated data. \n\nAre you absolutely sure you want to proceed?")) return;
+
+        setIsSubmitting(true);
+        try {
+            await api.delete(`/user/${userId}/`);
+            toast.success("Account deleted successfully");
+            await authService.logout();
+            navigate("/");
+        } catch (error) {
+            console.error("Failed to delete account", error);
+            toast.error("Failed to delete account");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-transparent">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-700"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-transparent">
+        <div className="min-h-screen py-6 sm:py-10 px-4 sm:px-6 lg:px-8 bg-slate-50">
             <Toaster position="top-center" />
 
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-4xl mx-auto">
                 <div className="mb-4">
                     <BackButton />
                 </div>
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="px-8 py-6 border-b border-slate-200">
+                    <div className="px-5 sm:px-6 lg:px-8 py-5 sm:py-6 border-b border-slate-200">
                         <div className="flex items-start gap-4">
                             <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
                                 <FaUser />
@@ -179,11 +204,11 @@ function EditProfile() {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+                    <form onSubmit={handleSubmit} className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-7 sm:space-y-8">
                         {/* Profile Picture Section */}
                         <div className="flex flex-col items-center justify-center space-y-4">
                             <div className="relative group">
-                                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-slate-100">
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-slate-100">
                                     {formData.profile_picture_preview || formData.profile_picture ? (
                                         <img
                                             src={
@@ -218,7 +243,7 @@ function EditProfile() {
                         </div>
 
                         {/* Form Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-x-8 md:gap-y-6">
                             {/* Personal Information */}
                             <div className="col-span-1 md:col-span-2">
                                 <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
@@ -235,7 +260,7 @@ function EditProfile() {
                                         value={formData.first_name}
                                         onChange={handleChange}
                                         required
-                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Enter your first name"
                                     />
                                 </div>
@@ -250,7 +275,7 @@ function EditProfile() {
                                         value={formData.last_name}
                                         onChange={handleChange}
                                         required
-                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Enter your last name"
                                     />
                                 </div>
@@ -272,7 +297,7 @@ function EditProfile() {
                                         value={formData.username}
                                         onChange={handleChange}
                                         required
-                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Choose a username"
                                     />
                                 </div>
@@ -287,7 +312,7 @@ function EditProfile() {
                                         value={formData.mobile_number}
                                         onChange={handleChange}
                                         required
-                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Your mobile number"
                                     />
                                 </div>
@@ -302,7 +327,7 @@ function EditProfile() {
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="name@example.com"
                                     />
                                 </div>
@@ -318,13 +343,13 @@ function EditProfile() {
                                         name="password"
                                         value={formData.password}
                                         onChange={handleChange}
-                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-20 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-20 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Min 8 chars, 1 special"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 uppercase tracking-wide"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-600 hover:text-slate-900 uppercase tracking-wide"
                                     >
                                         {showPassword ? "Hide" : "Show"}
                                     </button>
@@ -334,18 +359,18 @@ function EditProfile() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t border-slate-200">
+                        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-5 border-t border-slate-200">
                             <button
                                 type="button"
                                 onClick={() => navigate(-1)}
-                                className="w-full sm:flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
+                                className="w-full sm:w-auto sm:min-w-[150px] py-3 px-4 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className={`w-full sm:flex-1 flex items-center justify-center gap-2 py-3 px-4 text-white font-semibold rounded-xl transition-all ${isSubmitting
+                                className={`w-full sm:w-auto sm:min-w-[170px] flex items-center justify-center gap-2 py-3 px-4 text-white font-semibold rounded-xl transition-all ${isSubmitting
                                     ? "bg-slate-300 cursor-not-allowed"
                                     : "bg-slate-900 hover:bg-slate-800"
                                     }`}
@@ -363,6 +388,27 @@ function EditProfile() {
                             </button>
                         </div>
                     </form>
+                </div>
+
+                {/* Danger Zone */}
+                <div className="mt-6 sm:mt-8 bg-red-50/50 rounded-2xl border border-red-100 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+                    <div className="flex items-center gap-3 text-red-600">
+                        <FaExclamationTriangle className="text-xl" />
+                        <h3 className="text-lg font-bold uppercase tracking-tight">Danger Zone</h3>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
+                        <div className="text-center md:text-left">
+                            <h4 className="text-base font-bold text-red-600">Delete Entire Account</h4>
+                            <p className="text-sm text-slate-500 mt-1">Permanently delete your entire owner account. This action cannot be undone.</p>
+                        </div>
+                        <button
+                            onClick={handleDeleteAccount}
+                            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20"
+                        >
+                            <FaTrash className="text-sm" /> Delete Account
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

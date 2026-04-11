@@ -1,7 +1,7 @@
-import { FaUser, FaClock, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrash, FaArrowLeft, FaEllipsisV } from 'react-icons/fa';
+import { FaClock, FaEdit, FaTrash, FaArrowLeft, FaEllipsisV } from 'react-icons/fa';
 import { Menu, Transition } from '@headlessui/react';
-import React, { useEffect, useState, Fragment } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, Fragment, useCallback } from "react";
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import ProtectedHeader from '@/components/layout/ProtectedHeader';
 import { format } from 'date-fns';
 import taskService from '@/features/task/services/taskService';
@@ -18,10 +18,9 @@ const TaskDetails = () => {
 
     const currentUser = {
         id: tokenService.getId(),
-        role: tokenService.getRole()
     };
 
-    const fetchTask = async () => {
+    const fetchTask = useCallback(async () => {
         try {
             const data = await taskService.getTaskById(id);
             setTask(data);
@@ -32,11 +31,11 @@ const TaskDetails = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, navigate]);
 
     useEffect(() => {
         fetchTask();
-    }, [id]);
+    }, [fetchTask]);
 
     const handleDelete = async () => {
         try {
@@ -59,20 +58,10 @@ const TaskDetails = () => {
 
     if (!task) return null;
 
-    // Permission Logic
-    const isOwner = currentUser.role === 'OWNER';
-    const isManager = currentUser.role === 'MANAGER';
-
-    // Check if user is the creator (assigned_by)
-
     const isCreator = task.assigned_by?.id == currentUser.id;
-    // Check if user is the assignee
     const isAssignee = task.assignee?.id == currentUser.id;
 
-    // Creators can delete
     const canDelete = isCreator;
-
-    // Creators and Assignees can edit (Assignees might be limited by backend, but UI allows opening modal)
     const canEdit = isCreator || isAssignee;
 
     return (
@@ -180,7 +169,10 @@ const TaskDetails = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-200 pt-8">
                             {/* Assignee Card */}
-                            <div className="bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl">
+                            <Link
+                                to={task.assignee?.id ? `/profile/${task.assignee.id}` : "#"}
+                                className={`bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl transition-all ${task.assignee?.id ? "hover:border-brand-200 hover:bg-brand-50/40 hover:shadow-sm" : "pointer-events-none"}`}
+                            >
                                 {task.assignee?.profile_picture ? (
                                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm">
                                         <img src={task.assignee.profile_picture} alt={task.assignee.username} className="w-full h-full object-cover" />
@@ -195,10 +187,13 @@ const TaskDetails = () => {
                                     <p className="font-semibold text-slate-900">{task.assignee?.first_name} {task.assignee?.last_name}</p>
                                     <p className="text-xs text-slate-500">@{task.assignee?.username}</p>
                                 </div>
-                            </div>
+                            </Link>
 
                             {/* Creator Card */}
-                            <div className="bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl">
+                            <Link
+                                to={task.assigned_by?.id ? `/profile/${task.assigned_by.id}` : "#"}
+                                className={`bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl transition-all ${task.assigned_by?.id ? "hover:border-brand-200 hover:bg-brand-50/40 hover:shadow-sm" : "pointer-events-none"}`}
+                            >
                                 {task.assigned_by?.profile_picture ? (
                                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm">
                                         <img src={task.assigned_by.profile_picture} alt={task.assigned_by.username} className="w-full h-full object-cover" />
@@ -213,7 +208,7 @@ const TaskDetails = () => {
                                     <p className="font-semibold text-slate-900">{task.assigned_by?.first_name} {task.assigned_by?.last_name}</p>
                                     <p className="text-xs text-slate-500">{task.assigned_by?.email}</p>
                                 </div>
-                            </div>
+                            </Link>
                         </div>
                     </div>
                 </div>

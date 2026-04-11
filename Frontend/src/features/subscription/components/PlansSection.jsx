@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "@/services/api";
-import { FaCheckCircle, FaCrown, FaClock, FaUsers, FaBoxOpen, FaFileInvoice } from "react-icons/fa";
+import { FaCheckCircle, FaCrown, FaUsers, FaBoxOpen, FaFileInvoice, FaCodeBranch } from "react-icons/fa";
 import toast from "react-hot-toast";
+import PaymentModal from "@/features/payment/components/PaymentModal";
+
 
 const fallbackPlans = [
     {
@@ -12,17 +14,22 @@ const fallbackPlans = [
         max_products: 10,
         max_invoices: 200,
         max_staff: 5,
+        max_branches: 1,
         has_advanced_analytics: false,
         has_chat: true,
+        has_ai_agent: false,
         has_api_access: false
     }
 ];
 
-export default function PlansSection({ compact = false, title = "Our Plans", subtitle = "Choose a plan that fits your team size and workflow needs.", currentPlan = null }) {
+export default function PlansSection({ compact = false, title = "Our Plans", subtitle = "Choose a plan that fits your team size and workflow needs.", currentPlan = null, onSuccess }) {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [purchasingId, setPurchasingId] = useState(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedSubscriptionId, setSelectedSubscriptionId] = useState(null);
+    const [selectedPlanAmount, setSelectedPlanAmount] = useState(0);
 
     useEffect(() => {
         let isMounted = true;
@@ -33,7 +40,7 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
                 if (!isMounted) return;
                 const data = Array.isArray(res.data) ? res.data : [];
                 setPlans(data);
-            } catch (err) {
+            } catch {
                 if (!isMounted) return;
                 setError("Failed to load plans");
                 setPlans([]);
@@ -71,17 +78,37 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
 
     const handleChoosePlan = async (plan) => {
         if (!plan?.id) return;
+
+        // If it's a free plan, the old logic might still apply OR it might be handled by the same endpoint.
+        // Assuming the user wants the new flow for paid plans.
+        const price = parseFloat(plan.price || 0);
+
         setPurchasingId(plan.id);
         try {
-            await api.post("/subscription/plan/purchase/", { plan_id: plan.id });
-            toast.success("Plan selected successfully");
-            // Optionally refresh or redirect
-            window.location.reload();
+            const res = await api.post("/subscription/plan/purchase/", { plan_id: plan.id });
+
+            if (price > 0) {
+                // Paid plan: Get subscription_id and open payment modal
+                const { subscription_id } = res.data;
+                setSelectedSubscriptionId(subscription_id);
+                setSelectedPlanAmount(price);
+                setIsPaymentModalOpen(true);
+            } else {
+                // Free plan: Success immediately
+                toast.success("Plan activated successfully");
+                if (onSuccess) onSuccess();
+            }
         } catch (err) {
             toast.error(err?.response?.data?.detail || "Failed to choose plan");
         } finally {
             setPurchasingId(null);
         }
+    };
+
+    const handlePaymentSuccess = () => {
+        setIsPaymentModalOpen(false);
+        toast.success("Subscription activated successfully!");
+        if (onSuccess) onSuccess();
     };
 
     return (
@@ -107,104 +134,152 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {visiblePlans.map((plan, index) => {
-                            // Check both 'plan' and 'plan_id' to be robust against serializer variants
                             const isCurrent = currentPlan && (currentPlan.plan === plan.id || currentPlan.plan_id === plan.id);
                             const isFree = parseFloat(plan.price || 0) === 0;
+                            const isRecommended = index === 1;
 
                             return (
                                 <div
                                     key={plan.id ?? index}
-                                    className={`relative bg-white border rounded-2xl p-6 shadow-sm transition-all ${isCurrent
-                                        ? "border-brand-500 ring-4 ring-brand-50 shadow-brand-100"
-                                        : "border-slate-200 hover:shadow-md hover:-translate-y-0.5"
+                                    className={`relative flex flex-col p-8 rounded-2xl transition-all duration-300 ${isCurrent
+                                        ? "bg-white border-2 border-slate-900 shadow-xl"
+                                        : isRecommended
+                                            ? "bg-white border-2 border-blue-600 shadow-lg"
+                                            : "bg-white border border-slate-200 shadow-sm hover:shadow-md"
                                         }`}
                                 >
                                     {isCurrent && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full shadow-md">
-                                            Current Plan
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-md shadow-sm">
+                                            Active Plan
                                         </div>
                                     )}
 
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-                                        {plan.duration_days > 0 ? (
-                                            <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
-                                                {plan.duration_days} days
+                                    <div className="mb-8">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h3 className="text-xl font-bold text-slate-900">
+                                                {plan.name}
+                                            </h3>
+                                        </div>
+
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-4xl font-extrabold text-slate-900">
+                                                {isFree ? "Free" : `₹${Math.floor(plan.price)}`}
                                             </span>
-                                        ) : (
-                                            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
-                                                Forever
+                                            {!isFree && (
+                                                <span className="text-slate-500 font-semibold text-sm">
+                                                    /{plan.duration_days} days
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="mt-3 text-sm text-slate-500 leading-relaxed">
+                                            {isFree
+                                                ? "Essential features to get your business started."
+                                                : `Full access to all business features for ${plan.duration_days} days.`}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex-1 space-y-4 pt-6 border-t border-slate-100">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                            Plan Features
+                                        </div>
+                                        <FeatureItem
+                                            icon={<FaCodeBranch className="text-slate-400" size={16} />}
+                                            label={`${plan.max_branches || "Unlimited"} Branches`}
+                                        />
+                                        <FeatureItem
+                                            icon={<FaBoxOpen className="text-slate-400" size={16} />}
+                                            label={`${plan.max_products || "Unlimited"} Products`}
+                                        />
+                                        <FeatureItem
+                                            icon={<FaFileInvoice className="text-slate-400" size={16} />}
+                                            label={`${plan.max_invoices || "Unlimited"} Invoices`}
+                                        />
+                                        <FeatureItem
+                                            icon={<FaUsers className="text-slate-400" size={16} />}
+                                            label={`${plan.max_staff || "Unlimited"} Staff Members`}
+                                        />
+
+                                        <div className="pt-4 space-y-3">
+                                            <FeatureRow label="Team Chat & Collaboration" enabled={plan.has_chat} />
+                                            <FeatureRow label="AI Agent Access" enabled={plan.has_ai_agent} />
+                                            <FeatureRow label="Advanced Business Analytics" enabled={plan.has_advanced_analytics} />
+                                            <FeatureRow label="Standard API Access" enabled={plan.has_api_access} />
+                                        </div>
+                                    </div>
+
+                                    {!isFree && (
+                                        <button
+                                            onClick={() => handleChoosePlan(plan)}
+                                            disabled={purchasingId === plan.id || isCurrent}
+                                            className={`mt-10 w-full rounded-xl py-3.5 text-sm font-bold transition-all duration-200 ${isCurrent
+                                                ? "bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                                : isRecommended
+                                                    ? "bg-blue-600 text-white hover:bg-blue-700 shadow-sm active:scale-95"
+                                                    : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-95"
+                                                }`}
+                                        >
+                                            {purchasingId === plan.id ? (
+                                                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                            ) : isCurrent ? (
+                                                "Current Plan"
+                                            ) : (
+                                                "Select Plan"
+                                            )}
+                                        </button>
+                                    )}
+
+                                    {isFree && !isCurrent && (
+                                        <div className="mt-10 py-3.5 px-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                                                Active
                                             </span>
-                                        )}
-                                    </div>
-                                    <div className="mt-4 flex items-end gap-2">
-                                        <span className="text-3xl font-extrabold text-slate-900">
-                                            {isFree ? "Free" : `₹${plan.price}`}
-                                        </span>
-                                        {!isFree && <span className="text-xs text-slate-500 mb-1">per cycle</span>}
-                                    </div>
-
-                                    <div className="mt-5 space-y-3 text-sm text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <FaBoxOpen className="text-slate-400" />
-                                            <span>{plan.max_products || "Unlimited"} products</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <FaFileInvoice className="text-slate-400" />
-                                            <span>{plan.max_invoices || "Unlimited"} invoices</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <FaUsers className="text-slate-400" />
-                                            <span>{plan.max_staff || "Unlimited"} staff members</span>
-                                        </div>
-                                        {plan.duration_days > 0 && (
-                                            <div className="flex items-center gap-2">
-                                                <FaClock className="text-slate-400" />
-                                                <span>{plan.duration_days} day cycle</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="mt-5 space-y-2 text-sm">
-                                        <Feature label="Team chat" enabled={plan.has_chat} />
-                                        <Feature label="Advanced analytics" enabled={plan.has_advanced_analytics} />
-                                        <Feature label="API access" enabled={plan.has_api_access} />
-                                    </div>
-
-                                    <button
-                                        onClick={() => handleChoosePlan(plan)}
-                                        disabled={purchasingId === plan.id || isCurrent}
-                                        className={`mt-6 w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${isCurrent
-                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default"
-                                            : purchasingId === plan.id
-                                                ? "bg-slate-300 text-slate-600 cursor-not-allowed"
-                                                : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200"
-                                            }`}
-                                    >
-                                        {purchasingId === plan.id
-                                            ? "Processing..."
-                                            : isCurrent
-                                                ? "Active Plan"
-                                                : "Choose Plan"
-                                        }
-                                    </button>
+                                    )}
                                 </div>
                             );
                         })}
                     </div>
                 </div>
             </div>
-        </section>
+
+            <PaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                subscriptionId={selectedSubscriptionId}
+                amount={selectedPlanAmount}
+                onPaymentSuccess={handlePaymentSuccess}
+            />
+        </section >
     );
 }
 
-function Feature({ label, enabled }) {
+function FeatureItem({ icon, label }) {
     return (
-        <div className="flex items-center gap-2">
-            <FaCheckCircle className={enabled ? "text-emerald-500" : "text-slate-300"} />
-            <span className={enabled ? "text-slate-700" : "text-slate-400 line-through"}>{label}</span>
+        <div className="flex items-center gap-3">
+            <div className="text-slate-400">
+                {icon}
+            </div>
+            <span className="text-sm font-semibold text-slate-700">
+                {label}
+            </span>
+        </div>
+    );
+}
+
+function FeatureRow({ label, enabled }) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className={`flex-shrink-0 h-4 w-4 rounded-full flex items-center justify-center ${enabled ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-300"}`}>
+                <FaCheckCircle size={10} />
+            </div>
+            <span className={`text-[13px] font-medium ${enabled
+                ? "text-slate-600"
+                : "text-slate-400 line-through decoration-slate-200"}`}
+            >
+                {label}
+            </span>
         </div>
     );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { FaSearch, FaBox, FaSpinner, FaBarcode, FaTimes } from "react-icons/fa";
 import api from "@/services/api";
 
-export default function InvoiceProductSearch({ onSelect }) {
+export default function InvoiceProductSearch({ onSelect, branchId }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -27,11 +27,13 @@ export default function InvoiceProductSearch({ onSelect }) {
         }
 
         const timer = setTimeout(() => {
-            fetchProducts(`/product/?name=${encodeURIComponent(query)}`);
+            let url = `/product/?name=${encodeURIComponent(query)}`;
+            if (branchId) url += `&branch=${branchId}&branch_id=${branchId}`;
+            fetchProducts(url);
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [query]);
+    }, [query, branchId]);
 
     const fetchProducts = async (url) => {
         setLoading(true);
@@ -45,6 +47,7 @@ export default function InvoiceProductSearch({ onSelect }) {
     };
 
     const handleSelect = (product) => {
+        if (product.stock_quantity <= 0) return;
         onSelect(product);
         setQuery("");
         setIsOpen(false);
@@ -89,7 +92,7 @@ export default function InvoiceProductSearch({ onSelect }) {
                 <div className="bg-white border border-slate-200 absolute z-50 mt-2 w-full rounded-xl shadow-lg max-h-80 overflow-y-auto custom-scrollbar animate-fade-in-up">
                     {results.length === 0 && !loading ? (
                         <div className="p-4 text-center text-slate-500 text-sm">
-                            No products found matching "{query}"
+                            No products found matching &quot;{query}&quot;
                         </div>
                     ) : (
                         <div className="py-2">
@@ -100,7 +103,8 @@ export default function InvoiceProductSearch({ onSelect }) {
                                 <button
                                     key={product.id}
                                     onClick={() => handleSelect(product)}
-                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-100 last:border-0"
+                                    disabled={product.stock_quantity <= 0}
+                                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-100 last:border-0 ${product.stock_quantity <= 0 ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-slate-700 transition-colors">

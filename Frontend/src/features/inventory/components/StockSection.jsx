@@ -53,15 +53,28 @@ export default function StockSection({
               </span>
 
               <span
-                className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                  s.stock_quantity > 0
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-rose-50 text-rose-700"
-                }`}
+                className={`text-xs font-semibold px-2 py-0.5 rounded ${s.stock_quantity <= (s.product.low_stock_limit || 0)
+                    ? "bg-orange-50 text-orange-700 border border-orange-100"
+                    : s.stock_quantity > 0
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-rose-50 text-rose-700"
+                  }`}
               >
                 {s.stock_quantity}
               </span>
             </div>
+
+            {s.product.low_stock_limit > 0 && s.stock_quantity <= s.product.low_stock_limit && (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-600 text-[10px] font-bold uppercase tracking-wider">
+                  <FiBox className="text-[12px]" />
+                  Low Stock Alert
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Threshold: {s.product.low_stock_limit} units
+                </p>
+              </div>
+            )}
           </div>
         ))}
       </div>

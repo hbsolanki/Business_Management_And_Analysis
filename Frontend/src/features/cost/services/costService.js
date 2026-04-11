@@ -2,7 +2,17 @@ import api from "@/services/api";
 
 const costService = {
     // Get monthly cost summary
-    getMonthlyCosts: () => api.get("/cost/category/month/"),
+    getMonthlyCosts: (branchId, month, year) => {
+        if (!branchId) {
+            return api.get("/cost/category/month/");
+        }
+        const now = new Date();
+        const m = month || (now.getMonth() + 1);
+        const y = year || now.getFullYear();
+        let url = `/cost/category/month/?month=${m}&year=${y}`;
+        if (branchId) url += `&branch=${branchId}`;
+        return api.get(url);
+    },
 
     // Get monthly financial summary with optional filters (month, year, from_date, to_date)
     getMonthlyFinancialSummary: (params = {}) => {

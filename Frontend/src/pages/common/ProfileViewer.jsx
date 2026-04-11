@@ -4,6 +4,8 @@ import { tokenService } from "@/services/tokenService";
 import { businessService } from "@/features/business/services/businessService";
 import Modal from "@/components/ui/Modal";
 import api, { API_BASE_URL } from "@/services/api";
+import { authService } from "@/services/authService";
+import toast from "react-hot-toast";
 import {
     FaUser,
     FaEnvelope,
@@ -13,13 +15,20 @@ import {
     FaBriefcase,
     FaArrowLeft,
     FaIdBadge,
-    FaCheckCircle
+    FaCheckCircle,
+    FaMapMarkerAlt,
+    FaMoneyBillWave,
+    FaShieldAlt,
+    FaTools,
+    FaKey,
+    FaClock
 } from "react-icons/fa";
 
 function ProfileViewer() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const navigate = useNavigate();
@@ -30,32 +39,47 @@ function ProfileViewer() {
         const targetId = id || currentUserId;
 
         if (!targetId) {
+            setLoading(false);
             navigate("/login");
             return;
         }
 
+        setLoading(true);
         api.get(`/user/${targetId}/`)
             .then((res) => setUser(res.data))
             .catch((err) => {
                 console.error("Failed to fetch profile", err);
-                if (!id) navigate("/login");
+                toast.error("Failed to load profile");
+                if (err?.response?.status === 401) {
+                    navigate("/login");
+                }
             })
             .finally(() => setLoading(false));
-    }, [navigate, id]);
+    }, [id, navigate]);
 
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-transparent">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
+                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-brand-600"></div>
             </div>
         );
     }
 
     if (!user) return null;
 
-    const isOwner = Boolean(user?.is_owner || user?.role?.toUpperCase() === "OWNER");
-    const isManager = Boolean(user?.is_manager || user?.role?.toUpperCase() === "MANAGER");
-    const isEmployee = Boolean(user?.is_employee || user?.role?.toUpperCase() === "EMPLOYEE");
+    const userData = user.user || user;
+    const getRoleString = (obj) => {
+        if (!obj) return "";
+        if (typeof obj === "string") return obj.toUpperCase();
+        if (typeof obj === "object") return (obj.role || "").toUpperCase();
+        return "";
+    };
+
+    const roleStr = getRoleString(user?.role) || getRoleString(userData?.role);
+    const isOwner = Boolean(user?.is_owner || roleStr === "OWNER");
+    const isManager = Boolean(user?.is_manager || roleStr === "MANAGER");
+    const isEmployee = Boolean(user?.is_employee || roleStr === "EMPLOYEE");
+    const isMyProfile = String(userData?.id || user?.id) === String(tokenService.getId());
 
     const getEditRoute = () => {
         if (isOwner) return "/owner/edit";
@@ -64,54 +88,7 @@ function ProfileViewer() {
         return "/profile/edit";
     };
 
-    const getRoleDetails = () => {
-        if (isOwner) {
-            return {
-                label: "Business Owner",
-                badge: "bg-gray-50 text-gray-800 border-gray-200",
-                hero: "from-gray-100 via-white to-gray-100",
-                avatarBg: "from-gray-50 to-gray-100",
-                avatarText: "text-gray-800",
-                iconBg: "bg-gray-50",
-                iconText: "text-gray-700",
-                border: "border-gray-200"
-            };
-        }
-        if (isManager) {
-            return {
-                label: "Manager",
-                badge: "bg-gray-50 text-gray-800 border-gray-200",
-                hero: "from-gray-100 via-white to-gray-100",
-                avatarBg: "from-gray-50 to-gray-100",
-                avatarText: "text-gray-800",
-                iconBg: "bg-gray-50",
-                iconText: "text-gray-700",
-                border: "border-gray-200"
-            };
-        }
-        if (isEmployee) {
-            return {
-                label: "Employee",
-                badge: "bg-gray-50 text-gray-800 border-gray-200",
-                hero: "from-gray-100 via-white to-gray-100",
-                avatarBg: "from-gray-50 to-gray-100",
-                avatarText: "text-gray-800",
-                iconBg: "bg-gray-50",
-                iconText: "text-gray-700",
-                border: "border-gray-200"
-            };
-        }
-        return {
-            label: "User",
-            badge: "bg-gray-50 text-gray-800 border-gray-200",
-            hero: "from-gray-100 via-white to-gray-100",
-            avatarBg: "from-gray-50 to-gray-100",
-            avatarText: "text-gray-800",
-            iconBg: "bg-gray-50",
-            iconText: "text-gray-700",
-            border: "border-gray-200"
-        };
-    };
+    const roleLabel = isOwner ? "Business Owner" : isManager ? "Manager" : isEmployee ? "Employee" : "User";
 
     const getImageUrl = (path) => {
         if (!path) return null;
@@ -119,187 +96,447 @@ function ProfileViewer() {
         return `${API_BASE_URL}${path}`;
     };
 
-    const role = getRoleDetails();
+    const getWorkAssignments = (data) => {
+        if (!data) return [];
+        const source = data.assigned_works || data.work || [];
+
+        if (Array.isArray(source) && source.length > 0) {
+            return source;
+        }
+
+        if (typeof source === "string" && source.trim()) {
+            try {
+                const parsed = JSON.parse(source);
+                if (Array.isArray(parsed)) return parsed;
+                return [String(parsed)];
+            } catch (_error) {
+                return [source];
+            }
+        }
+
+        return ["General"];
+    };
+
+    const formatDate = (value, options) => {
+        if (!value) return "Not available";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Not available";
+        return date.toLocaleDateString(undefined, options);
+    };
+
+    const formatDateTime = (value) => {
+        if (!value) return "Not available";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Not available";
+        return date.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short"
+        });
+    };
 
     const handleDeleteBusiness = async () => {
+        const business = user?.role?.business || user?.business;
+        if (!business?.id) return;
+
         setIsDeleting(true);
         try {
-            await businessService.delete(user.business.id);
-            tokenService.clearTokens();
-            navigate("/login");
+            await businessService.delete(business.id);
+            toast.success("Business deleted successfully");
+            setUser((prev) => ({
+                ...prev,
+                business: null,
+                role: prev.role ? { ...prev.role, business: null } : null
+            }));
         } catch (error) {
             console.error("Failed to delete business", error);
-            // Optionally show error toast
+            toast.error("Failed to delete business");
         } finally {
             setIsDeleting(false);
             setIsDeleteModalOpen(false);
         }
     };
 
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            await api.delete(`/user/${userData.id || user.id}/`);
+            toast.success("Account deleted successfully");
+            await authService.logout();
+            navigate("/");
+        } catch (error) {
+            console.error("Failed to delete account", error);
+            toast.error("Failed to delete account");
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteUserModalOpen(false);
+        }
+    };
+
+    const workAssignments = getWorkAssignments(user);
+    const branchList = Array.isArray(user.assigned_branches) && user.assigned_branches.length > 0
+        ? user.assigned_branches
+        : (Array.isArray(user.branches) && user.branches.length > 0
+            ? user.branches
+            : (user.branch ? [user.branch] : []));
+
+    const employeeDetails = user.employee_details || user.employee_detail || {};
+    const salaryValue = employeeDetails.salary ?? user.salary ?? 0;
+    const salaryNumber = Number(salaryValue || 0);
+    const salaryText = Number.isFinite(salaryNumber)
+        ? `₹${salaryNumber.toLocaleString("en-IN")}`
+        : `₹${salaryValue || 0}`;
+    const bioText = employeeDetails.bio || user.description || "";
+    const address = employeeDetails.address || user.address || {};
+
     return (
-        <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-white text-black">
-            <div className="max-w-5xl mx-auto space-y-6">
+        <div className="min-h-screen bg-transparent py-6 sm:py-8">
+            <div className="section-shell space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-slate-900"
+                    >
+                        <FaArrowLeft className="text-xs" />
+                        Back
+                    </button>
 
-                {/* Back Button */}
-                <button
-                    onClick={() => navigate(-1)}
-                    className="group flex items-center gap-2 text-gray-700 hover:text-black transition-colors font-semibold px-4 py-2 rounded-xl hover:bg-gray-100 border border-transparent hover:border-gray-200"
-                >
-                    <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
-                    <span>Back to Dashboard</span>
-                </button>
+                    {isMyProfile && (
+                        <Link
+                            to={getEditRoute()}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                        >
+                            <FaEdit className="text-xs" />
+                            Edit Profile
+                        </Link>
+                    )}
+                </div>
 
-                {/* Main Profile Card */}
-                <div className="bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200 relative">
-
-                    {/* Hero Banner */}
-                    <div className={`h-36 bg-gradient-to-r ${role.hero} relative border-b border-gray-200`}></div>
-
-                    <div className="px-6 sm:px-8 pb-10">
-                        {/* Profile Header */}
-                        <div className="flex flex-col md:flex-row items-start md:items-end -mt-16 mb-8 gap-6 relative z-10">
-
-                            {/* Avatar - Overlapping Banner */}
-                            <div className="relative">
-                                <div className="p-1.5 bg-white rounded-full shadow-lg inline-block">
-                                    {user.profile_picture ? (
-                                        <img
-                                            src={getImageUrl(user.profile_picture)}
-                                            alt="Profile"
-                                            className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-inner bg-gray-100"
-                                        />
-                                    ) : (
-                                        <div className={`w-32 h-32 rounded-full bg-gradient-to-br ${role.avatarBg} flex items-center justify-center border-4 border-white shadow-inner ${role.avatarText} text-4xl font-bold`}>
-                                            {user.first_name?.[0]}{user.last_name?.[0]}
-                                        </div>
-                                    )}
+                <section className="glass-panel rounded-3xl border border-white/70 p-5 shadow-soft sm:p-7">
+                    <div className="grid items-center gap-6 xl:grid-cols-[auto_minmax(0,1fr)_260px]">
+                        <div className="mx-auto xl:mx-0">
+                            {userData.profile_picture ? (
+                                <img
+                                    src={getImageUrl(userData.profile_picture)}
+                                    alt="Profile"
+                                    className="h-28 w-28 rounded-2xl border-4 border-white object-cover shadow-md sm:h-32 sm:w-32"
+                                />
+                            ) : (
+                                <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-slate-700 to-slate-900 text-3xl font-bold text-white shadow-md sm:h-32 sm:w-32">
+                                    {userData.first_name?.[0]}{userData.last_name?.[0]}
                                 </div>
-                                <div className="absolute bottom-3 right-3 bg-green-500 w-5 h-5 rounded-full border-4 border-white shadow-sm" title="Active"></div>
-                            </div>
+                            )}
+                        </div>
 
-                            {/* Name & Role - Pushed down to clear banner for readability */}
-                            <div className="flex-1 pt-2 md:pt-0 pb-2 text-center md:text-left">
-                                <h1 className="text-3xl sm:text-4xl font-bold text-black flex items-center justify-center md:justify-start gap-3">
-                                    {user.first_name} {user.last_name}
-                                    <FaCheckCircle className="text-gray-500 text-lg opacity-80" title="Verified User" />
+                        <div className="space-y-3 text-center xl:text-left">
+                            <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+                                <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                                    {userData.first_name} {userData.last_name}
                                 </h1>
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
-                                    <span className={`px-3 py-1 rounded-lg text-sm font-bold uppercase tracking-wide border shadow-sm ${role.badge}`}>
-                                        {role.label}
-                                    </span>
-                                    <span className="text-gray-700 font-medium bg-white px-3 py-1 rounded-lg border border-gray-200 flex items-center gap-1.5 shadow-sm">
-                                        <span className="text-gray-400">@</span>{user.username}
-                                    </span>
-                                </div>
+                                <FaCheckCircle className="text-emerald-500" title="Verified User" />
                             </div>
 
-                            {/* Edit Button */}
-                            <div className="mb-2 w-full md:w-auto flex justify-center md:block">
-                                <Link
-                                    to={getEditRoute()}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-lg shadow-brand-500/30 transition-all hover:scale-105 active:scale-95"
-                                >
-                                    <FaEdit />
-                                    <span>Edit Profile</span>
-                                </Link>
+                            <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                                    {roleLabel}
+                                </span>
+                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                                    @{userData.username}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                                    <FaEnvelope className="text-slate-400" />
+                                    {userData.email || "Not set"}
+                                </span>
+                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                                    <FaPhone className="text-slate-400" />
+                                    {userData.mobile_number || "Not set"}
+                                </span>
                             </div>
                         </div>
 
-                        {/* Content Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                            {/* Personal Info Column (2 col wide on lg) */}
-                            <div className="lg:col-span-2 space-y-6">
-                                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                                    <h2 className="text-lg font-bold text-black mb-6 flex items-center gap-2">
-                                        <div className={`p-2 rounded-lg ${role.iconBg} ${role.iconText}`}>
-                                            <FaIdBadge />
-                                        </div>
-                                        Personal Information
-                                    </h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
-                                        <InfoItem icon={FaEnvelope} label="Email Address" value={user.email} verified />
-                                        <InfoItem icon={FaPhone} label="Phone Number" value={user.mobile_number} />
-                                        <InfoItem icon={FaCalendarAlt} label="Member Since" value={new Date(user.date_joined).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} />
-                                        <InfoItem icon={FaUser} label="User ID" value={`#${user.id}`} mono />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Sidebar / Business Info */}
-                            <div className="space-y-6">
-                                {user.business && (
-                                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-                                                    <FaBriefcase size={16} />
-                                                </div>
-                                                <div>
-                                                    <h2 className="text-base font-semibold text-slate-900">Business Details</h2>
-                                                    <p className="text-xs text-slate-500">Profile and compliance information</p>
-                                                </div>
-                                            </div>
-                                            {isOwner && (
-                                                <Link
-                                                    to={`/business/edit/${user.business.id}`}
-                                                    className="text-xs font-semibold text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
-                                                >
-                                                    Edit
-                                                </Link>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-5 space-y-4">
-                                            <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Company Name</p>
-                                                <p className="text-lg font-bold text-slate-900">{user.business.name}</p>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Business ID</p>
-                                                    <span className="inline-flex items-center text-xs font-mono text-slate-700 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
-                                                        {user.business.id || "N/A"}
-                                                    </span>
-                                                </div>
-                                                {(isOwner || isManager) && (
-                                                    <div>
-                                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">GST Number</p>
-                                                        <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md border ${user.business.gst_number ? "bg-slate-50 text-slate-700 border-slate-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                                                            {user.business.gst_number || "Not set"}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Description</p>
-                                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                                                    <p className="text-sm text-slate-600 leading-relaxed">
-                                                        {user.business.description || "No description provided."}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {isOwner && (
-                                            <div className="mt-6 pt-4 border-t border-slate-100">
-                                                <button
-                                                    onClick={() => setIsDeleteModalOpen(true)}
-                                                    className="w-full text-center text-red-600 hover:text-red-700 text-sm font-semibold py-2 rounded-lg hover:bg-red-50 transition-colors"
-                                                >
-                                                    Delete Business
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Status */}
-                            </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                            <SummaryPill
+                                icon={FaCheckCircle}
+                                label="Status"
+                                value={userData.is_active ? "Active" : "Inactive"}
+                                tone={userData.is_active ? "success" : "danger"}
+                            />
+                            <SummaryPill
+                                icon={FaCalendarAlt}
+                                label="Joined"
+                                value={formatDate(userData.date_joined, {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric"
+                                })}
+                            />
+                            <SummaryPill
+                                icon={FaClock}
+                                label="Updated"
+                                value={formatDateTime(user.updated_at || userData.updated_at)}
+                            />
                         </div>
                     </div>
+                </section>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                    <div className="space-y-6 xl:col-span-2">
+                        <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                            <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                    <FaIdBadge size={16} />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-semibold text-slate-900">Personal Information</h2>
+                                    <p className="text-xs text-slate-500">Primary contact and account identity</p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <InfoItem icon={FaEnvelope} label="Email Address" value={userData.email} verified />
+                                <InfoItem icon={FaPhone} label="Phone Number" value={userData.mobile_number} />
+                                <InfoItem
+                                    icon={FaCalendarAlt}
+                                    label="Member Since"
+                                    value={formatDate(userData.date_joined, {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric"
+                                    })}
+                                />
+                                <InfoItem icon={FaUser} label="User ID" value={`#${user.id}`} mono />
+                            </div>
+                        </section>
+
+                        {address && Object.values(address).some(v => v) && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                        <FaMapMarkerAlt size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Address Details</h2>
+                                        <p className="text-xs text-slate-500">Residential and contact location</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <InfoItem icon={FaMapMarkerAlt} label="Street Address" value={address.address_line_1} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="Area / Landmark" value={address.address_line_2} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="City" value={address.city_name || address.city} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="State" value={address.state_name || address.state} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="Pin Code" value={address.pin_code} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="Country" value={address.country_name || address.country} />
+                                </div>
+                            </section>
+                        )}
+
+                        {(isManager || isEmployee) && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                                        <FaShieldAlt size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Professional Details</h2>
+                                        <p className="text-xs text-slate-500">Compensation and assigned responsibilities</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-6 lg:grid-cols-2">
+                                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+                                        <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                                            <FaMoneyBillWave />
+                                            Monthly Salary
+                                        </p>
+                                        <p className="text-2xl font-bold text-indigo-700">{salaryText}</p>
+                                    </div>
+
+                                    <div>
+                                        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                            <FaTools />
+                                            Work Assignments
+                                        </p>
+                                        <div className="space-y-4">
+                                            {/* Group by branch if structured, otherwise show list */}
+                                            {workAssignments.some(w => typeof w === 'object' && w.branch_name) ? (
+                                                Object.entries(
+                                                    workAssignments.reduce((acc, curr) => {
+                                                        const bName = curr.branch_name || "General";
+                                                        if (!acc[bName]) acc[bName] = [];
+                                                        acc[bName].push(curr.work_type || curr.name || "General");
+                                                        return acc;
+                                                    }, {})
+                                                ).map(([branchName, types]) => (
+                                                    <div key={branchName} className="space-y-2">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">{branchName}</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {types.map((type, idx) => (
+                                                                <div key={`${branchName}-${type}-${idx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+                                                                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900 text-white">
+                                                                        <FaKey size={9} />
+                                                                    </div>
+                                                                    <span className="text-[11px] font-bold uppercase tracking-tight text-slate-700">
+                                                                        {String(type)}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                    {workAssignments.map((work, idx) => (
+                                                        <div key={`${String(work)}-${idx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white">
+                                                                <FaKey size={10} />
+                                                            </div>
+                                                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+                                                                {String(work?.work_type || work?.name || work || "General")}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {bioText && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">About / Notes</h2>
+                                <p className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+                                    {bioText}
+                                </p>
+                            </section>
+                        )}
+                    </div>
+
+                    <aside className="space-y-6">
+                        {(user.role?.business || user.business) && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                            <FaBriefcase size={15} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base font-semibold text-slate-900">Business Information</h2>
+                                            <p className="text-xs text-slate-500">Compliance and registration data</p>
+                                        </div>
+                                    </div>
+                                    {(user.role?.business?.id || user.business?.id) && isOwner && isMyProfile && (
+                                        <Link
+                                            to={`/business/edit/${user.role?.business?.id || user.business?.id}`}
+                                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                        >
+                                            Edit
+                                        </Link>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    <InfoLine label="Company Name" value={user.role?.business?.name || user.business?.name} />
+                                    <InfoLine label="Business ID" value={(user.role?.business?.id || user.business?.id) ? `#${user.role?.business?.id || user.business?.id}` : "N/A"} mono />
+                                    {(isOwner || isManager) && (
+                                        <InfoLine label="GST Number" value={user.role?.business?.gst_number || user.business?.gst_number || "Not set"} />
+                                    )}
+                                    <div>
+                                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</p>
+                                        <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+                                            {user.role?.business?.description || user.business?.description || "No description provided."}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {isOwner && isMyProfile && (
+                                    <button
+                                        onClick={() => setIsDeleteModalOpen(true)}
+                                        className="mt-5 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                                    >
+                                        Delete Business
+                                    </button>
+                                )}
+                            </section>
+                        )}
+
+                        {branchList.length > 0 && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                        <FaMapMarkerAlt size={15} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Assigned Branches</h2>
+                                        <p className="text-xs text-slate-500">Location access details</p>
+                                    </div>
+                                </div>
+
+                                <div className="custom-scrollbar max-h-[24rem] space-y-3 overflow-y-auto pr-1">
+                                    {branchList.map((branch, idx) => {
+                                        if (!branch) return null;
+
+                                        const branchId = typeof branch === "object" ? branch.id : branch;
+                                        const branchName = typeof branch === "object"
+                                            ? (branch.name || `Branch #${branch.id || idx + 1}`)
+                                            : `Branch #${branch}`;
+                                        const branchContact = typeof branch === "object" ? branch.contact_number : null;
+                                        const branchAddress = typeof branch === "object" ? branch.address : null;
+                                        const isMain = typeof branch === "object" && branch.is_default;
+
+                                        return (
+                                            <div key={branchId || idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                                <div className="mb-2 flex items-center gap-2">
+                                                    <p className="text-sm font-semibold text-slate-900">{branchName}</p>
+                                                    {isMain && (
+                                                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                                                            Main
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-1 text-xs text-slate-600">
+                                                    <p>ID: {branchId ? `#${branchId}` : "N/A"}</p>
+                                                    {branchContact && <p>Contact: {branchContact}</p>}
+                                                    {branchAddress && typeof branchAddress === "object" ? (
+                                                        <p className="leading-relaxed">
+                                                            {[
+                                                                branchAddress.address_line_1,
+                                                                branchAddress.address_line_2,
+                                                                branchAddress.city_name,
+                                                                branchAddress.state_name || branchAddress.state,
+                                                                branchAddress.country_name || branchAddress.country,
+                                                                branchAddress.pin_code,
+                                                            ].filter(Boolean).join(", ")}
+                                                        </p>
+                                                    ) : branchAddress ? (
+                                                        <p>{branchAddress}</p>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
+                        {!(user.role?.business || user.business) && isOwner && isMyProfile && (
+                            <section className="rounded-2xl border border-red-200 bg-red-50/70 p-5 shadow-sm sm:p-6">
+                                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-red-600">Danger Zone</h3>
+                                <p className="mb-4 text-xs text-red-700">
+                                    No business is registered for this account. You can delete the account permanently.
+                                </p>
+                                <button
+                                    onClick={() => setIsDeleteUserModalOpen(true)}
+                                    className="w-full rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                                >
+                                    Delete My Account
+                                </button>
+                            </section>
+                        )}
+                    </aside>
                 </div>
             </div>
 
@@ -313,20 +550,60 @@ function ProfileViewer() {
                 onConfirm={handleDeleteBusiness}
                 type="danger"
             />
+
+            <Modal
+                isOpen={isDeleteUserModalOpen}
+                onClose={() => setIsDeleteUserModalOpen(false)}
+                title="Delete Entire Account?"
+                message="Are you absolutely sure you want to delete your entire owner account? This action is permanent and cannot be undone."
+                confirmText={isDeleting ? "Deleting..." : "Delete Account"}
+                cancelText="Cancel"
+                onConfirm={handleDeleteAccount}
+                type="danger"
+            />
+        </div>
+    );
+}
+
+function SummaryPill({ icon: Icon, label, value, tone = "default" }) {
+    const toneClass = tone === "success"
+        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+        : tone === "danger"
+            ? "bg-rose-50 text-rose-700 border-rose-100"
+            : "bg-white text-slate-700 border-slate-200";
+
+    return (
+        <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
+                <Icon className="text-xs" />
+                {label}
+            </div>
+            <p className="text-xs font-semibold leading-relaxed">{value || "Not available"}</p>
+        </div>
+    );
+}
+
+function InfoLine({ label, value, mono }) {
+    return (
+        <div>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+            <p className={`text-sm font-medium text-slate-700 ${mono ? "font-mono" : ""}`}>
+                {value || "Not available"}
+            </p>
         </div>
     );
 }
 
 function InfoItem({ icon: Icon, label, value, mono, verified }) {
     return (
-        <div className="group">
-            <div className="flex items-center gap-2 mb-1.5">
-                <Icon className="text-gray-400 group-hover:text-brand-600 transition-colors text-sm" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</p>
-                {verified && <FaCheckCircle className="text-green-500 text-xs" title="Verified" />}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <div className="mb-2 flex items-center gap-2">
+                <Icon className="text-xs text-slate-400" />
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                {verified && <FaCheckCircle className="text-xs text-emerald-500" title="Verified" />}
             </div>
-            <p className={`text-base font-semibold text-black ${mono ? 'font-mono bg-gray-50 px-2 py-0.5 rounded-md inline-block text-sm border border-gray-200' : ''}`}>
-                {value || <span className="text-gray-400 italic">Not set</span>}
+            <p className={`text-sm font-semibold text-slate-800 ${mono ? "font-mono" : ""}`}>
+                {value || <span className="italic text-slate-400">Not set</span>}
             </p>
         </div>
     );

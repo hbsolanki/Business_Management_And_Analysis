@@ -57,12 +57,15 @@ export default function ProductPerformanceChart() {
     const [fromDate, setFromDate] = useState(defaultRange.from);
     const [toDate, setToDate] = useState(defaultRange.to);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [categoryId, setCategoryId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [report, setReport] = useState({ summary: EMPTY_SUMMARY, products: [] });
 
     useEffect(() => {
         fetchPerformance();
+        // Intentionally refetch only when selected product changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedProduct]);
 
     const fetchPerformance = async () => {
@@ -75,6 +78,9 @@ export default function ProductPerformanceChart() {
 
             if (selectedProduct) {
                 params.push(`product_id=${selectedProduct.id}`);
+            }
+            if (categoryId.trim()) {
+                params.push(`category_id=${encodeURIComponent(categoryId.trim())}`);
             }
 
             const fromDateTime = fromDate.length === 16 ? `${fromDate}:00` : fromDate;
@@ -249,23 +255,34 @@ export default function ProductPerformanceChart() {
                     </div>
 
                     <div className="w-full max-w-md">
-                        {selectedProduct ? (
-                            <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50">
-                                <div>
-                                    <p className="font-semibold text-slate-900">{selectedProduct.name}</p>
-                                    <p className="text-xs text-slate-500">SKU: {selectedProduct.sku}</p>
+                        <div className="space-y-3">
+                            {selectedProduct ? (
+                                <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{selectedProduct.name}</p>
+                                        <p className="text-xs text-slate-500">SKU: {selectedProduct.sku}</p>
+                                    </div>
+                                    <button
+                                        onClick={clearProductFilter}
+                                        className="p-2 text-slate-500 hover:bg-slate-200 rounded-full transition-colors"
+                                        title="Clear filter"
+                                    >
+                                        <FaTimes />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={clearProductFilter}
-                                    className="p-2 text-slate-500 hover:bg-slate-200 rounded-full transition-colors"
-                                    title="Clear filter"
-                                >
-                                    <FaTimes />
-                                </button>
-                            </div>
-                        ) : (
-                            <ProductSearchInput onSelect={setSelectedProduct} />
-                        )}
+                            ) : (
+                                <ProductSearchInput onSelect={setSelectedProduct} />
+                            )}
+
+                            <input
+                                type="number"
+                                min="1"
+                                value={categoryId}
+                                onChange={(e) => setCategoryId(e.target.value)}
+                                placeholder="Category ID (optional)"
+                                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

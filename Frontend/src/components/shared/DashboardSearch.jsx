@@ -1,12 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { FaSearch, FaArrowRight, FaTimes } from "react-icons/fa";
-import { Link } from "react-router-dom";
-
-// Icon mapping directly in component or passed as prop. 
-// For simplicity/portability, we'll accept an iconMap prop or default to extensive list if needed, 
-// but sticking to icons passed in item or generic fallback is safer if map is large.
-// However, the previous implementation used a map in the parent. 
-// Let's accept a renderIcon prop or use a simple internal default.
 
 export default function DashboardSearch({
     items = [],
@@ -140,7 +133,7 @@ export default function DashboardSearch({
 
                     {filteredItems.length === 0 ? (
                         <div className="px-6 py-10 text-center text-gray-500">
-                            <p className="text-sm">No matches found for "{query}".</p>
+                            <p className="text-sm">{`No matches found for "${query}".`}</p>
                         </div>
                     ) : (
                         <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">

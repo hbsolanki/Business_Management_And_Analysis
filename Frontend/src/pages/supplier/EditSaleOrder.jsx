@@ -1,0 +1,733 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import toast from "react-hot-toast";
+import {
+    FaAlignLeft,
+    FaBoxOpen,
+    FaCodeBranch,
+    FaMoneyBillWave,
+    FaSave,
+    FaSearch,
+    FaShoppingCart,
+    FaSpinner,
+    FaTrash,
+    FaUser,
+    FaChevronDown,
+} from "react-icons/fa";
+
+import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import BackButton from "@/components/shared/BackButton";
+import { branchService } from "@/features/business/services/branchService";
+import api from "@/services/api";
+import { supplierService } from "@/features/supplier/services/supplierService";
+import { customerService } from "@/features/customer/services/customerService";
+import PurchaseOrderProductSearch from "@/features/supplier/components/PurchaseOrderProductSearch";
+import {
+    extractFirstError,
+    normalizeListPayload,
+    parsePositiveInt,
+} from "@/features/supplier/utils/supplierHelpers";
+
+const INITIAL_FORM = {
+    branch_id: "",
+    customer_id: "",
+    purchase_order_id: 0,
+    status: "PENDING",
+    notes: "",
+    items: [],
+};
+
+function getErrorText(value) {
+    if (!value) return null;
+    if (Array.isArray(value)) return value[0];
+    return String(value);
+}
+
+function resolveBranchId(branch) {
+    if (!branch && branch !== 0) return null;
+    if (typeof branch === "object") {
+        return branch.id ?? branch.branch_id ?? null;
+    }
+    return branch;
+}
+
+function resolveAssignedBranches(profile) {
+    if (!profile) return [];
+
+    const collected = [];
+
+    const pushBranch = (value) => {
+        const id = resolveBranchId(value);
+        if (!id && id !== 0) return;
+
+        const source = typeof value === "object" ? value : null;
+        collected.push({
+            id: String(id),
+            name: source?.name || source?.branch_name || `Branch #${id}`,
+            is_default: Boolean(source?.is_default),
+        });
+    };
+
+    if (Array.isArray(profile.branches)) {
+        profile.branches.forEach((branch) => pushBranch(branch));
+    }
+    if (Array.isArray(profile.branch_ids)) {
+        profile.branch_ids.forEach((branchId) => pushBranch(branchId));
+    }
+    if (profile.branch || profile.branch === 0) {
+        pushBranch(profile.branch);
+    }
+    if (profile.branch_id || profile.branch_id === 0) {
+        pushBranch(profile.branch_id);
+    }
+
+    const seen = new Set();
+    return collected.filter((branch) => {
+        if (seen.has(branch.id)) return false;
+        seen.add(branch.id);
+        return true;
+    });
+}
+
+export default function EditSaleOrder() {
+    const navigate = useNavigate();
+    const { id } = useParams();
+
+    const { profile } = useSelector((state) => state.user);
+    const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
+    const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
+    const assignedBranches = useMemo(() => resolveAssignedBranches(profile), [profile]);
+
+    const [branches, setBranches] = useState([]);
+
+    // Customer selection state
+    const [customers, setCustomers] = useState([]);
+    const [customerSearch, setCustomerSearch] = useState("");
+    const [fetchingCustomers, setFetchingCustomers] = useState(false);
+    const [customerOpen, setCustomerOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [customerNext, setCustomerNext] = useState(null);
+    const [loadingMoreCustomers, setLoadingMoreCustomers] = useState(false);
+    const customerWrapperRef = useRef(null);
+
+    const [formData, setFormData] = useState(INITIAL_FORM);
+    const [originalData, setOriginalData] = useState(null);
+    const [errors, setErrors] = useState({});
+    const [itemError, setItemError] = useState("");
+
+    const [loadingPage, setLoadingPage] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    const mergeCustomers = useCallback((current, incoming) => {
+        const map = new Map(current.map((item) => [String(item.id), item]));
+        incoming.forEach((item) => map.set(String(item.id), item));
+        return Array.from(map.values());
+    }, []);
+
+    const loadCustomers = useCallback(async (search = "") => {
+        setFetchingCustomers(true);
+        try {
+            const res = await customerService.list(search ? { search } : {});
+            const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+            setCustomers(data);
+            setCustomerNext(res.data?.next || null);
+            return data;
+        } catch (error) {
+            console.error("Failed to load customers", error);
+            return [];
+        } finally {
+            setFetchingCustomers(false);
+        }
+    }, []);
+
+    const loadMoreCustomers = useCallback(async () => {
+        if (!customerNext || loadingMoreCustomers) return;
+        setLoadingMoreCustomers(true);
+        try {
+            const res = await api.get(customerNext);
+            const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+            setCustomers((prev) => mergeCustomers(prev, data));
+            setCustomerNext(res.data?.next || null);
+        } catch (error) {
+            console.error("Failed to load more customers", error);
+        } finally {
+            setLoadingMoreCustomers(false);
+        }
+    }, [customerNext, loadingMoreCustomers, mergeCustomers]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (customerWrapperRef.current && !customerWrapperRef.current.contains(event.target)) {
+                setCustomerOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadCustomers(customerSearch.trim());
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [customerSearch, loadCustomers]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadInitialData = async () => {
+            if (!id) {
+                navigate(-1);
+                return;
+            }
+
+            try {
+                setLoadingPage(true);
+                const [branchRes, orderRes] = await Promise.all([
+                    branchService.list(),
+                    supplierService.getSaleOrderById(id),
+                ]);
+
+                if (!isMounted) return;
+
+                const branchList = normalizeListPayload(branchRes.data);
+                const order = orderRes?.data || {};
+                const accessibleBranches = (() => {
+                    if (!isRestrictedRole) return branchList;
+                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
+                    const filtered = assignedIds.size > 0
+                        ? branchList.filter((branch) => assignedIds.has(String(branch.id)))
+                        : branchList;
+                    return filtered.length > 0 ? filtered : assignedBranches;
+                })();
+
+                setBranches(accessibleBranches);
+
+                const preferredBranch = accessibleBranches.find((branch) => branch.is_default) || accessibleBranches[0];
+                const defaultBranch = preferredBranch ? String(preferredBranch.id) : "";
+                const orderBranchId = String(order?.branch?.id ?? order?.branch_id ?? order?.branch ?? "");
+                const isOrderBranchAllowed = accessibleBranches.some((branch) => String(branch.id) === orderBranchId);
+                const resolvedBranchId = isRestrictedRole
+                    ? (isOrderBranchAllowed ? orderBranchId : defaultBranch)
+                    : (orderBranchId || defaultBranch);
+
+                const mappedItems = (Array.isArray(order.items) ? order.items : []).map((item) => {
+                    const productObj = item?.product_details || item?.product || {};
+                    const skuValue = item?.sku || productObj?.sku || String(productObj?.id ?? "");
+                    return {
+                        sku: skuValue,
+                        productName: productObj?.name || "Product",
+                        quantity: String(item?.quantity ?? "1"),
+                        unit_price: String(item?.unit_price ?? item?.unit_cost ?? ""),
+                    };
+                });
+
+                const customerId = order?.customer_info?.id ?? order?.customer?.id ?? order?.customer_id ?? order?.customer ?? "";
+                if (customerId) {
+                    try {
+                        const custRes = await customerService.getById(customerId);
+                        const cust = custRes.data;
+                        setSelectedCustomer(cust);
+                        setCustomerSearch(cust.name || cust.mobile_number || "");
+                    } catch (e) {
+                        console.error("Failed to fetch order customer", e);
+                    }
+                }
+
+                const initialForm = {
+                    branch_id: resolvedBranchId,
+                    customer_id: customerId ? String(customerId) : "",
+                    purchase_order_id: Number(order?.purchase_order_id ?? 0),
+                    status: order?.status || "PENDING",
+                    notes: order?.notes || "",
+                    items: mappedItems,
+                };
+
+                setFormData(initialForm);
+
+                setOriginalData({
+                    branch: parsePositiveInt(initialForm.branch_id),
+                    customer: parsePositiveInt(initialForm.customer_id),
+                    purchase_order: initialForm.purchase_order_id,
+                    status: initialForm.status,
+                    notes: String(initialForm.notes || "").trim(),
+                    items: initialForm.items.map((item) => ({
+                        sku: String(item.sku || "").trim(),
+                        quantity: parsePositiveInt(item.quantity),
+                        unit_price: String(item.unit_price || "").trim(),
+                    })),
+                });
+            } catch (error) {
+                toast.error(extractFirstError(error, "Failed to load sales order form data"));
+                navigate(-1);
+            } finally {
+                if (isMounted) setLoadingPage(false);
+            }
+        };
+
+        loadInitialData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [assignedBranches, id, isRestrictedRole, navigate]);
+
+    const handleInputChange = (event) => {
+        const { name, value } = event.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors((prev) => ({ ...prev, [name]: null }));
+        }
+    };
+
+    const handleItemChange = (index, field, value) => {
+        setFormData((prev) => {
+            const nextItems = [...prev.items];
+            nextItems[index] = { ...nextItems[index], [field]: value };
+            return { ...prev, items: nextItems };
+        });
+
+        if (itemError) setItemError("");
+    };
+
+    const handleAddProduct = (product) => {
+        setFormData((prev) => {
+            const skuValue = product?.sku || String(product?.id || "");
+            const exists = prev.items.find((item) => String(item.sku) === String(skuValue));
+            if (exists) return prev;
+
+            const newItem = {
+                sku: skuValue,
+                productName: product.name,
+                quantity: "1",
+                unit_price: product.base_price
+                    ? String(product.base_price)
+                    : (product.cost_price ? String(product.cost_price) : "0"),
+            };
+
+            return {
+                ...prev,
+                items: [...prev.items, newItem],
+            };
+        });
+
+        if (itemError) setItemError("");
+    };
+
+    const removeItemRow = (index) => {
+        setFormData((prev) => {
+            const nextItems = prev.items.filter((_, itemIndex) => itemIndex !== index);
+            return { ...prev, items: nextItems };
+        });
+    };
+
+    const handleCustomerSelect = (customer) => {
+        if (!customer) return;
+        setSelectedCustomer(customer);
+        setFormData((prev) => ({ ...prev, customer_id: String(customer.id) }));
+        setCustomerSearch(customer.name || customer.mobile_number || "");
+        setCustomerOpen(false);
+    };
+
+    const buildPayload = () => {
+        const items = formData.items.map((item) => ({
+            sku: String(item.sku || "").trim(),
+            quantity: parsePositiveInt(item.quantity),
+            unit_price: String(item.unit_price || "").trim(),
+        }));
+
+        const payload = {
+            is_active: true,
+            branch: parsePositiveInt(formData.branch_id),
+            customer: parsePositiveInt(formData.customer_id),
+            status: formData.status || "PENDING",
+            notes: String(formData.notes || "").trim(),
+            items,
+        };
+
+        const poId = Number(formData.purchase_order_id);
+        if (poId > 0) {
+            payload.purchase_order = poId;
+        }
+
+        return payload;
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setSaving(true);
+        setErrors({});
+        setItemError("");
+
+        const payload = buildPayload();
+        const nextErrors = {};
+
+        if (!payload.branch) nextErrors.branch = ["Branch is required"];
+        if (!payload.customer) nextErrors.customer = ["Customer is required"];
+
+        if (isRestrictedRole && payload.branch) {
+            const allowedBranches = new Set(branches.map((branch) => String(branch.id)));
+            if (allowedBranches.size > 0 && !allowedBranches.has(String(payload.branch))) {
+                nextErrors.branch = ["Select a branch assigned to your account"];
+            }
+        }
+
+        if (Object.keys(nextErrors).length > 0) {
+            setErrors(nextErrors);
+            setSaving(false);
+            return;
+        }
+
+        const hasInvalidItem = payload.items.some(
+            (item) => !item.sku || !item.quantity || !item.unit_price
+        );
+
+        if (payload.items.length === 0 || hasInvalidItem) {
+            setItemError("Each line item requires product SKU, quantity, and unit price.");
+            setSaving(false);
+            return;
+        }
+
+        try {
+            const requestPayload = payload;
+
+            const changedData = { is_active: true };
+            if (originalData) {
+                if (originalData.branch !== requestPayload.branch) changedData.branch = requestPayload.branch;
+                if (originalData.customer !== requestPayload.customer) changedData.customer = requestPayload.customer;
+                
+                const requestPO = requestPayload.purchase_order ?? 0;
+                const originalPO = originalData.purchase_order ?? 0;
+                if (originalPO !== requestPO) {
+                    if (requestPO > 0) {
+                        changedData.purchase_order = requestPO;
+                    }
+                }
+
+                if (originalData.status !== requestPayload.status) changedData.status = requestPayload.status;
+                if (originalData.notes !== requestPayload.notes) changedData.notes = requestPayload.notes;
+
+                const originalItemsStr = JSON.stringify(originalData.items);
+                const newItemsStr = JSON.stringify(requestPayload.items);
+                if (originalItemsStr !== newItemsStr) {
+                    changedData.items = requestPayload.items;
+                }
+            }
+
+            if (Object.keys(changedData).length === 0) {
+                toast.success("No changes detected");
+                navigate(-1);
+                return;
+            }
+
+            await supplierService.updateSaleOrder(id, changedData);
+            toast.success("Sale order updated");
+            navigate(-1);
+        } catch (error) {
+            const responseErrors = error?.response?.data;
+            if (responseErrors && typeof responseErrors === "object") {
+                setErrors(responseErrors);
+                if (responseErrors.items) {
+                    setItemError(getErrorText(responseErrors.items));
+                }
+            } else {
+                toast.error(extractFirstError(error, "Failed to update sales order"));
+            }
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const inputClass = (name) =>
+        `w-full rounded-xl input-icon-left pr-4 py-3 text-sm ${errors[name]
+            ? "border-red-500 focus:ring-2 focus:ring-red-200"
+            : "border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
+        }`;
+
+    const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2";
+
+    return (
+        <div className="min-h-screen bg-transparent">
+            <ProtectedHeader />
+
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+                <BackButton label="Back" />
+
+                <div className="max-w-6xl mx-auto">
+                    <section className="form-card overflow-hidden">
+                        <header className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
+                                <FaShoppingCart />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-slate-900">Edit Sales Order</h1>
+                                <p className="text-sm text-slate-500">
+                                    Update branch, notes, and item prices.
+                                </p>
+                            </div>
+                        </header>
+
+                        {loadingPage ? (
+                            <div className="p-10 flex items-center justify-center text-slate-500">
+                                <FaSpinner className="animate-spin mr-2" />
+                                Loading form details...
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="form-section p-8 space-y-8">
+                                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                                    <section className="xl:col-span-5 rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+                                        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Order Details</h2>
+
+                                        <div>
+                                            <label className={labelClass}>Branch <span className="text-red-500">*</span></label>
+                                            <div className="relative group">
+                                                <FaCodeBranch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                                                <select
+                                                    name="branch_id"
+                                                    value={formData.branch_id}
+                                                    onChange={handleInputChange}
+                                                    disabled={isRestrictedRole && branches.length <= 1}
+                                                    className={`${inputClass("branch_id")} pl-11 ${isRestrictedRole && branches.length <= 1 ? "bg-slate-100" : ""}`}
+                                                    required
+                                                >
+                                                    <option value="">Select branch</option>
+                                                    {branches.map((branch) => (
+                                                        <option key={branch.id} value={branch.id}>
+                                                            {branch.branch_name || branch.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {getErrorText(errors.branch_id || errors.branch) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.branch_id || errors.branch)}</p>}
+                                            {isRestrictedRole && branches.length === 0 && (
+                                                <p className="text-red-500 text-xs mt-2 font-medium">No branch is assigned to your account.</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Customer <span className="text-red-500">*</span></label>
+                                            <div className="relative" ref={customerWrapperRef}>
+                                                <div className="relative group">
+                                                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search customer by name or mobile..."
+                                                        value={customerSearch}
+                                                        onChange={(e) => {
+                                                            setCustomerSearch(e.target.value);
+                                                            setCustomerOpen(true);
+                                                            if (!e.target.value) {
+                                                                setSelectedCustomer(null);
+                                                                setFormData(prev => ({ ...prev, customer_id: "" }));
+                                                            }
+                                                        }}
+                                                        onFocus={() => setCustomerOpen(true)}
+                                                        className={`${inputClass("customer_id")} pl-11`}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCustomerOpen(!customerOpen)}
+                                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                                    >
+                                                        <FaChevronDown className={`transition-transform duration-200 ${customerOpen ? "rotate-180" : ""}`} size={12} />
+                                                    </button>
+                                                </div>
+
+                                                {customerOpen && (
+                                                    <div className="absolute z-50 left-0 right-0 mt-2 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                        <div className="max-h-[280px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                                            {fetchingCustomers && customers.length === 0 ? (
+                                                                <div className="p-4 text-center text-slate-500 text-xs font-medium flex items-center justify-center gap-2">
+                                                                    <FaSpinner className="animate-spin" /> Fetching customers...
+                                                                </div>
+                                                            ) : customers.length === 0 ? (
+                                                                <div className="p-4 text-center text-slate-400 text-xs font-medium">
+                                                                    No customers found
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    {customers.map((cust) => (
+                                                                        <button
+                                                                            key={cust.id}
+                                                                            type="button"
+                                                                            onClick={() => handleCustomerSelect(cust)}
+                                                                            className={`w-full rounded-xl px-4 py-3 text-left transition-all flex items-center justify-between group ${String(formData.customer_id) === String(cust.id) ? "bg-brand-50 border-brand-100" : "hover:bg-slate-50"}`}
+                                                                        >
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <span className={`text-sm font-bold ${String(formData.customer_id) === String(cust.id) ? "text-brand-700" : "text-slate-700"}`}>
+                                                                                    {cust.name || "Unnamed Customer"}
+                                                                                </span>
+                                                                                <span className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
+                                                                                    {cust.mobile_number || "No number"}
+                                                                                </span>
+                                                                            </div>
+                                                                            {String(formData.customer_id) === String(cust.id) && (
+                                                                                <div className="h-6 w-6 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-md">
+                                                                                    <FaSave size={10} />
+                                                                                </div>
+                                                                            )}
+                                                                        </button>
+                                                                    ))}
+
+                                                                    {customerNext && (
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={loadingMoreCustomers}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                loadMoreCustomers();
+                                                                            }}
+                                                                            className="w-full rounded-xl py-3 text-brand-600 text-xs font-bold hover:bg-brand-50 transition flex items-center justify-center gap-2"
+                                                                        >
+                                                                            {loadingMoreCustomers ? <FaSpinner className="animate-spin" /> : "Load More Customers"}
+                                                                        </button>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {getErrorText(errors.customer_id || errors.customer) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.customer_id || errors.customer)}</p>}
+                                        </div>
+
+                                        <div>
+                                            <label className={labelClass}>Notes</label>
+                                            <div className="relative group">
+                                                <FaAlignLeft className="absolute left-4 top-4 text-slate-400 group-focus-within:text-brand-600 transition" />
+                                                <textarea
+                                                    rows={3}
+                                                    name="notes"
+                                                    value={formData.notes}
+                                                    onChange={handleInputChange}
+                                                    className={`${inputClass("notes")} pl-11`}
+                                                    placeholder="Optional notes for this order"
+                                                />
+                                            </div>
+                                            {getErrorText(errors.notes) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.notes)}</p>}
+                                        </div>
+                                    </section>
+
+                                    <section className="xl:col-span-7 rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Order Items</h2>
+                                                <p className="text-xs text-slate-500 mt-1">Search and add products to the sales order</p>
+                                            </div>
+                                            <div className="w-full sm:w-[340px]">
+                                                <PurchaseOrderProductSearch
+                                                    onSelect={handleAddProduct}
+                                                    branchId={formData.branch_id}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {formData.items.map((item, index) => (
+                                                <div
+                                                    key={`item-${index}`}
+                                                    className="border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-12 gap-3 bg-slate-50/50"
+                                                >
+                                                    <div className="md:col-span-5">
+                                                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                                                            <FaBoxOpen className="text-slate-400" />
+                                                            Product
+                                                        </label>
+                                                        <div className="w-full h-[46px] rounded-xl px-4 py-3 text-sm border border-slate-200 bg-slate-50 text-slate-700 font-medium relative flex items-center">
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="truncate">{item.productName || "Product"}</span>
+                                                                <span className="text-[11px] text-slate-500 truncate">SKU: {item.sku || "-"}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="md:col-span-3">
+                                                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                                                            <FaBoxOpen className="text-slate-400" />
+                                                            Quantity
+                                                        </label>
+                                                        <div className="relative group">
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={item.quantity}
+                                                                onChange={(event) => handleItemChange(index, "quantity", event.target.value)}
+                                                                className="w-full rounded-xl px-4 py-3 text-sm border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
+                                                                placeholder="Qty"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="md:col-span-3">
+                                                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                                                            <FaMoneyBillWave className="text-slate-400" />
+                                                            Unit Price
+                                                        </label>
+                                                        <div className="relative group">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                value={item.unit_price}
+                                                                onChange={(event) => handleItemChange(index, "unit_price", event.target.value)}
+                                                                className="w-full rounded-xl px-4 py-3 text-sm border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
+                                                                placeholder="0.00"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="md:col-span-1 flex items-end">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeItemRow(index)}
+                                                            className="h-11 w-11 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 inline-flex items-center justify-center transition-colors"
+                                                            title="Remove item"
+                                                        >
+                                                            <FaTrash />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex justify-end pt-4 border-t border-slate-100 mt-4">
+                                            <div className="bg-slate-50 border border-slate-200 rounded-xl px-6 py-4 min-w-[280px] flex justify-between items-center">
+                                                <span className="text-slate-500 font-bold uppercase tracking-wider text-sm">Order Total</span>
+                                                <span className="text-2xl font-bold text-slate-900">
+                                                    ₹{formData.items.reduce((sum, item) => sum + ((parsePositiveInt(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {itemError && <p className="text-red-500 text-xs font-medium">{itemError}</p>}
+                                    </section>
+                                </div>
+
+                                <div className="form-actions">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(-1)}
+                                        className="btn-secondary"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={saving}
+                                        className={`btn-primary inline-flex items-center gap-2 ${saving ? "opacity-70 cursor-not-allowed" : ""}`}
+                                    >
+                                        <FaSave />
+                                        {saving ? "Saving..." : "Update Sales Order"}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </section>
+                </div>
+            </main>
+        </div>
+    );
+}

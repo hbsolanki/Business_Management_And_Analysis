@@ -54,7 +54,7 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
                             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                 <div className="flex justify-between items-center mb-2">
                                     <h3 className="text-lg leading-6 font-bold text-gray-900" id="modal-title">
-                                        Configure Quick Actions
+                                        Configure Shortcuts
                                     </h3>
                                     <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                                         <FaTimes />
@@ -101,7 +101,7 @@ function QuickActionsConfigModal({ isOpen, onClose, availableActions, activeActi
                                         })
                                     ) : (
                                         <div className="text-center py-8 text-gray-500">
-                                            No actions found matching "{searchQuery}"
+                                            No actions found matching &quot;{searchQuery}&quot;
                                         </div>
                                     )}
                                 </div>

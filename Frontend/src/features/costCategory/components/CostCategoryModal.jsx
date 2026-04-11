@@ -3,7 +3,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import costCategoryService from "../services/costCategoryService";
 
-export default function CostCategoryModal({ category, onClose, onSaved }) {
+export default function CostCategoryModal({ category, branchId, onClose, onSaved }) {
     const [form, setForm] = useState({ name: "", description: "" });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -30,9 +30,14 @@ export default function CostCategoryModal({ category, onClose, onSaved }) {
         setLoading(true);
         setErrors({});
         try {
+            const payload = { ...form };
+            if (!category && branchId) {
+                payload.branch_id = Number(branchId);
+            }
+
             const res = category
                 ? await costCategoryService.update(category.id, form)
-                : await costCategoryService.create(form);
+                : await costCategoryService.create(payload);
 
             onSaved(res.data);
             toast.success(`Category ${category ? "updated" : "added"} successfully`);

@@ -1,7 +1,7 @@
 import api from "@/services/api";
 
 export const managerService = {
-    getAll: () => api.get("/business/manager/"),
+    getAll: (params) => api.get("/user/", { params: { role: "MANAGER", ...params } }),
     create: (data) => api.post("/business/manager/", data),
     getById: (id) => api.get(`/user/${id}/`),
     update: (id, data) => {

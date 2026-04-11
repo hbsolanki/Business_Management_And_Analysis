@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from "react";
 import { FaBell, FaLink, FaTrashAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import useNotification from '@/hooks/useNotification';
 
 const NotificationBell = () => {
-    const { notifications, fetchNotifications, markAsRead, clearNotifications, deleteNotification } = useNotification();
+    const { notifications, fetchNotifications, markAsRead, clearNotifications, deleteNotification, bulkDeleteNotifications } = useNotification();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
@@ -109,7 +109,7 @@ const NotificationBell = () => {
             </button>
 
             {isOpen && (
-                <div className="glass-panel absolute top-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-3 w-[calc(100vw-1.5rem)] sm:w-[24rem] md:w-[26rem] max-w-[26rem] rounded-3xl shadow-2xl z-50 animate-fade-in-down overflow-hidden border border-white/70">
+                <div className="glass-panel fixed left-3 right-3 top-20 z-50 mt-0 w-auto max-w-none animate-fade-in-down overflow-hidden rounded-3xl border border-white/70 shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-[24rem] sm:max-w-[24rem] sm:translate-x-0 md:w-[26rem] md:max-w-[26rem]">
                     <div className="px-4 py-4 border-b border-white/70 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-white/80">
                         <div>
                             <h3 className="font-bold text-base tracking-tight text-slate-900">Notifications</h3>
@@ -118,12 +118,20 @@ const NotificationBell = () => {
                             </p>
                         </div>
                         {notifications.length > 0 && (
-                            <button
-                                onClick={clearNotifications}
-                                className="text-xs text-slate-700 hover:text-slate-900 font-semibold self-start sm:self-auto px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
-                            >
-                                Mark all as read
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={clearNotifications}
+                                    className="text-xs text-slate-700 hover:text-slate-900 font-semibold px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+                                >
+                                    Mark all as read
+                                </button>
+                                <button
+                                    onClick={bulkDeleteNotifications}
+                                    className="text-xs text-rose-600 hover:text-rose-700 font-semibold px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 transition-colors"
+                                >
+                                    Delete all
+                                </button>
+                            </div>
                         )}
                     </div>
 

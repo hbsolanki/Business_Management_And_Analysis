@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+{% load humanize %}
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-size: 13px;
+      color: #334155;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: #ffffff;
+      padding: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 8px;
+    }
+
+    .header-content h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .header-content p {
+      margin: 5px 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .invoice-label h2 {
+      margin: 0;
+      font-size: 20px;
+      text-align: right;
+    }
+
+    .invoice-label span {
+      display: block;
+      margin-top: 5px;
+      font-size: 14px;
+      text-align: right;
+    }
+
+    .section-title {
+      font-size: 18px;
+      color: #1e3a8a;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      page-break-after: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 30px;
+      table-layout: auto;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #1e3a8a;
+      text-align: left;
+      padding: 12px;
+      font-weight: 700;
+      border-bottom: 2px solid #3b82f6;
+      font-size: 11px;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px;
+      vertical-align: top;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .summary-grid {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      width: 31%;
+      margin-right: 2%;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+
+    .summary-card:nth-child(3n) {
+      margin-right: 0;
+    }
+
+    .card-title {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .card-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e3a8a;
+    }
+
+    .branch-header {
+      background: #1e3a8a;
+      padding: 12px 15px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #ffffff;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      page-break-before: always;
+    }
+
+    h3 {
+      font-size: 14px;
+      color: #334155;
+      margin-top: 25px;
+      margin-bottom: 10px;
+    }
+
+    /* Section Numbering */
+    body {
+      counter-reset: section;
+    }
+
+    .section-title {
+      counter-increment: section;
+      counter-reset: branch-counter;
+    }
+
+    .section-title::before {
+      content: counter(section) ". ";
+      font-weight: 800;
+    }
+
+    .branch-header {
+      counter-increment: branch-counter;
+      counter-reset: subsection;
+    }
+
+    .branch-header::before {
+      content: counter(section) "." counter(branch-counter) " ";
+      font-weight: 800;
+    }
+
+    h3 {
+      counter-increment: subsection;
+    }
+
+    h3::before {
+      content: counter(section) "." counter(branch-counter) "." counter(subsection) " ";
+      font-weight: 700;
+      color: #1e3a8a;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-content">
+      <h1>{{ business_name }}</h1>
+      <p>Business Analytics Report</p>
+    </div>
+    <div class="invoice-label">
+      <h2>REPORT</h2>
+      <span>{{ start_date }} to {{ end_date }}</span>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="section-title">General Summary</h2>
+
+    {% if report_data.general_summary.product %}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-title">Total Rev (Sales)</div>
+        <div class="card-value">₹{{ report_data.general_summary.product.total_revenue|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Total Profit (Sales)</div>
+        <div class="card-value">₹{{ report_data.general_summary.product.total_profit|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Qty Sold</div>
+        <div class="card-value">{{ report_data.general_summary.product.total_quantity_sold|intcomma }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if report_data.general_summary.cost %}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-title">Global Revenue</div>
+        <div class="card-value">₹{{ report_data.general_summary.cost.total_revenue|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Global Expenses</div>
+        <div class="card-value">₹{{ report_data.general_summary.cost.total_expenses|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Net Profit (EBT)</div>
+        <div class="card-value">₹{{ report_data.general_summary.cost.net_profit_before_tax|floatformat:2|intcomma }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if report_data.general_summary.inventory %}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-title">Total Stock Value</div>
+        <div class="card-value">₹{{ report_data.general_summary.inventory.total_stock_value|floatformat:2|intcomma }}
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Distinct Items in Stock</div>
+        <div class="card-value">{{ report_data.general_summary.inventory.total_quantity|intcomma }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if report_data.general_summary.purchase_order %}
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-title">Total PO Amount</div>
+        <div class="card-value">₹{{ report_data.general_summary.purchase_order.total_po_amount|floatformat:2|intcomma }}
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Total Orders</div>
+        <div class="card-value">{{ report_data.general_summary.purchase_order.total_orders|intcomma }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <h2 class="section-title">Branch Breakdowns</h2>
+
+    {% for branch in report_data.branch %}
+    <div class="branch-header">
+      Branch: {{ branch.branch_name }}
+    </div>
+
+    {% if branch.product %}
+    <h3>Products Sold</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th>Category</th>
+          <th class="text-right">Qty</th>
+          <th class="text-right">Revenue</th>
+          <th class="text-right">Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in branch.product.products %}
+        <tr>
+          <td>{{ p.product_name }}</td>
+          <td>{{ p.category_name }}</td>
+          <td class="text-right">{{ p.total_quantity_sold|intcomma }}</td>
+          <td class="text-right">₹{{ p.total_revenue|floatformat:2|intcomma }}</td>
+          <td class="text-right">₹{{ p.total_profit|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if branch.inventory %}
+    <h3>Current Stock Snapshot</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th class="text-right">Stock Qty</th>
+          <th class="text-right">Stock Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in branch.inventory.products %}
+        <tr>
+          <td>{{ i.product_name }}</td>
+          <td class="text-right">{{ i.current_stock|floatformat:0|intcomma }}</td>
+          <td class="text-right">₹{{ i.stock_value|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if branch.cost %}
+    <h3>Financial Summary</h3>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-title">Revenue</div>
+        <div class="card-value">₹{{ branch.cost.financial_summary.total_revenue|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">COGS</div>
+        <div class="card-value">₹{{ branch.cost.financial_summary.cost_of_goods_sold|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Expenses</div>
+        <div class="card-value">₹{{ branch.cost.financial_summary.total_expenses|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Net Profit</div>
+        <div class="card-value">₹{{ branch.cost.financial_summary.net_profit_before_tax|floatformat:2|intcomma }}</div>
+      </div>
+    </div>
+    {% if branch.cost.categories %}
+    <table>
+      <thead>
+        <tr>
+          <th>Expense Category</th>
+          <th class="text-right">Total Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in branch.cost.categories %}
+        <tr>
+          <td>{{ c.cost_category__name }}</td>
+          <td class="text-right">₹{{ c.total_cost|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% endif %}
+
+    {% if branch.purchase_order %}
+    <h3>Purchase Orders</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Supplier Name</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for po in branch.purchase_order.orders %}
+        <tr>
+          <td>{{ po.supplier_name }}</td>
+          <td>{{ po.order_date|date:"Y-m-d"|default:po.order_date }}</td>
+          <td>{{ po.status }}</td>
+          <td class="text-right">₹{{ po.total_amount|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% endfor %}
+
+  </div>
+</body>
+
+</html>

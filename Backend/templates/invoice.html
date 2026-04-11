@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-size: 13px;
+      color: #334155;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: #ffffff;
+      padding: 40px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-content h1 {
+      margin: 0;
+      font-size: 32px;
+      letter-spacing: 1px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .header-content p {
+      margin: 5px 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .invoice-label {
+      text-align: right;
+    }
+
+    .invoice-label h2 {
+      margin: 0;
+      font-size: 24px;
+      opacity: 0.8;
+    }
+
+    .invoice-label span {
+      font-size: 14px;
+      display: block;
+      margin-top: 5px;
+    }
+
+    .container {
+      padding: 40px;
+    }
+
+    .info-grid {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 30px;
+    }
+
+    .info-col {
+      width: 45%;
+    }
+
+    .info-title {
+      font-weight: 700;
+      color: #1e3a8a;
+      text-transform: uppercase;
+      font-size: 12px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .info-content p {
+      margin: 3px 0;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #1e3a8a;
+      text-align: left;
+      padding: 15px 12px;
+      font-weight: 700;
+      border-bottom: 2px solid #3b82f6;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    td {
+      padding: 15px 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .totals-section {
+      margin-top: 30px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .totals-table {
+      width: 300px;
+    }
+
+    .totals-table td {
+      border: none;
+      padding: 8px 12px;
+    }
+
+    .totals-table .label {
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .totals-table .grand-total {
+      background: #1e3a8a;
+      color: #ffffff;
+      border-radius: 4px;
+    }
+
+    .totals-table .grand-total td {
+      padding: 15px 12px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 40px;
+      width: 100%;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 11px;
+    }
+
+    .tagline {
+      color: #3b82f6;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-content">
+      <h1>BizVisionary</h1>
+      <p>Innovative Business Solutions</p>
+    </div>
+    <div class="invoice-label">
+      <h2>TAX INVOICE</h2>
+      <span>#{{ invoice.id }}</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="info-grid">
+      <div class="info-col">
+        <span class="info-title">Billed To</span>
+        <div class="info-content">
+          <p><strong>{{ invoice.customer.name }}</strong></p>
+          <p>{{ invoice.customer.address }}</p>
+          <p>{{ invoice.customer.email }}</p>
+          <p>{{ invoice.customer.mobile_number }}</p>
+        </div>
+      </div>
+      <div class="info-col" style="text-align: right;">
+        <span class="info-title">Invoice Details</span>
+        <div class="info-content">
+          <p><strong>Date:</strong> {{ invoice.created_at|date:"d M Y" }}</p>
+          <p><strong>Payment Mode:</strong> {{ invoice.payment_mode|default:"N/A" }}</p>
+          <p><strong>Payment Status:</strong> {% if invoice.transaction_id %}Paid{% else %}Pending{% endif %}</p>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 50%;">Description</th>
+          <th class="text-right">Qty</th>
+          <th class="text-right">Rate</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.invoice_items.all %}
+        <tr>
+          <td>
+            <strong>{{ item.product.name }}</strong>
+          </td>
+          <td class="text-right">{{ item.quantity }}</td>
+          <td class="text-right">₹{{ item.selling_price }}</td>
+          <td class="text-right">₹{{ item.selling_price }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="totals-section">
+      <table class="totals-table">
+        <tr>
+          <td class="label">Subtotal</td>
+          <td class="text-right">₹{{ invoice.sub_total }}</td>
+        </tr>
+        <tr>
+          <td class="label">GST (18%)</td>
+          <td class="text-right">₹{{ tax_amount }}</td>
+        </tr>
+        <tr class="grand-total">
+          <td class="label">Total Amount</td>
+          <td class="text-right">₹{{ invoice.total_amount }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p>Thank you for your business! If you have any questions about this invoice, please contact us.</p>
+      <p class="tagline">www.BizVisionary.com</p>
+    </div>
+  </div>
+</body>
+
+</html>

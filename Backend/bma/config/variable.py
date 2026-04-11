@@ -1,0 +1,60 @@
+import os
+import environ
+from datetime import timedelta
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+env = environ.Env(DEBUG=(bool, False))
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
+# Core
+SECRET_KEY = env("SECRET_KEY")
+DEBUG = env.bool("DEBUG", default=False)
+
+# Database
+DB_HOST = env("DB_HOST", default="localhost")
+DB_NAME = env("DB_NAME", default="bma_db")
+DB_USER = env("DB_USER", default="postgres")
+DB_PASS = env("DB_PASS", default="")
+DB_PORT = env("DB_PORT", default="5432")
+
+# Redis & Celery
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+CELERY_ACCEPT_CONTENT = env.list("CELERY_ACCEPT_CONTENT", default=["json"])
+CELERY_TASK_SERIALIZER = env("CELERY_TASK_SERIALIZER", default="json")
+CELERY_TIMEZONE = env("CELERY_TIMEZONE", default="UTC")
+CELERY_TASK_TRACK_STARTED = env.bool("CELERY_TASK_TRACK_STARTED", default=True)
+CELERY_TASK_TIME_LIMIT = env.int("CELERY_TASK_TIME_LIMIT", default=1800)
+
+# Media & Cloudinary
+MEDIA_URL = env("MEDIA_URL")
+CLOUDINARY_CLOUD_NAME = env("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY = env("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = env("CLOUDINARY_API_SECRET")
+
+# Google OAuth
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = env("GOOGLE_CLIENT_SECRET")
+
+# Stripe
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
+
+# Email / Brevo
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+DEFAULT_FROM_NAME_EMAIL = env("DEFAULT_FROM_NAME_EMAIL")
+BREVO_API_KEY = env("BREVO_API_KEY")
+
+# JWT token lifetimes
+ACCESS_TOKEN_LIFETIME_DURATION = timedelta(minutes=env.int("ACCESS_TOKEN_LIFETIME", default=5))
+REFRESH_TOKEN_LIFETIME_DURATION = timedelta(days=env.int("REFRESH_TOKEN_LIFETIME", default=1))
+
+# AI Agent
+GOOGLE_MODEL = env("GOOGLE_MODEL", default="gemini-2.0-flash-exp")
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = env.bool("CORS_ALLOW_ALL_ORIGINS", default=False)

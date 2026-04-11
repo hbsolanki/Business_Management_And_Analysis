@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            font-size: 14px;
+            color: #2d2d2d;
+            margin: 0;
+            padding: 0;
+            background: #f4f7fa;
+        }
+        .header {
+            background: #1f3a8a;
+            color: #ffffff;
+            padding: 30px 24px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+        .header p {
+            margin: 10px 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .welcome-msg {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f3a8a;
+            margin-bottom: 20px;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+        .details-table td {
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .details-table .label {
+            font-weight: 600;
+            color: #6b7280;
+            width: 40%;
+        }
+        .details-table .value {
+            font-weight: bold;
+            color: #111827;
+            text-align: right;
+        }
+        .total-row {
+            background: #f8fafc;
+        }
+        .total-row td {
+            border-bottom: none !important;
+            padding: 15px 10px !important;
+        }
+        .total-label {
+            font-size: 16px;
+            color: #111827 !important;
+        }
+        .total-value {
+            font-size: 20px;
+            color: #1f3a8a !important;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .button {
+            background: #1f3a8a;
+            color: #ffffff !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>BizVisionary</h1>
+        <p>Subscription Receipt</p>
+    </div>
+
+    <div class="container">
+        <p class="welcome-msg">Thank you for your purchase!</p>
+        <p>Hi {{ user_name }},</p>
+        <p>Your subscription has been successfully activated. Below are your purchase details:</p>
+
+        <table class="details-table">
+            <tr>
+                <td class="label">Subscription ID</td>
+                <td class="value">#{{ subscription_id }}</td>
+            </tr>
+            <tr>
+                <td class="label">Plan Name</td>
+                <td class="value">{{ plan_name }}</td>
+            </tr>
+            <tr>
+                <td class="label">Duration</td>
+                <td class="value">{{ duration_days }} Days</td>
+            </tr>
+            <tr>
+                <td class="label">Start Date</td>
+                <td class="value">{{ start_date }}</td>
+            </tr>
+            <tr>
+                <td class="label">End Date</td>
+                <td class="value">{{ end_date }}</td>
+            </tr>
+            <tr class="total-row">
+                <td class="label total-label">Amount Paid</td>
+                <td class="value total-value">₹{{ price }}</td>
+            </tr>
+        </table>
+
+        <p>You can now access all the features included in your plan. If you have any questions, feel free to contact our support team.</p>
+
+        <div class="button-container">
+            <a href="http://localhost:3000/dashboard" class="button">Go to Dashboard</a>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 BizVisionary. All rights reserved.</p>
+            <p>This is a system-generated email. Please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { tokenService } from "@/services/tokenService";
+import { businessService } from "@/features/business/services/businessService";
+import Modal from "@/components/ui/Modal";
 import api, { API_BASE_URL } from "@/services/api";
+import { authService } from "@/services/authService";
+import toast from "react-hot-toast";
 import {
     FaUser,
     FaEnvelope,
@@ -9,70 +13,82 @@ import {
     FaCalendarAlt,
     FaEdit,
     FaBriefcase,
-    FaArrowLeft
+    FaArrowLeft,
+    FaIdBadge,
+    FaCheckCircle,
+    FaMapMarkerAlt,
+    FaMoneyBillWave,
+    FaShieldAlt,
+    FaTools,
+    FaKey,
+    FaClock
 } from "react-icons/fa";
 
 function ProfileViewer() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const navigate = useNavigate();
-    const { id } = useParams(); // Get ID from URL if present
+    const { id } = useParams();
 
     useEffect(() => {
         const currentUserId = tokenService.getId();
         const targetId = id || currentUserId;
 
         if (!targetId) {
+            setLoading(false);
             navigate("/login");
             return;
         }
 
+        setLoading(true);
         api.get(`/user/${targetId}/`)
             .then((res) => setUser(res.data))
             .catch((err) => {
                 console.error("Failed to fetch profile", err);
-                if (!id) {
-                    // Only redirect to login if trying to view self and failing
+                toast.error("Failed to load profile");
+                if (err?.response?.status === 401) {
                     navigate("/login");
-                } else {
-                    // If viewing others fails, maybe 404 or just stay?
-                    // For now, let's just stop loading, UI will show null/error
                 }
             })
             .finally(() => setLoading(false));
-    }, [navigate, id]);
+    }, [id, navigate]);
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="min-h-screen flex items-center justify-center bg-transparent">
+                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-brand-600"></div>
             </div>
         );
     }
 
     if (!user) return null;
 
-    // Determine edit route based on role
+    const userData = user.user || user;
+    const getRoleString = (obj) => {
+        if (!obj) return "";
+        if (typeof obj === "string") return obj.toUpperCase();
+        if (typeof obj === "object") return (obj.role || "").toUpperCase();
+        return "";
+    };
+
+    const roleStr = getRoleString(user?.role) || getRoleString(userData?.role);
+    const isOwner = Boolean(user?.is_owner || roleStr === "OWNER");
+    const isManager = Boolean(user?.is_manager || roleStr === "MANAGER");
+    const isEmployee = Boolean(user?.is_employee || roleStr === "EMPLOYEE");
+    const isMyProfile = String(userData?.id || user?.id) === String(tokenService.getId());
+
     const getEditRoute = () => {
-        if (user.is_owner) return "/owner/edit";
-        if (user.is_manager) return "/manager/edit";
-        if (user.is_employee) return "/employee/edit";
-        return "/profile/edit"; // Fallback
+        if (isOwner) return "/owner/edit";
+        if (isManager) return "/manager/edit";
+        if (isEmployee) return "/employee/edit";
+        return "/profile/edit";
     };
 
-    const getRoleLabel = () => {
-        if (user.is_owner) return "Business Owner";
-        if (user.is_manager) return "Manager";
-        if (user.is_employee) return "Employee";
-        return "User";
-    };
-
-    const getRoleColor = () => {
-        if (user.is_owner) return "blue";
-        if (user.is_manager) return "purple";
-        if (user.is_employee) return "green";
-        return "gray";
-    };
+    const roleLabel = isOwner ? "Business Owner" : isManager ? "Manager" : isEmployee ? "Employee" : "User";
 
     const getImageUrl = (path) => {
         if (!path) return null;
@@ -80,101 +96,515 @@ function ProfileViewer() {
         return `${API_BASE_URL}${path}`;
     };
 
-    const color = getRoleColor();
-    const editRoute = getEditRoute();
+    const getWorkAssignments = (data) => {
+        if (!data) return [];
+        const source = data.assigned_works || data.work || [];
+
+        if (Array.isArray(source) && source.length > 0) {
+            return source;
+        }
+
+        if (typeof source === "string" && source.trim()) {
+            try {
+                const parsed = JSON.parse(source);
+                if (Array.isArray(parsed)) return parsed;
+                return [String(parsed)];
+            } catch (_error) {
+                return [source];
+            }
+        }
+
+        return ["General"];
+    };
+
+    const formatDate = (value, options) => {
+        if (!value) return "Not available";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Not available";
+        return date.toLocaleDateString(undefined, options);
+    };
+
+    const formatDateTime = (value) => {
+        if (!value) return "Not available";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "Not available";
+        return date.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short"
+        });
+    };
+
+    const handleDeleteBusiness = async () => {
+        const business = user?.role?.business || user?.business;
+        if (!business?.id) return;
+
+        setIsDeleting(true);
+        try {
+            await businessService.delete(business.id);
+            toast.success("Business deleted successfully");
+            setUser((prev) => ({
+                ...prev,
+                business: null,
+                role: prev.role ? { ...prev.role, business: null } : null
+            }));
+        } catch (error) {
+            console.error("Failed to delete business", error);
+            toast.error("Failed to delete business");
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteModalOpen(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            await api.delete(`/user/${userData.id || user.id}/`);
+            toast.success("Account deleted successfully");
+            await authService.logout();
+            navigate("/");
+        } catch (error) {
+            console.error("Failed to delete account", error);
+            toast.error("Failed to delete account");
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteUserModalOpen(false);
+        }
+    };
+
+    const workAssignments = getWorkAssignments(user);
+    const branchList = Array.isArray(user.assigned_branches) && user.assigned_branches.length > 0
+        ? user.assigned_branches
+        : (Array.isArray(user.branches) && user.branches.length > 0
+            ? user.branches
+            : (user.branch ? [user.branch] : []));
+
+    const employeeDetails = user.employee_details || user.employee_detail || {};
+    const salaryValue = employeeDetails.salary ?? user.salary ?? 0;
+    const salaryNumber = Number(salaryValue || 0);
+    const salaryText = Number.isFinite(salaryNumber)
+        ? `₹${salaryNumber.toLocaleString("en-IN")}`
+        : `₹${salaryValue || 0}`;
+    const bioText = employeeDetails.bio || user.description || "";
+    const address = employeeDetails.address || user.address || {};
 
     return (
-        <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition font-medium"
-                >
-                    <FaArrowLeft /> Back
-                </button>
+        <div className="min-h-screen bg-transparent py-6 sm:py-8">
+            <div className="section-shell space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white hover:text-slate-900"
+                    >
+                        <FaArrowLeft className="text-xs" />
+                        Back
+                    </button>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Header with Background */}
-                    <div className={`h-32 bg-gradient-to-r from-${color}-500 to-${color}-600`}></div>
+                    {isMyProfile && (
+                        <Link
+                            to={getEditRoute()}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                        >
+                            <FaEdit className="text-xs" />
+                            Edit Profile
+                        </Link>
+                    )}
+                </div>
 
-                    <div className="px-8 pb-8">
-                        <div className="relative flex justify-between items-end -mt-12 mb-6">
-                            <div className="flex items-end gap-6">
-                                <div className="p-1.5 bg-white rounded-full">
-                                    {user.profile_picture ? (
-                                        <img
-                                            src={getImageUrl(user.profile_picture)}
-                                            alt="Profile"
-                                            className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md bg-white"
-                                        />
-                                    ) : (
-                                        <div className={`w-24 h-24 rounded-full bg-${color}-100 flex items-center justify-center border-4 border-white shadow-md text-${color}-600`}>
-                                            {user.first_name?.[0]}{user.last_name?.[0]}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mb-1">
-                                    <h1 className="text-2xl font-bold text-gray-900">{user.first_name} {user.last_name}</h1>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className={`px-2 py-0.5 rounded-md bg-${color}-50 text-${color}-700 text-xs font-bold uppercase`}>
-                                            {getRoleLabel()}
-                                        </span>
-                                        <span className="text-gray-500 text-sm">@{user.username}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <Link
-                                to={editRoute}
-                                className={`px-5 py-2.5 bg-${color}-600 hover:bg-${color}-700 text-white rounded-xl font-medium shadow-sm transition flex items-center gap-2`}
-                            >
-                                <FaEdit /> Edit Profile
-                            </Link>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <FaUser className={`text-${color}-500`} /> Personal Details
-                                </h2>
-                                <div className="space-y-4">
-                                    <InfoItem icon={FaEnvelope} label="Email" value={user.email} />
-                                    <InfoItem icon={FaPhone} label="Mobile" value={user.mobile_number} />
-                                    <InfoItem icon={FaCalendarAlt} label="Joined" value={new Date(user.date_joined).toLocaleDateString()} />
-                                </div>
-                            </div>
-
-                            {user.business && (
-                                <div>
-                                    <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                        <FaBriefcase className={`text-${color}-500`} /> Business Info
-                                    </h2>
-                                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                                        <h3 className="font-semibold text-gray-900">{user.business.name}</h3>
-                                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                                            {user.business.description || "No description provided."}
-                                        </p>
-                                    </div>
+                <section className="glass-panel rounded-3xl border border-white/70 p-5 shadow-soft sm:p-7">
+                    <div className="grid items-center gap-6 xl:grid-cols-[auto_minmax(0,1fr)_260px]">
+                        <div className="mx-auto xl:mx-0">
+                            {userData.profile_picture ? (
+                                <img
+                                    src={getImageUrl(userData.profile_picture)}
+                                    alt="Profile"
+                                    className="h-28 w-28 rounded-2xl border-4 border-white object-cover shadow-md sm:h-32 sm:w-32"
+                                />
+                            ) : (
+                                <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-slate-700 to-slate-900 text-3xl font-bold text-white shadow-md sm:h-32 sm:w-32">
+                                    {userData.first_name?.[0]}{userData.last_name?.[0]}
                                 </div>
                             )}
                         </div>
+
+                        <div className="space-y-3 text-center xl:text-left">
+                            <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+                                <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                                    {userData.first_name} {userData.last_name}
+                                </h1>
+                                <FaCheckCircle className="text-emerald-500" title="Verified User" />
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                                    {roleLabel}
+                                </span>
+                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                                    @{userData.username}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                                    <FaEnvelope className="text-slate-400" />
+                                    {userData.email || "Not set"}
+                                </span>
+                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                                    <FaPhone className="text-slate-400" />
+                                    {userData.mobile_number || "Not set"}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                            <SummaryPill
+                                icon={FaCheckCircle}
+                                label="Status"
+                                value={userData.is_active ? "Active" : "Inactive"}
+                                tone={userData.is_active ? "success" : "danger"}
+                            />
+                            <SummaryPill
+                                icon={FaCalendarAlt}
+                                label="Joined"
+                                value={formatDate(userData.date_joined, {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric"
+                                })}
+                            />
+                            <SummaryPill
+                                icon={FaClock}
+                                label="Updated"
+                                value={formatDateTime(user.updated_at || userData.updated_at)}
+                            />
+                        </div>
                     </div>
+                </section>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                    <div className="space-y-6 xl:col-span-2">
+                        <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                            <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                    <FaIdBadge size={16} />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-semibold text-slate-900">Personal Information</h2>
+                                    <p className="text-xs text-slate-500">Primary contact and account identity</p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <InfoItem icon={FaEnvelope} label="Email Address" value={userData.email} verified />
+                                <InfoItem icon={FaPhone} label="Phone Number" value={userData.mobile_number} />
+                                <InfoItem
+                                    icon={FaCalendarAlt}
+                                    label="Member Since"
+                                    value={formatDate(userData.date_joined, {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric"
+                                    })}
+                                />
+                                <InfoItem icon={FaUser} label="User ID" value={`#${user.id}`} mono />
+                            </div>
+                        </section>
+
+                        {address && Object.values(address).some(v => v) && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                        <FaMapMarkerAlt size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Address Details</h2>
+                                        <p className="text-xs text-slate-500">Residential and contact location</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <InfoItem icon={FaMapMarkerAlt} label="Street Address" value={address.address_line_1} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="Area / Landmark" value={address.address_line_2} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="City" value={address.city_name || address.city} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="State" value={address.state_name || address.state} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="Pin Code" value={address.pin_code} />
+                                    <InfoItem icon={FaMapMarkerAlt} label="Country" value={address.country_name || address.country} />
+                                </div>
+                            </section>
+                        )}
+
+                        {(isManager || isEmployee) && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                                        <FaShieldAlt size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Professional Details</h2>
+                                        <p className="text-xs text-slate-500">Compensation and assigned responsibilities</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-6 lg:grid-cols-2">
+                                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+                                        <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                                            <FaMoneyBillWave />
+                                            Monthly Salary
+                                        </p>
+                                        <p className="text-2xl font-bold text-indigo-700">{salaryText}</p>
+                                    </div>
+
+                                    <div>
+                                        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                            <FaTools />
+                                            Work Assignments
+                                        </p>
+                                        <div className="space-y-4">
+                                            {/* Group by branch if structured, otherwise show list */}
+                                            {workAssignments.some(w => typeof w === 'object' && w.branch_name) ? (
+                                                Object.entries(
+                                                    workAssignments.reduce((acc, curr) => {
+                                                        const bName = curr.branch_name || "General";
+                                                        if (!acc[bName]) acc[bName] = [];
+                                                        acc[bName].push(curr.work_type || curr.name || "General");
+                                                        return acc;
+                                                    }, {})
+                                                ).map(([branchName, types]) => (
+                                                    <div key={branchName} className="space-y-2">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">{branchName}</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {types.map((type, idx) => (
+                                                                <div key={`${branchName}-${type}-${idx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+                                                                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900 text-white">
+                                                                        <FaKey size={9} />
+                                                                    </div>
+                                                                    <span className="text-[11px] font-bold uppercase tracking-tight text-slate-700">
+                                                                        {String(type)}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                    {workAssignments.map((work, idx) => (
+                                                        <div key={`${String(work)}-${idx}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white">
+                                                                <FaKey size={10} />
+                                                            </div>
+                                                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+                                                                {String(work?.work_type || work?.name || work || "General")}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {bioText && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">About / Notes</h2>
+                                <p className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+                                    {bioText}
+                                </p>
+                            </section>
+                        )}
+                    </div>
+
+                    <aside className="space-y-6">
+                        {(user.role?.business || user.business) && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                                            <FaBriefcase size={15} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base font-semibold text-slate-900">Business Information</h2>
+                                            <p className="text-xs text-slate-500">Compliance and registration data</p>
+                                        </div>
+                                    </div>
+                                    {(user.role?.business?.id || user.business?.id) && isOwner && isMyProfile && (
+                                        <Link
+                                            to={`/business/edit/${user.role?.business?.id || user.business?.id}`}
+                                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                        >
+                                            Edit
+                                        </Link>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    <InfoLine label="Company Name" value={user.role?.business?.name || user.business?.name} />
+                                    <InfoLine label="Business ID" value={(user.role?.business?.id || user.business?.id) ? `#${user.role?.business?.id || user.business?.id}` : "N/A"} mono />
+                                    {(isOwner || isManager) && (
+                                        <InfoLine label="GST Number" value={user.role?.business?.gst_number || user.business?.gst_number || "Not set"} />
+                                    )}
+                                    <div>
+                                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</p>
+                                        <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+                                            {user.role?.business?.description || user.business?.description || "No description provided."}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {isOwner && isMyProfile && (
+                                    <button
+                                        onClick={() => setIsDeleteModalOpen(true)}
+                                        className="mt-5 w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                                    >
+                                        Delete Business
+                                    </button>
+                                )}
+                            </section>
+                        )}
+
+                        {branchList.length > 0 && (
+                            <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
+                                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                        <FaMapMarkerAlt size={15} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Assigned Branches</h2>
+                                        <p className="text-xs text-slate-500">Location access details</p>
+                                    </div>
+                                </div>
+
+                                <div className="custom-scrollbar max-h-[24rem] space-y-3 overflow-y-auto pr-1">
+                                    {branchList.map((branch, idx) => {
+                                        if (!branch) return null;
+
+                                        const branchId = typeof branch === "object" ? branch.id : branch;
+                                        const branchName = typeof branch === "object"
+                                            ? (branch.name || `Branch #${branch.id || idx + 1}`)
+                                            : `Branch #${branch}`;
+                                        const branchContact = typeof branch === "object" ? branch.contact_number : null;
+                                        const branchAddress = typeof branch === "object" ? branch.address : null;
+                                        const isMain = typeof branch === "object" && branch.is_default;
+
+                                        return (
+                                            <div key={branchId || idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                                <div className="mb-2 flex items-center gap-2">
+                                                    <p className="text-sm font-semibold text-slate-900">{branchName}</p>
+                                                    {isMain && (
+                                                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                                                            Main
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-1 text-xs text-slate-600">
+                                                    <p>ID: {branchId ? `#${branchId}` : "N/A"}</p>
+                                                    {branchContact && <p>Contact: {branchContact}</p>}
+                                                    {branchAddress && typeof branchAddress === "object" ? (
+                                                        <p className="leading-relaxed">
+                                                            {[
+                                                                branchAddress.address_line_1,
+                                                                branchAddress.address_line_2,
+                                                                branchAddress.city_name,
+                                                                branchAddress.state_name || branchAddress.state,
+                                                                branchAddress.country_name || branchAddress.country,
+                                                                branchAddress.pin_code,
+                                                            ].filter(Boolean).join(", ")}
+                                                        </p>
+                                                    ) : branchAddress ? (
+                                                        <p>{branchAddress}</p>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
+                        {!(user.role?.business || user.business) && isOwner && isMyProfile && (
+                            <section className="rounded-2xl border border-red-200 bg-red-50/70 p-5 shadow-sm sm:p-6">
+                                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-red-600">Danger Zone</h3>
+                                <p className="mb-4 text-xs text-red-700">
+                                    No business is registered for this account. You can delete the account permanently.
+                                </p>
+                                <button
+                                    onClick={() => setIsDeleteUserModalOpen(true)}
+                                    className="w-full rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                                >
+                                    Delete My Account
+                                </button>
+                            </section>
+                        )}
+                    </aside>
                 </div>
             </div>
+
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Delete Business?"
+                message="Are you sure you want to delete your business? This action cannot be undone and will permanently delete all associated data."
+                confirmText={isDeleting ? "Deleting..." : "Yes, Delete"}
+                cancelText="Cancel"
+                onConfirm={handleDeleteBusiness}
+                type="danger"
+            />
+
+            <Modal
+                isOpen={isDeleteUserModalOpen}
+                onClose={() => setIsDeleteUserModalOpen(false)}
+                title="Delete Entire Account?"
+                message="Are you absolutely sure you want to delete your entire owner account? This action is permanent and cannot be undone."
+                confirmText={isDeleting ? "Deleting..." : "Delete Account"}
+                cancelText="Cancel"
+                onConfirm={handleDeleteAccount}
+                type="danger"
+            />
         </div>
     );
 }
 
-function InfoItem({ icon: Icon, label, value }) {
+function SummaryPill({ icon: Icon, label, value, tone = "default" }) {
+    const toneClass = tone === "success"
+        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+        : tone === "danger"
+            ? "bg-rose-50 text-rose-700 border-rose-100"
+            : "bg-white text-slate-700 border-slate-200";
+
     return (
-        <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
-            <div className="text-gray-400">
-                <Icon size={18} />
+        <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide">
+                <Icon className="text-xs" />
+                {label}
             </div>
-            <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase">{label}</p>
-                <p className="text-gray-900 font-medium">{value || "Not provided"}</p>
+            <p className="text-xs font-semibold leading-relaxed">{value || "Not available"}</p>
+        </div>
+    );
+}
+
+function InfoLine({ label, value, mono }) {
+    return (
+        <div>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+            <p className={`text-sm font-medium text-slate-700 ${mono ? "font-mono" : ""}`}>
+                {value || "Not available"}
+            </p>
+        </div>
+    );
+}
+
+function InfoItem({ icon: Icon, label, value, mono, verified }) {
+    return (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <div className="mb-2 flex items-center gap-2">
+                <Icon className="text-xs text-slate-400" />
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                {verified && <FaCheckCircle className="text-xs text-emerald-500" title="Verified" />}
             </div>
+            <p className={`text-sm font-semibold text-slate-800 ${mono ? "font-mono" : ""}`}>
+                {value || <span className="italic text-slate-400">Not set</span>}
+            </p>
         </div>
     );
 }

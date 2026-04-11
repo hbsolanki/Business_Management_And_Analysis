@@ -84,7 +84,7 @@ export default function CostCategoryList() {
                 </div>
                 <button
                     onClick={() => { setSelectedCategory(null); setShowModal(true); }}
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-medium"
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-brand-600 to-brand-700 text-white px-5 py-2.5 rounded-xl hover:from-brand-700 hover:to-brand-800 transition-all shadow-md hover:shadow-lg font-medium"
                 >
                     <PlusIcon className="w-5 h-5" />
                     <span>Add New Category</span>
@@ -94,18 +94,18 @@ export default function CostCategoryList() {
             {/* Content */}
             {loading ? (
                 <div className="flex justify-center py-20">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-600"></div>
                 </div>
             ) : categories.length === 0 ? (
-                <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100 max-w-lg mx-auto mt-10">
-                    <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="glass-panel rounded-2xl p-12 text-center max-w-lg mx-auto mt-10">
+                    <div className="bg-white/70 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                         <FaLayerGroup className="text-gray-300 text-4xl" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories yet</h3>
                     <p className="text-gray-500 mb-6">Start by creating your first cost category to track expenses.</p>
                     <button
                         onClick={() => { setSelectedCategory(null); setShowModal(true); }}
-                        className="text-blue-600 font-bold hover:text-blue-700 hover:underline"
+                        className="text-brand-600 font-bold hover:text-brand-700 hover:underline"
                     >
                         Create Category
                     </button>
@@ -113,16 +113,16 @@ export default function CostCategoryList() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {categories.map((category) => (
-                        <div key={category.id} className="group bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-xl hover:border-blue-100 transition-all duration-300 relative flex flex-col h-full">
+                        <div key={category.id} className="glass-panel group rounded-2xl p-6 hover:shadow-xl hover:border-brand-100 transition-all duration-300 relative flex flex-col h-full">
                             <div className="flex-1">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="bg-blue-50 text-blue-700 p-2.5 rounded-lg">
+                                    <div className="bg-brand-50 text-brand-700 p-2.5 rounded-lg">
                                         <FaLayerGroup className="w-5 h-5" />
                                     </div>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => handleEdit(category)}
-                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            className="p-2 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                             title="Edit"
                                         >
                                             <PencilIcon className="w-4 h-4" />

@@ -15,7 +15,7 @@ const loadState = (type) => {
         const parsed = JSON.parse(serialized);
         // Ensure we only return strings (filter out any malformed objects from previous bugs)
         return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
-    } catch (err) {
+    } catch {
         return [];
     }
 };
@@ -24,6 +24,7 @@ const initialState = {
     headerActions: loadState('header'),
     dashboardActions: loadState('dashboard'),
     chatPreferredUserId: localStorage.getItem('chat_preferred_user_id') || null,
+    chatPreferredUserName: localStorage.getItem('chat_preferred_user_name') || null,
 };
 
 const quickActionsSlice = createSlice({
@@ -49,11 +50,27 @@ const quickActionsSlice = createSlice({
             localStorage.setItem(STORAGE_KEYS.dashboard, JSON.stringify(state.dashboardActions));
         },
         setChatPreferredUser: (state, action) => {
-            state.chatPreferredUserId = action.payload;
-            if (action.payload) {
-                localStorage.setItem('chat_preferred_user_id', action.payload);
+            const payload = action.payload;
+            const id = typeof payload === 'object' && payload !== null ? payload.id : payload;
+            const name = typeof payload === 'object' && payload !== null ? payload.name : null;
+
+            state.chatPreferredUserId = id || null;
+            if (name) {
+                state.chatPreferredUserName = name;
+            } else if (!id) {
+                state.chatPreferredUserName = null;
+            }
+
+            if (id) {
+                localStorage.setItem('chat_preferred_user_id', id);
             } else {
                 localStorage.removeItem('chat_preferred_user_id');
+            }
+
+            if (name) {
+                localStorage.setItem('chat_preferred_user_name', name);
+            } else if (!id) {
+                localStorage.removeItem('chat_preferred_user_name');
             }
         },
         // Kept for backward compatibility if needed, but should be avoided

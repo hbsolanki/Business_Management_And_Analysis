@@ -13,7 +13,7 @@ export default function SelectedItems({ items, setItems }) {
   };
 
   if (!items.length) {
-    return <p className="text-sm text-gray-500">No products added</p>;
+    return <p className="text-sm text-slate-500">No products added</p>;
   }
 
   return (
@@ -21,24 +21,24 @@ export default function SelectedItems({ items, setItems }) {
       {items.map((item) => (
         <div
           key={item.id}
-          className="flex justify-between items-center border rounded px-4 py-2"
+          className="flex justify-between items-center border border-slate-200 rounded-lg px-4 py-3 bg-white"
         >
           <div>
-            <p className="font-medium">{item.name}</p>
-            <p className="text-xs text-gray-500">SKU: {item.sku}</p>
+            <p className="font-semibold text-slate-900">{item.name}</p>
+            <p className="text-xs text-slate-500">SKU: {item.sku}</p>
           </div>
 
           <div className="flex items-center gap-3">
             <input
               type="number"
               min="1"
-              className="w-20 border px-2 py-1"
+              className="w-20 border border-slate-200 rounded-md px-2 py-1 text-sm"
               value={item.quantity}
               onChange={(e) => updateQty(item.id, e.target.value)}
             />
             <button
               onClick={() => removeItem(item.id)}
-              className="text-red-600"
+              className="text-rose-600 hover:text-rose-700"
             >
               <FaTrash />
             </button>

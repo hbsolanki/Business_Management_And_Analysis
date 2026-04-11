@@ -13,7 +13,7 @@ const loadLayouts = () => {
             };
         }
         return JSON.parse(serialized);
-    } catch (err) {
+    } catch {
         return {
             owner: [],
             manager: [],

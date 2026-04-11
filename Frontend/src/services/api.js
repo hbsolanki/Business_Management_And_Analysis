@@ -4,90 +4,108 @@ import { tokenService } from "./tokenService";
 export const API_BASE_URL = "http://0.0.0.0:8000";
 
 const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 10000,
+  baseURL: API_BASE_URL,
+  timeout: 10000,
 });
 
 api.interceptors.request.use(
-    (config) => {
-        const token = tokenService.getAccessToken();
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
+  (config) => {
+    const token = tokenService.getAccessToken();
+    const isRefreshRequest = config.url?.includes("/api/token/refresh/");
+    if (token && !isRefreshRequest) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
 );
 
-let isRefreshing = false;
-let failedQueue = [];
+let refreshPromise = null;
 
-const processQueue = (error, token = null) => {
-    failedQueue.forEach((prom) => {
-        if (error) prom.reject(error);
-        else prom.resolve(token);
-    });
-    failedQueue = [];
+const refreshAccessToken = async () => {
+  const refreshToken = tokenService.getRefreshToken();
+  if (!refreshToken) {
+    throw new Error("No refresh token available");
+  }
+
+  const response = await axios.post(`${API_BASE_URL}/api/token/refresh/`, {
+    refresh: refreshToken,
+  });
+
+  const nextAccessToken = response.data?.access;
+  const nextRefreshToken = response.data?.refresh;
+  if (!nextAccessToken) {
+    throw new Error("No access token returned from refresh endpoint");
+  }
+
+  tokenService.setTokens({
+    access: nextAccessToken,
+    refresh: nextRefreshToken,
+  });
+  api.defaults.headers.common["Authorization"] = `Bearer ${nextAccessToken}`;
+
+  return nextAccessToken;
 };
 
 api.interceptors.response.use(
-    (response) => response,
+  (response) => response,
 
-    async (error) => {
-        const originalRequest = error.config;
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const isRefreshRequest = originalRequest?.url?.includes(
+      "/api/token/refresh/",
+    );
 
-        if (
-            error.response?.status === 401 &&
-            !originalRequest._retry
-        ) {
-            originalRequest._retry = true;
-
-            if (isRefreshing) {
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject });
-                }).then((token) => {
-                    originalRequest.headers.Authorization = `Bearer ${token}`;
-                    return api(originalRequest);
-                });
-            }
-
-            isRefreshing = true;
-
-            try {
-                const refreshToken = tokenService.getRefreshToken();
-                // If no refresh token, logout
-                if (!refreshToken) {
-                    throw new Error("No refresh token");
-                }
-
-                const res = await axios.post(
-                    `${API_BASE_URL}/api/token/refresh/`,
-                    { refresh: refreshToken }
-                );
-
-                const newAccessToken = res.data.access;
-
-                tokenService.setTokens({ access: newAccessToken });
-
-                api.defaults.headers.Authorization = `Bearer ${newAccessToken}`;
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-                processQueue(null, newAccessToken);
-
-                return api(originalRequest);
-            } catch (err) {
-                processQueue(err, null);
-                tokenService.clearTokens();
-                // Redirect to login if needed, or let the app handle it via state
-                // window.location.href = "/login";
-                return Promise.reject(err);
-            } finally {
-                isRefreshing = false;
-            }
-        }
-
-        return Promise.reject(error);
+    if (
+      status !== 401 ||
+      !originalRequest ||
+      isRefreshRequest ||
+      originalRequest._retry
+    ) {
+      return Promise.reject(error);
     }
+
+    const authHeader =
+      originalRequest.headers?.Authorization ||
+      originalRequest.headers?.authorization ||
+      "";
+    const failedRequestToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+    const currentAccessToken = tokenService.getAccessToken();
+
+    // If this 401 came from an older in-flight token, retry once with latest access token.
+    if (
+      failedRequestToken &&
+      currentAccessToken &&
+      failedRequestToken !== currentAccessToken
+    ) {
+      originalRequest._retry = true;
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers["Authorization"] = `Bearer ${currentAccessToken}`;
+      return api(originalRequest);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const nextAccessToken = await refreshPromise;
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers["Authorization"] = `Bearer ${nextAccessToken}`;
+
+      return api(originalRequest);
+    } catch (refreshError) {
+      tokenService.clearTokens();
+      return Promise.reject(refreshError);
+    }
+  },
 );
 
 export default api;

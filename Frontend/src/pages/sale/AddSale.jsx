@@ -4,11 +4,11 @@ import { saleService } from "@/features/sale/services/saleService";
 import { productService } from "@/features/product/services/productService";
 import { inventoryService } from "@/features/inventory/services/inventoryService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import BackButton from "@/components/shared/BackButton";
 import toast from "react-hot-toast";
 
 export default function AddSale() {
   let { sid } = useParams();
-  const [saleData, setSaleData] = useState(null);
   const [productData, setProductData] = useState([]);
   const [inventoryStockData, setInventoryStockData] = useState([]);
   const [formData, setFormData] = useState({});
@@ -22,7 +22,6 @@ export default function AddSale() {
       try {
         const saleResponse = await saleService.getById(sid);
         const data = saleResponse.data;
-        setSaleData(data);
 
         // Fetch products
         const productResponse = await productService.getById(data.productsid);
@@ -99,17 +98,21 @@ export default function AddSale() {
     <>
       <ProtectedHeader />
       {productData.length > 0 ? (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-10">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white text-center">
-              <h2 className="text-2xl font-bold tracking-tight">
-                New Sale Entry
-              </h2>
-              <p className="text-blue-100 mt-2 text-sm">Record a new sale transaction</p>
+        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-transparent">
+          <div className="form-card w-full max-w-lg overflow-hidden">
+            <div className="p-4">
+              <BackButton />
             </div>
 
-            <form className="p-8 space-y-6" onSubmit={handleSubmit} method="post">
+            <div className="form-header">
+              <div className="form-header-icon">S</div>
+              <div>
+                <h2 className="form-title">New Sale Entry</h2>
+                <p className="form-subtitle">Record a new sale transaction.</p>
+              </div>
+            </div>
+
+            <form className="form-section space-y-6" onSubmit={handleSubmit} method="post">
               {productData.map((product, idx) => {
                 const stockQuantity = getStockForProduct(product.name);
                 return (
@@ -121,25 +124,25 @@ export default function AddSale() {
                       >
                         {product.name}
                       </label>
-                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                        Stock: {stockQuantity}
-                      </span>
-                    </div>
+                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
+                      Stock: {stockQuantity}
+                    </span>
+                  </div>
 
-                    <div className="relative">
-                      <input
+                  <div className="relative">
+                    <input
                         id={product.name}
                         name={product.name}
                         type="number"
                         onChange={handleChange}
                         required
                         placeholder="0"
-                        className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                        className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                       />
                     </div>
                     {validationErrors[product.name] && (
-                      <p className="text-sm text-red-500 mt-2 font-medium flex items-center gap-1">
-                        ⚠️ {validationErrors[product.name]}
+                      <p className="text-sm text-rose-600 mt-2 font-medium flex items-center gap-1">
+                        {validationErrors[product.name]}
                       </p>
                     )}
                   </div>
@@ -148,10 +151,7 @@ export default function AddSale() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label
-                    htmlFor="marketing"
-                    className="block text-sm font-bold text-gray-700 mb-2"
-                  >
+                  <label htmlFor="marketing" className="block text-sm font-semibold text-slate-700 mb-2">
                     Marketing Cost
                   </label>
                   <input
@@ -160,15 +160,12 @@ export default function AddSale() {
                     type="number"
                     onChange={handleChange}
                     placeholder="0.00"
-                    className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                    className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="othercost"
-                    className="block text-sm font-bold text-gray-700 mb-2"
-                  >
+                  <label htmlFor="othercost" className="block text-sm font-semibold text-slate-700 mb-2">
                     Other Cost
                   </label>
                   <input
@@ -177,41 +174,19 @@ export default function AddSale() {
                     type="number"
                     onChange={handleChange}
                     placeholder="0.00"
-                    className="block w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                    className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100">
+              <div className="form-actions">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full flex justify-center items-center gap-2 rounded-xl px-4 py-3 text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 
-                    ${isSubmitting
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                    }`}
+                  className={`btn-primary w-full ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
                   {isSubmitting ? (
                     <>
-                      <svg
-                        className="animate-spin h-5 w-5 text-white"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8H4z"
-                        ></path>
-                      </svg>
                       Processing...
                     </>
                   ) : (
@@ -223,16 +198,14 @@ export default function AddSale() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col min-h-screen justify-center items-center bg-gray-50">
-          <div className="text-center p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
-            <p className="text-xl font-bold text-gray-800 mb-2">No Products Available</p>
-            <p className="text-gray-500">Please add products to the inventory first.</p>
-            <button onClick={() => navigate(-1)} className="mt-6 text-blue-600 font-semibold hover:underline">Go Back</button>
+        <div className="flex flex-col min-h-screen justify-center items-center bg-transparent">
+          <div className="form-card text-center p-8 rounded-2xl">
+            <p className="text-xl font-bold text-slate-900 mb-2">No Products Available</p>
+            <p className="text-slate-500">Please add products to the inventory first.</p>
+            <button onClick={() => navigate(-1)} className="mt-6 text-slate-700 font-semibold hover:underline">Go Back</button>
           </div>
         </div>
       )}
     </>
   );
 }
-
-

@@ -11,12 +11,16 @@ export const tokenService = {
     },
 
     clearTokens: () => {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-        localStorage.removeItem("role");
-        localStorage.removeItem("id");
-        localStorage.removeItem("token"); // Legacy cleanup
-        localStorage.removeItem("type"); // Legacy cleanup
+        const keysToRemove = [
+            ACCESS_TOKEN_KEY,
+            REFRESH_TOKEN_KEY,
+            "role",
+            "id",
+            "work",
+            "user_profile",
+            "default_branch_id"
+        ];
+        keysToRemove.forEach(key => localStorage.removeItem(key));
     },
 
     getRole: () => localStorage.getItem("role"),
@@ -26,5 +30,20 @@ export const tokenService = {
     setId: (id) => localStorage.setItem("id", id),
 
     getWork: () => localStorage.getItem("work"),
-    setWork: (work) => localStorage.setItem("work", work || ""),
+    setWork: (work) => {
+        if (Array.isArray(work)) {
+            localStorage.setItem("work", work.filter(Boolean).join(","));
+            return;
+        }
+        localStorage.setItem("work", work ? String(work) : "");
+    },
+
+    getDefaultBranchId: () => localStorage.getItem("default_branch_id"),
+    setDefaultBranchId: (id) => {
+        if (!id && id !== 0) {
+            localStorage.removeItem("default_branch_id");
+        } else {
+            localStorage.setItem("default_branch_id", String(id));
+        }
+    },
 };

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { FaLock, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { FaLock, FaExclamationCircle, FaCreditCard } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
-export default function CheckoutForm({ amount, onClose }) {
+export default function CheckoutForm({ amount, onClose, onPaymentSuccess }) {
     const stripe = useStripe();
     const elements = useElements();
     const [message, setMessage] = useState(null);
@@ -20,37 +20,32 @@ export default function CheckoutForm({ amount, onClose }) {
         setMessage(null);
 
         try {
+            if (!stripe || !elements) {
+                throw new Error("Stripe has not been properly initialized. Please check your internet connection and AdBlocker.");
+            }
+
             const { paymentIntent, error } = await stripe.confirmPayment({
                 elements,
                 redirect: 'if_required',
                 confirmParams: {
-                    // Change this to your payment completion page
-                    return_url: `${window.location.origin}/payment-success`,
+                    return_url: `${window.location.origin}/payment-success${window.location.pathname.includes('subscriptions') ? '?type=subscription' : ''}`,
                 },
             });
 
             if (paymentIntent && paymentIntent.status === "succeeded") {
-                // Payment completed successfully without redirect
                 toast.success("Payment successful!");
-
-                // Close the modal
-                if (onClose) {
-                    onClose();
-                }
-
-                // You might want to trigger a refresh of the invoice list here
-                // but since we don't have that callback prop yet, we'll just close.
-                // The parent component should handle data refreshing if needed.
+                if (onPaymentSuccess) onPaymentSuccess(paymentIntent);
+                if (onClose) onClose();
             } else if (error) {
                 if (error.type === "card_error" || error.type === "validation_error") {
                     setMessage(error.message);
                 } else {
-                    setMessage("An unexpected error occurred.");
+                    setMessage(error.message || "An unexpected error occurred.");
                 }
             }
         } catch (err) {
             console.error("Payment error:", err);
-            setMessage("An error occurred while processing payment.");
+            setMessage(err.message || "An error occurred while processing payment.");
         }
 
         setIsLoading(false);
@@ -58,17 +53,34 @@ export default function CheckoutForm({ amount, onClose }) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
-                <div className="flex justify-between items-center mb-1">
-                    <span className="text-gray-500 text-sm">Amount to pay</span>
-                    <span className="text-xl font-bold text-gray-900">
-                        {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount)}
-                    </span>
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="h-8 w-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <FaCreditCard className="text-sm" />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-900">Payment Details</h4>
+                        <p className="text-xs text-slate-500 font-medium">Please enter your billing information</p>
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Amount Due</span>
+                        <span className="text-2xl font-bold text-slate-900">
+                            {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount)}
+                        </span>
+                    </div>
                 </div>
             </div>
 
             <div className="p-1">
-                <PaymentElement id="payment-element" options={{ layout: "tabs" }} />
+                <div className="mb-4">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                        Secure Payment Method
+                    </label>
+                    <PaymentElement id="payment-element" options={{ layout: "tabs" }} />
+                </div>
             </div>
 
             {message && (
@@ -81,7 +93,7 @@ export default function CheckoutForm({ amount, onClose }) {
             <button
                 disabled={isLoading || !stripe || !elements}
                 id="submit"
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/30 disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`btn-primary w-full ${isLoading || !stripe || !elements ? "opacity-70 cursor-not-allowed" : ""}`}
             >
                 {isLoading ? (
                     <>

@@ -3,7 +3,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import costCategoryService from "../services/costCategoryService";
 
-export default function CostCategoryModal({ category, onClose, onSaved }) {
+export default function CostCategoryModal({ category, branchId, onClose, onSaved }) {
     const [form, setForm] = useState({ name: "", description: "" });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -30,9 +30,14 @@ export default function CostCategoryModal({ category, onClose, onSaved }) {
         setLoading(true);
         setErrors({});
         try {
+            const payload = { ...form };
+            if (!category && branchId) {
+                payload.branch_id = Number(branchId);
+            }
+
             const res = category
                 ? await costCategoryService.update(category.id, form)
-                : await costCategoryService.create(form);
+                : await costCategoryService.create(payload);
 
             onSaved(res.data);
             toast.success(`Category ${category ? "updated" : "added"} successfully`);
@@ -50,23 +55,23 @@ export default function CostCategoryModal({ category, onClose, onSaved }) {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-            <div className="bg-white w-full max-w-sm rounded-lg p-5 relative shadow-xl">
-                <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-6 relative shadow-lg border border-slate-200">
+                <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600">
                     <XMarkIcon className="h-5 w-5" />
                 </button>
 
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                <h3 className="text-lg font-semibold mb-4 text-slate-900">
                     {category ? "Edit Category" : "Add Category"}
                 </h3>
 
                 <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
                     <input
                         name="name"
                         placeholder="e.g. Electricity, Rent"
                         value={form.name}
                         onChange={handleChange}
-                        className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 ${errors.name ? "border-red-500" : "border-gray-300"}`}
+                        className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400 ${errors.name ? "border-red-500" : "border-slate-200"}`}
                     />
                     {errors.name && (
                         <p className="text-red-500 text-xs mt-1">{errors.name[0]}</p>
@@ -74,21 +79,21 @@ export default function CostCategoryModal({ category, onClose, onSaved }) {
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Description (Optional)</label>
                     <textarea
                         name="description"
                         placeholder="Brief description..."
                         value={form.description}
                         onChange={handleChange}
                         rows={3}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
                     />
                 </div>
 
                 <button
                     onClick={handleSave}
                     disabled={loading}
-                    className="w-full bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    className="w-full bg-slate-900 text-white py-2.5 rounded-xl font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
                     {loading ? "Saving..." : "Save"}
                 </button>

@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { Mail, User, MessageSquare, Send, HelpCircle, Phone, Clock } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Clock3, LifeBuoy, Mail, MessageSquare, Send, UserRound } from "lucide-react";
 import toast from "react-hot-toast";
+
+const HELP_TOPICS = [
+    "Login, role, or permission issues",
+    "Invoice, inventory, or product workflow errors",
+    "Analytics filters and report validation",
+    "Subscription purchase and usage limits",
+];
 
 export default function Support() {
     const [formData, setFormData] = useState({
@@ -11,181 +19,163 @@ export default function Support() {
     });
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+    const handleSubmit = (event) => {
+        event.preventDefault();
         setLoading(true);
 
-        // Construct mailto link
         const mailtoLink = `mailto:sh369921@gmail.com?subject=${encodeURIComponent(
-            formData.subject || "Support Request"
+            formData.subject || "Support Request",
         )}&body=${encodeURIComponent(
-            `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
+            `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`,
         )}`;
 
-        // Open mail client
         window.location.href = mailtoLink;
-
         toast.success("Opening your email client...");
-        setLoading(false);
         setFormData({ name: "", email: "", subject: "", message: "" });
+        setLoading(false);
     };
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleChange = (event) => {
+        setFormData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
     };
 
     return (
-        <div className="max-w-4xl mx-auto pb-12">
-            {/* Header Section */}
-            <div className="text-center mb-12 space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-4 shadow-lg shadow-blue-100">
-                    <HelpCircle className="w-8 h-8" />
-                </div>
-                <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600">
-                    How can we help?
-                </h1>
-                <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-                    Our specialized support team is ready to assist you. Fill out the form below and we'll connect you with the right person.
-                </p>
-            </div>
+        <div className="space-y-6 pb-8">
+            <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 md:p-8">
+                <Link
+                    to="/info"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to overview
+                </Link>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Contact Info Cards */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-900/10">
-                        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <Phone className="w-5 h-5" /> Contact Info
-                        </h3>
-                        <div className="space-y-4 text-blue-50">
-                            <p className="text-sm leading-relaxed">
-                                For urgent matters, please use the contact form for the quickest response from our designated support channel.
-                            </p>
-                            <div className="pt-4 border-t border-blue-500/30">
-                                <p className="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Email Support</p>
-                                <p className="font-medium">sh369921@gmail.com</p>
-                            </div>
-                        </div>
+                <div className="mt-3 flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                        <LifeBuoy className="h-6 w-6" />
                     </div>
-
-                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-lg shadow-gray-200/50">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-gray-400" /> Response Time
-                        </h3>
-                        <p className="text-gray-500 text-sm">
-                            We typically respond to all inquiries within <span className="font-semibold text-blue-600">24 hours</span> during business days.
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900">Support Center</h1>
+                        <p className="mt-2 text-slate-600 max-w-3xl">
+                            Share your issue with clear context and module details. We usually respond within 24 hours on business days.
                         </p>
                     </div>
                 </div>
+            </section>
 
-                {/* Main Form */}
-                <div className="lg:col-span-2">
-                    <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-6 md:p-8">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a message</h2>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label htmlFor="name" className="text-sm font-semibold text-gray-700">
-                                        Full Name
-                                    </label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <User className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="name"
-                                            name="name"
-                                            required
-                                            value={formData.name}
-                                            onChange={handleChange}
-                                            className="block w-full pl-10 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
-                                            placeholder="John Doe"
-                                        />
-                                    </div>
-                                </div>
+            <section className="grid gap-6 lg:grid-cols-12">
+                <div className="lg:col-span-4 space-y-4">
+                    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+                        <h2 className="text-base font-semibold text-slate-900">Support Contact</h2>
+                        <a href="mailto:sh369921@gmail.com" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-brand-700 break-all">
+                            <Mail className="h-4 w-4" />
+                            sh369921@gmail.com
+                        </a>
+                    </article>
 
-                                <div className="space-y-2">
-                                    <label htmlFor="email" className="text-sm font-semibold text-gray-700">
-                                        Email Address
-                                    </label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                                        </div>
-                                        <input
-                                            type="email"
-                                            id="email"
-                                            name="email"
-                                            required
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className="block w-full pl-10 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
-                                            placeholder="john@example.com"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+                        <h2 className="text-base font-semibold text-slate-900">Common Topics</h2>
+                        <ul className="mt-3 space-y-2">
+                            {HELP_TOPICS.map((topic) => (
+                                <li key={topic} className="text-sm text-slate-600 flex items-start gap-2">
+                                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
+                                    <span>{topic}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </article>
 
+                    <article className="rounded-2xl border border-slate-200 bg-slate-900 p-5 text-white">
+                        <h2 className="text-base font-semibold flex items-center gap-2">
+                            <Clock3 className="h-4 w-4" />
+                            Response Time
+                        </h2>
+                        <p className="mt-2 text-sm text-slate-300">
+                            Typical response window: within 24 hours during business days.
+                        </p>
+                    </article>
+                </div>
+
+                <div className="lg:col-span-8">
+                    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:p-8 space-y-5">
+                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5" />
+                            Submit a support request
+                        </h2>
+
+                        <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label htmlFor="subject" className="text-sm font-semibold text-gray-700">
-                                    Subject
-                                </label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <MessageSquare className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                                    </div>
+                                <label htmlFor="name">Full Name</label>
+                                <div className="relative">
+                                    <UserRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     <input
-                                        type="text"
-                                        id="subject"
-                                        name="subject"
-                                        required
-                                        value={formData.subject}
+                                        id="name"
+                                        name="name"
+                                        value={formData.name}
                                         onChange={handleChange}
-                                        className="block w-full pl-10 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
-                                        placeholder="How can we help?"
+                                        required
+                                        className="w-full input-icon-left"
+                                        placeholder="John Doe"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="message" className="text-sm font-semibold text-gray-700">
-                                    Message
-                                </label>
-                                <textarea
-                                    id="message"
-                                    name="message"
-                                    required
-                                    rows={5}
-                                    value={formData.message}
-                                    onChange={handleChange}
-                                    className="block w-full p-4 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none"
-                                    placeholder="Tell us more about your inquiry..."
-                                />
+                                <label htmlFor="email">Email</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    <input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full input-icon-left"
+                                        placeholder="john@example.com"
+                                    />
+                                </div>
                             </div>
+                        </div>
 
-                            <div className="pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-300 shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                                >
-                                    {loading ? (
-                                        "Processing..."
-                                    ) : (
-                                        <>
-                                            <Send className="h-5 w-5" />
-                                            Send Message
-                                        </>
-                                    )}
-                                </button>
-                                <p className="text-center text-xs text-gray-400 mt-4">
-                                    Securely powered by your default email client
-                                </p>
-                            </div>
-                        </form>
-                    </div>
+                        <div className="space-y-2">
+                            <label htmlFor="subject">Subject</label>
+                            <input
+                                id="subject"
+                                name="subject"
+                                value={formData.subject}
+                                onChange={handleChange}
+                                required
+                                placeholder="Brief summary of the issue"
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="message">Message</label>
+                            <textarea
+                                id="message"
+                                name="message"
+                                rows={6}
+                                value={formData.message}
+                                onChange={handleChange}
+                                required
+                                placeholder="Include module name, steps to reproduce, and expected outcome."
+                                className="w-full"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white flex items-center justify-center gap-2 transition-colors ${loading ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
+                        >
+                            <Send className="h-4 w-4" />
+                            {loading ? "Processing..." : "Open email client"}
+                        </button>
+                    </form>
                 </div>
-            </div>
+            </section>
         </div>
     );
 }

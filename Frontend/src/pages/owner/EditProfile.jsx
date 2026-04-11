@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Toaster, toast } from "react-hot-toast";
 import api from "@/services/api";
 import { tokenService } from "@/services/tokenService";
-import { FaCamera, FaSave, FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard } from "react-icons/fa";
+import BackButton from "@/components/shared/BackButton";
+import { FaCamera, FaSave, FaUser, FaEnvelope, FaPhone, FaLock, FaIdCard, FaExclamationTriangle, FaTrash } from "react-icons/fa";
+import { authService } from "@/services/authService";
+import { useDispatch } from "react-redux";
+import { fetchUserProfile, setUserProfile } from "@/redux/slices/userSlice";
+import { useSelector } from "react-redux";
 
 function EditProfile() {
     const [showPassword, setShowPassword] = useState(false);
@@ -23,38 +28,36 @@ function EditProfile() {
     });
 
     const [initialData, setInitialData] = useState({});
+    const dispatch = useDispatch();
+    const { profile: userProfile, loading: profileLoading } = useSelector((state) => state.user);
 
     const navigate = useNavigate();
     const userId = tokenService.getId();
 
     useEffect(() => {
-        async function fetchUser() {
-            try {
-                const res = await api.get(`/user/${userId}/`);
-                const user = res.data;
-
-                const initialUserData = {
-                    first_name: user.first_name || "",
-                    last_name: user.last_name || "",
-                    email: user.email || "",
-                    username: user.username || "",
-                    mobile_number: user.mobile_number || "",
-                    password: "",
-                    profile_picture: user.profile_picture || null,
-                    profile_picture_preview: null,
-                };
-                setFormData(initialUserData);
-                setInitialData(initialUserData);
-            } catch (error) {
-                toast.error("Failed to load user data");
-            } finally {
-                setLoading(false);
-            }
+        if (!userProfile && !profileLoading && userId) {
+            dispatch(fetchUserProfile());
         }
 
-        if (userId) fetchUser();
-        else setLoading(false);
-    }, [userId]);
+        if (userProfile) {
+            const baseUser = userProfile.user || userProfile;
+            const initialUserData = {
+                first_name: baseUser.first_name || "",
+                last_name: baseUser.last_name || "",
+                email: baseUser.email || "",
+                username: baseUser.username || "",
+                mobile_number: baseUser.mobile_number || "",
+                password: "",
+                profile_picture: baseUser.profile_picture || null,
+                profile_picture_preview: null,
+            };
+            setFormData(initialUserData);
+            setInitialData(initialUserData);
+            setLoading(false);
+        } else if (!profileLoading && !userId) {
+            setLoading(false);
+        }
+    }, [userId, userProfile, profileLoading, dispatch]);
 
     const validateEmail = (email) =>
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -132,7 +135,7 @@ function EditProfile() {
                 return;
             }
 
-            await api.patch(`/user/${userId}/`, data, {
+            const response = await api.patch(`/user/${userId}/`, data, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
@@ -140,6 +143,12 @@ function EditProfile() {
             });
 
             toast.success("Profile updated successfully");
+            // Sync updated profile with Redux
+            if (response.data) {
+                dispatch(setUserProfile(response.data));
+            } else {
+                dispatch(fetchUserProfile());
+            }
             navigate(-1);
         } catch (error) {
             toast.error("Failed to update profile");
@@ -149,30 +158,57 @@ function EditProfile() {
         }
     };
 
+    const handleDeleteAccount = async () => {
+        if (!window.confirm("CRITICAL: This will permanently delete your entire owner account and all associated data. \n\nAre you absolutely sure you want to proceed?")) return;
+
+        setIsSubmitting(true);
+        try {
+            await api.delete(`/user/${userId}/`);
+            toast.success("Account deleted successfully");
+            await authService.logout();
+            navigate("/");
+        } catch (error) {
+            console.error("Failed to delete account", error);
+            toast.error("Failed to delete account");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-700"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen py-6 sm:py-10 px-4 sm:px-6 lg:px-8 bg-slate-50">
             <Toaster position="top-center" />
 
-            <div className="max-w-3xl mx-auto">
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 text-white">
-                        <h2 className="text-3xl font-extrabold">Edit Profile</h2>
-                        <p className="mt-2 text-blue-100 opacity-90">Update your personal information and account settings</p>
+            <div className="max-w-4xl mx-auto">
+                <div className="mb-4">
+                    <BackButton />
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-5 sm:px-6 lg:px-8 py-5 sm:py-6 border-b border-slate-200">
+                        <div className="flex items-start gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                                <FaUser />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-900">Edit Profile</h2>
+                                <p className="mt-1 text-sm text-slate-500">Update your personal information and account settings.</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="px-8 py-8 space-y-8">
+                    <form onSubmit={handleSubmit} className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-7 sm:space-y-8">
                         {/* Profile Picture Section */}
                         <div className="flex flex-col items-center justify-center space-y-4">
                             <div className="relative group">
-                                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg ring-2 ring-blue-100">
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-md ring-2 ring-slate-100">
                                     {formData.profile_picture_preview || formData.profile_picture ? (
                                         <img
                                             src={
@@ -183,17 +219,14 @@ function EditProfile() {
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                            <FaUser className="text-gray-400 text-4xl" />
+                                        <div className="w-full h-full bg-slate-50 flex items-center justify-center">
+                                            <FaUser className="text-slate-300 text-4xl" />
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <FaCamera className="text-white text-2xl" />
-                                    </div>
                                 </div>
                                 <label
                                     htmlFor="profile-upload"
-                                    className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg transform transition-transform hover:scale-105"
+                                    className="absolute bottom-0 right-0 bg-slate-900 text-white p-2.5 rounded-full cursor-pointer hover:bg-slate-800 shadow-md transform transition-transform hover:scale-105"
                                 >
                                     <FaCamera className="w-4 h-4" />
                                 </label>
@@ -206,142 +239,140 @@ function EditProfile() {
                                     className="hidden"
                                 />
                             </div>
-                            <p className="text-sm text-gray-500">Click the camera icon to update your photo</p>
+                            <p className="text-sm text-slate-500">Click the camera icon to update your photo</p>
                         </div>
 
                         {/* Form Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-x-8 md:gap-y-6">
                             {/* Personal Information */}
                             <div className="col-span-1 md:col-span-2">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 border-b pb-2">
-                                    <FaUser className="text-blue-600" /> Personal Details
+                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                    Personal Details
                                 </h3>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">First Name</label>
-                                <input
-                                    name="first_name"
-                                    value={formData.first_name}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
-                                    placeholder="Enter your first name"
-                                />
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">First Name</label>
+                                <div className="relative">
+                                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        name="first_name"
+                                        value={formData.first_name}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        placeholder="Enter your first name"
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Last Name</label>
-                                <input
-                                    name="last_name"
-                                    value={formData.last_name}
-                                    onChange={handleChange}
-                                    required
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
-                                    placeholder="Enter your last name"
-                                />
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Last Name</label>
+                                <div className="relative">
+                                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        name="last_name"
+                                        value={formData.last_name}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
+                                        placeholder="Enter your last name"
+                                    />
+                                </div>
                             </div>
 
                             {/* Contact & Account */}
                             <div className="col-span-1 md:col-span-2 mt-2">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2 border-b pb-2">
-                                    <FaIdCard className="text-blue-600" /> Account Information
+                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                    Account Information
                                 </h3>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Username</label>
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Username</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <FaUser />
-                                    </div>
+                                    <FaIdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         name="username"
                                         value={formData.username}
                                         onChange={handleChange}
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Choose a username"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Mobile Number</label>
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mobile Number</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <FaPhone />
-                                    </div>
+                                    <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         name="mobile_number"
                                         value={formData.mobile_number}
                                         onChange={handleChange}
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Your mobile number"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Email Address</label>
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Address</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <FaEnvelope />
-                                    </div>
+                                    <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         name="email"
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="name@example.com"
                                     />
                                 </div>
-                                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                                {errors.email && <p className="text-rose-600 text-xs mt-1">{errors.email}</p>}
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">New Password (Optional)</label>
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">New Password (Optional)</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                                        <FaLock />
-                                    </div>
+                                    <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type={showPassword ? "text" : "password"}
                                         name="password"
                                         value={formData.password}
                                         onChange={handleChange}
-                                        className="w-full pl-10 pr-20 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
+                                        className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-20 py-2.5 sm:py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
                                         placeholder="Min 8 chars, 1 special"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-2.5 text-xs font-semibold text-blue-600 hover:text-blue-800 uppercase tracking-wide"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-600 hover:text-slate-900 uppercase tracking-wide"
                                     >
                                         {showPassword ? "Hide" : "Show"}
                                     </button>
                                 </div>
-                                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                                {errors.password && <p className="text-rose-600 text-xs mt-1">{errors.password}</p>}
                             </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-5 border-t border-slate-200">
                             <button
                                 type="button"
                                 onClick={() => navigate(-1)}
-                                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                className="w-full sm:w-auto sm:min-w-[150px] py-3 px-4 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 ${isSubmitting
-                                    ? "bg-blue-400 cursor-not-allowed"
-                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                                className={`w-full sm:w-auto sm:min-w-[170px] flex items-center justify-center gap-2 py-3 px-4 text-white font-semibold rounded-xl transition-all ${isSubmitting
+                                    ? "bg-slate-300 cursor-not-allowed"
+                                    : "bg-slate-900 hover:bg-slate-800"
                                     }`}
                             >
                                 {isSubmitting ? (
@@ -357,6 +388,27 @@ function EditProfile() {
                             </button>
                         </div>
                     </form>
+                </div>
+
+                {/* Danger Zone */}
+                <div className="mt-6 sm:mt-8 bg-red-50/50 rounded-2xl border border-red-100 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+                    <div className="flex items-center gap-3 text-red-600">
+                        <FaExclamationTriangle className="text-xl" />
+                        <h3 className="text-lg font-bold uppercase tracking-tight">Danger Zone</h3>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
+                        <div className="text-center md:text-left">
+                            <h4 className="text-base font-bold text-red-600">Delete Entire Account</h4>
+                            <p className="text-sm text-slate-500 mt-1">Permanently delete your entire owner account. This action cannot be undone.</p>
+                        </div>
+                        <button
+                            onClick={handleDeleteAccount}
+                            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20"
+                        >
+                            <FaTrash className="text-sm" /> Delete Account
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

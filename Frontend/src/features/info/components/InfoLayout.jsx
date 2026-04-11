@@ -1,95 +1,150 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { Info, User, Briefcase, Users, LayoutDashboard, ArrowRight } from "lucide-react";
+import { Link, NavLink, Outlet } from "react-router-dom";
+import {
+    BookOpenText,
+    CircleHelp,
+    Compass,
+    LayoutGrid,
+    ShieldCheck,
+    UserRound,
+    UsersRound,
+} from "lucide-react";
+import { useMemo } from "react";
 
+import { PRODUCT_MODULES } from "@/features/info/data/infoModules";
+import { isModuleAccessible, parseWork, resolveModulePath } from "@/features/info/utils/moduleAccess";
 import { tokenService } from "@/services/tokenService";
 
+const NAV_ITEMS = [
+    { label: "Overview", path: "/info", icon: Compass, roles: ["PUBLIC", "OWNER", "MANAGER", "EMPLOYEE"] },
+    { label: "Module Directory", path: "/info/modules", icon: LayoutGrid, roles: ["PUBLIC", "OWNER", "MANAGER", "EMPLOYEE"] },
+    { label: "Owner Guide", path: "/info/owner", icon: UserRound, roles: ["OWNER"] },
+    { label: "Manager Guide", path: "/info/manager", icon: ShieldCheck, roles: ["OWNER", "MANAGER"] },
+    { label: "Employee Guide", path: "/info/employee", icon: UsersRound, roles: ["OWNER", "MANAGER", "EMPLOYEE"] },
+    { label: "Support", path: "/info/support", icon: CircleHelp, roles: ["PUBLIC", "OWNER", "MANAGER", "EMPLOYEE"] },
+];
+
+const QUICK_LINK_IDS = {
+    OWNER: ["dashboard", "subscriptions", "analytics"],
+    MANAGER: ["dashboard", "employee-management", "tasks"],
+    EMPLOYEE: ["dashboard", "tasks", "chat"],
+};
+
+function isAllowedByRole(item, role) {
+    const effectiveRole = role || "PUBLIC";
+    return item.roles.includes(effectiveRole);
+}
+
 export default function InfoLayout() {
-    const location = useLocation();
-    const role = (tokenService.getRole() || "").toUpperCase();
+    const role = (tokenService.getRole() || "").toUpperCase() || null;
+    const workSet = parseWork(tokenService.getWork());
 
-    const allNavItems = [
-        { name: "Overview", path: "/info", icon: LayoutDashboard, roles: ["PUBLIC", "OWNER", "MANAGER", "EMPLOYEE"] },
-        { name: "Owner Guide", path: "/info/owner", icon: User, roles: ["OWNER"] },
-        { name: "Manager Guide", path: "/info/manager", icon: Briefcase, roles: ["OWNER", "MANAGER"] },
-        { name: "Employee Guide", path: "/info/employee", icon: Users, roles: ["OWNER", "MANAGER", "EMPLOYEE"] },
-    ];
+    const navItems = NAV_ITEMS.filter((item) => isAllowedByRole(item, role));
+    const moduleById = useMemo(
+        () => new Map(PRODUCT_MODULES.map((module) => [module.id, module])),
+        [],
+    );
 
-    const navItems = allNavItems.filter(item => {
-        if (item.path === "/info") return true; // Always show overview
-        if (!role) return false; // Hide others if not logged in
-        return item.roles.includes(role);
-    });
+    const quickLinks = useMemo(() => {
+        if (!role || !QUICK_LINK_IDS[role]) return [];
+        return QUICK_LINK_IDS[role]
+            .map((moduleId) => moduleById.get(moduleId))
+            .filter(Boolean)
+            .filter((module) => isModuleAccessible(module, role, workSet))
+            .map((module) => ({
+                id: module.id,
+                title: module.title,
+                path: resolveModulePath(module, role),
+            }));
+    }, [moduleById, role, workSet]);
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
-            {/* Sidebar Navigation */}
-            {/* Sidebar Navigation */}
-            <aside className="w-72 bg-white border-r border-gray-100 hidden md:flex flex-col shrink-0 h-screen sticky top-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] z-20">
-                <div className="p-6">
-                    <div className="flex items-center gap-3 mb-8 px-2">
-                        <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-600/20">
-                            <Info className="h-6 w-6" />
+        <div className="min-h-screen">
+            <div className="section-shell py-4 md:py-6">
+                <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
+                    <aside className="hidden lg:block">
+                        <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                                    <BookOpenText className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-base font-bold text-slate-900">Info Center</p>
+                                    <p className="text-xs text-slate-500">Workflow + module guide</p>
+                                </div>
+                            </div>
+
+                            <nav className="mt-5 space-y-1.5">
+                                {navItems.map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <NavLink
+                                            key={item.path}
+                                            to={item.path}
+                                            end={item.path === "/info"}
+                                            className={({ isActive }) =>
+                                                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${isActive
+                                                    ? "bg-slate-900 text-white"
+                                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                                }`
+                                            }
+                                        >
+                                            <Icon className="h-4 w-4 shrink-0" />
+                                            {item.label}
+                                        </NavLink>
+                                    );
+                                })}
+                            </nav>
+
+                            {quickLinks.length > 0 && (
+                                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Quick Access
+                                    </p>
+                                    <div className="mt-2 space-y-2">
+                                        {quickLinks.map((item) => (
+                                            <Link
+                                                key={item.id}
+                                                to={item.path}
+                                                className="block rounded-lg px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-white hover:text-slate-900"
+                                            >
+                                                {item.title}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <span className="font-bold text-xl text-gray-900 tracking-tight">Bizz Visionary Info</span>
-                    </div>
+                    </aside>
 
-                    <nav className="space-y-1.5">
-                        {navItems.map((item) => {
-                            const isActive = item.path === "/info"
-                                ? location.pathname === "/info"
-                                : location.pathname.startsWith(item.path);
-
-                            const Icon = item.icon;
-
-                            return (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    className={`group flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 font-medium text-sm border ${isActive
-                                        ? "bg-blue-50/50 border-blue-100 text-blue-600 shadow-sm"
-                                        : "border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-100"
-                                        }`}
-                                >
-                                    <Icon className={`h-5 w-5 transition-colors duration-300 ${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"}`} />
-                                    {item.name}
-                                    {isActive && <ArrowRight className="h-4 w-4 ml-auto text-blue-500 animate-pulse" />}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-                </div>
-
-                <div className="p-6 mt-auto">
-                    <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-xl shadow-gray-900/10">
-                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
-                        <div className="relative z-10">
-                            <h3 className="font-bold text-lg mb-1">Need help?</h3>
-                            <p className="text-gray-300 text-xs mb-4 leading-relaxed">
-                                Contact our support team for specialized assistance.
-                            </p>
-                            <Link
-                                to="/info/support"
-                                className="flex items-center justify-center w-full text-xs font-semibold bg-white text-gray-900 hover:bg-gray-50 transition-colors py-2.5 rounded-lg shadow-sm"
-                            >
-                                Contact Support
-                            </Link>
+                    <main className="min-w-0">
+                        <div className="lg:hidden rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mb-4">
+                            <div className="flex items-center gap-2 text-slate-900 font-semibold mb-3">
+                                <BookOpenText className="h-4 w-4" />
+                                Info Center
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                                {navItems.map((item) => (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        end={item.path === "/info"}
+                                        className={({ isActive }) =>
+                                            `shrink-0 rounded-lg px-3 py-2 text-xs font-semibold border transition-colors ${isActive
+                                                ? "bg-slate-900 text-white border-slate-900"
+                                                : "bg-white text-slate-600 border-slate-200"
+                                            }`
+                                        }
+                                    >
+                                        {item.label}
+                                    </NavLink>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </aside>
 
-            <main className="flex-1 min-w-0">
-                <div className="md:hidden bg-white/80 backdrop-blur-xl border-b border-gray-200 p-4 sticky top-0 z-30">
-                    <div className="flex items-center gap-2 text-blue-600 font-bold text-xl">
-                        <Info className="h-6 w-6" />
-                        <span>Bizz Visionary Info</span>
-                    </div>
+                        <Outlet />
+                    </main>
                 </div>
-
-                <div className="p-4 md:p-8 max-w-5xl mx-auto">
-                    <Outlet />
-                </div>
-            </main>
+            </div>
         </div>
     );
 }

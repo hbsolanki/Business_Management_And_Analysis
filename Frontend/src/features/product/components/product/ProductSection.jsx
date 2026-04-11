@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import ProductGrid from "./ProductGrid.jsx";
+import { FaBoxes } from "react-icons/fa";
 
 export default function ProductSection({
   products,
@@ -7,9 +8,11 @@ export default function ProductSection({
   expandedId,
   toggleRead,
   onDeleteProduct,
+  onToggleStatus,
   loadMore,
   hasMore,
   loadingMore,
+  showFinancials,
 }) {
   const observerRef = useRef(null);
 
@@ -24,7 +27,7 @@ export default function ProductSection({
       },
       {
         root: null,
-        rootMargin: "200px", // prefetch before reaching bottom
+        rootMargin: "200px",
         threshold: 0,
       }
     );
@@ -37,10 +40,15 @@ export default function ProductSection({
   }, [hasMore, loadingMore, loadMore]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Products</h2>
-        <p className="text-sm text-gray-500">View and manage all products</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="h-9 w-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+          <FaBoxes className="text-sm" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Products</h2>
+          <p className="text-sm text-slate-500">View and manage all products</p>
+        </div>
       </div>
 
       <ProductGrid
@@ -49,16 +57,17 @@ export default function ProductSection({
         expandedId={expandedId}
         onToggleRead={toggleRead}
         onDeleteProduct={onDeleteProduct}
+        onToggleStatus={onToggleStatus}
+        showFinancials={showFinancials}
       />
 
-      {/* Invisible trigger */}
       {hasMore && (
-        <div
-          ref={observerRef}
-          className="h-10 flex items-center justify-center"
-        >
+        <div ref={observerRef} className="h-12 flex items-center justify-center">
           {loadingMore && (
-            <span className="text-sm text-gray-500">Loading more...</span>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="h-4 w-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
+              Loading more...
+            </div>
           )}
         </div>
       )}

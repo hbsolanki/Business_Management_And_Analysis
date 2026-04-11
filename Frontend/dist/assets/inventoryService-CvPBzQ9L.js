@@ -1,1 +1,0 @@
-import{a as n}from"./api-BsG4zq5T.js";const o={getStock:(t="")=>n.get(`/inventory/stock/${t}`),getById:t=>n.get(`/inventory/${t}/`),getStockByUrl:t=>n.get(t),getTransactions:(t="")=>n.get(`/inventory/transaction/${t}`),getTransactionsByUrl:t=>n.get(t),createTransaction:t=>n.post("/inventory/transaction/new/",t)};export{o as i};

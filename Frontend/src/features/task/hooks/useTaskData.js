@@ -1,21 +1,41 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import taskService from '../services/taskService';
 import { toast } from 'react-hot-toast';
+import { tokenService } from '@/services/tokenService';
 
 export const useTaskData = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(false);
     const [creating, setCreating] = useState(false);
 
-    const fetchTasks = useCallback(async (type = 'assigned_to') => {
+    const fetchTasks = useCallback(async (type = 'assigned_to', filters = {}) => {
         try {
             setLoading(true);
             let data;
+            const params = {
+                title: filters.title || undefined,
+                from_date: filters.from_date || undefined,
+                to_date: filters.to_date || undefined,
+                remarks: filters.remarks || undefined,
+                ...filters // Allow other filters if any
+            };
+
+            // clean up empty params
+            Object.keys(params).forEach((key) => {
+                if (params[key] === undefined || params[key] === null || params[key] === "") {
+                    delete params[key];
+                }
+            });
+
+            const currentUserId = tokenService.getId();
+
             if (type === 'assigned_by') {
-                data = await taskService.getAssignedByTasks();
+                params.assigned_by = currentUserId;
             } else {
-                data = await taskService.getAssigneeTasks();
+                params.assignee = currentUserId;
             }
+
+            data = await taskService.getTasks(params);
 
             if (Array.isArray(data)) {
                 setTasks(data);
@@ -35,7 +55,7 @@ export const useTaskData = () => {
     const createTask = useCallback(async (taskData) => {
         try {
             setCreating(true);
-            const newTask = await taskService.createTask(taskData);
+            await taskService.createTask(taskData);
             // We assume if you create a task, you might want to see it in "assigned_by" list
             // or if we are in "assigned_to", we might not see it immediately unless we are assigned to ourselves.
             // For simplicity, we just trigger a toast. The UI should refresh or handle state.

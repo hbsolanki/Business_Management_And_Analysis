@@ -15,7 +15,7 @@ function AnalyticsHeader() {
 
   return (
     <>
-      <nav className="bg-white shadow-lg mb-6 sticky top-0 z-50 rounded-lg items-center">
+      <nav className="glass-panel mb-6 sticky top-0 z-50 rounded-lg items-center">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* Logo/Brand Name */}
@@ -27,7 +27,7 @@ function AnalyticsHeader() {
               {" "}
               <a
                 href={`/owner/home`}
-                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-white/90 hover:text-gray-900"
               >
                 Home
               </a>
@@ -41,7 +41,7 @@ function AnalyticsHeader() {
                 <a
                   href={`#${item}`}
                   key={item}
-                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-white/90 hover:text-gray-900"
                   onClick={(e) => handleScrollToSection(e, item)}
                 >
                   {item}

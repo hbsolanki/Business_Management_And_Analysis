@@ -1,84 +1,86 @@
-import * as React from "react";
+import { useMemo } from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
+import { FaBoxOpen, FaExclamationTriangle } from "react-icons/fa";
 
-const BasicBars = React.forwardRef(({ data = [] }, ref) => {
-  const safeData = Array.isArray(data) ? data : [];
+export default function ProductStock({ products = [] }) {
+  // Sort products by stock (descending)
+  const sortedProducts = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+    // Create a copy before sorting to avoid mutating props
+    return [...products].sort((a, b) => (a.stock || 0) - (b.stock || 0));
+  }, [products]);
 
-  // Sort by stock quantity descending for better visualization
-  const sortedData = [...safeData].sort((a, b) => Number(b.stock_quantity) - Number(a.stock_quantity));
-
-  const productNames = sortedData.map((item) => item.name);
-  const productValues = sortedData.map((item) => Number(item.stock_quantity));
-
-  // Dynamic width based on number of products
-  const [chartWidth, setChartWidth] = React.useState(
-    Math.max(500, productNames.length * 80)
-  );
-
-  React.useEffect(() => {
-    const handleResize = () => {
-      setChartWidth(Math.max(500, productNames.length * 80));
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [productNames.length]);
+  if (!products || products.length === 0) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 flex flex-col items-center justify-center min-h-[300px]">
+        <div className="p-4 bg-slate-50 rounded-full mb-4 border border-slate-100">
+          <FaBoxOpen className="text-slate-400 text-3xl" />
+        </div>
+        <p className="text-slate-500 font-medium">No stock data available</p>
+      </div>
+    );
+  }
 
   return (
-    <div ref={ref} className="w-full overflow-x-auto">
-      <BarChart
-        xAxis={[
-          {
-            scaleType: "band",
-            data: productNames,
-            label: "Product Name",
-            tickLabelStyle: {
-              angle: -20,
-              textAnchor: "end",
-              fontSize: 11,
-              fontWeight: 500,
-              fill: '#4b5563',
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 overflow-hidden">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+          <FaBoxOpen />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">Product Stock Levels</h3>
+          <p className="text-sm text-slate-500">Overview of current inventory quantities</p>
+        </div>
+      </div>
+
+      <div className="w-full h-[400px]">
+        <BarChart
+          dataset={sortedProducts}
+          xAxis={[
+            {
+              scaleType: "band",
+              dataKey: "name",
+              tickLabelStyle: {
+                fontSize: 11,
+                angle: -45,
+                textAnchor: 'end',
+                fill: '#64748b'
+              },
             },
-          }
-        ]}
-        yAxis={[
-          {
-            label: "Stock Quantity",
-            labelStyle: {
-              fontWeight: 600,
-              fill: '#374151',
+          ]}
+          series={[
+            {
+              dataKey: "stock",
+              label: "Stock Quantity",
+              color: "#6366f1", // Indigo 500
+              valueFormatter: (v) => `${v} units`,
+            },
+          ]}
+          layout="vertical"
+          grid={{ horizontal: true }}
+          margin={{ left: 50, right: 20, top: 20, bottom: 80 }}
+          slotProps={{ legend: { hidden: true } }}
+          sx={{
+            ".MuiBarElement-root": {
+              rx: 4,
             }
-          }
-        ]}
-        series={[
-          {
-            data: productValues,
-            label: "Stock",
-            color: "#3b82f6", // Blue 500
-            highlightScope: { faded: 'global', highlighted: 'item' },
-          }
-        ]}
-        width={chartWidth}
-        height={400}
-        margin={{ left: 80, bottom: 90, top: 40, right: 20 }}
-        grid={{ horizontal: true }}
-        slotProps={{
-          legend: { hidden: true },
-        }}
-        sx={{
-          ".MuiBarElement-root": {
-            rx: 4,
-            cursor: 'pointer',
-            "&:hover": {
-              fillOpacity: 0.9,
-            }
-          },
-          ".MuiChartsAxis-label": {
-            fontWeight: 'bold',
-          }
-        }}
-      />
+          }}
+        />
+      </div>
+
+      {/* Low Stock Warning Section */}
+      {sortedProducts.some(p => (p.stock || 0) < 10) && (
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
+          <FaExclamationTriangle className="text-amber-500 mt-1 flex-shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold text-amber-800">Low Stock Alert</h4>
+            <p className="text-sm text-amber-700 mt-1">
+              The following products have less than 10 units:{" "}
+              {sortedProducts.filter(p => (p.stock || 0) < 10).map(p => p.name).join(", ")}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
-});
-
-export default BasicBars;
+}

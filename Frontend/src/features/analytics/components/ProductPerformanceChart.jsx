@@ -1,17 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import {
-    FaCalendarAlt, FaBoxOpen, FaChartBar, FaSync,
-    FaDollarSign, FaShoppingCart, FaTrophy, FaArrowUp, FaArrowDown, FaTimes, FaSearch
+    FaCalendarAlt,
+    FaBoxOpen,
+    FaChartBar,
+    FaSync,
+    FaRupeeSign,
+    FaShoppingCart,
+    FaTrophy,
+    FaArrowUp,
+    FaArrowDown,
+    FaTimes,
+    FaSearch,
 } from "react-icons/fa";
 import api from "@/services/api";
 
-// Format date to YYYY-MM-DDTHH:mm
 const formatDateTimeInput = (date) => {
     const d = new Date(date);
-    // Adjustment to handle local time zone offset for input value if needed, 
-    // but simplified ISO slice is usually enough if we accept UTC-ish or handle offset manually.
-    // Better to use manual string construction to keep local time.
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
@@ -20,17 +25,31 @@ const formatDateTimeInput = (date) => {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-// Get default date range (last 7 days, 00:00 to current)
 const getDefaultDateRange = () => {
     const today = new Date();
-    const lastWeek = new Date();
-    lastWeek.setDate(today.getDate() - 7);
-    lastWeek.setHours(0, 0, 0, 0); // Start of day
+    const last30Days = new Date();
+    // Inclusive 30-day range ending today
+    last30Days.setDate(today.getDate() - 29);
+    last30Days.setHours(0, 0, 0, 0);
 
     return {
-        from: formatDateTimeInput(lastWeek),
+        from: formatDateTimeInput(last30Days),
         to: formatDateTimeInput(today),
     };
+};
+
+const formatCurrency = (val) =>
+    new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+    }).format(Number(val) || 0);
+
+const EMPTY_SUMMARY = {
+    total_quantity_sold: 0,
+    total_revenue: 0,
+    total_profit: 0,
+    total_cost: 0,
 };
 
 export default function ProductPerformanceChart() {
@@ -38,28 +57,32 @@ export default function ProductPerformanceChart() {
     const [fromDate, setFromDate] = useState(defaultRange.from);
     const [toDate, setToDate] = useState(defaultRange.to);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [categoryId, setCategoryId] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [data, setData] = useState([]);
+    const [report, setReport] = useState({ summary: EMPTY_SUMMARY, products: [] });
 
     useEffect(() => {
         fetchPerformance();
-    }, [selectedProduct]); // Refetch when product changes
+        // Intentionally refetch only when selected product changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedProduct]);
 
     const fetchPerformance = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            let url = `/analytics/product/performance/`;
+            let url = `/analytics/product/performance/report/`;
             const params = [];
 
             if (selectedProduct) {
                 params.push(`product_id=${selectedProduct.id}`);
             }
+            if (categoryId.trim()) {
+                params.push(`category_id=${encodeURIComponent(categoryId.trim())}`);
+            }
 
-            // Always use datetime parameters (YYYY-MM-DDTHH:mm:ss) as requested
-            // Ensure seconds are included for the backend (datetime-local gives YYYY-MM-DDTHH:mm)
             const fromDateTime = fromDate.length === 16 ? `${fromDate}:00` : fromDate;
             const toDateTime = toDate.length === 16 ? `${toDate}:00` : toDate;
 
@@ -71,30 +94,45 @@ export default function ProductPerformanceChart() {
             }
 
             const response = await api.get(url);
+            const payload = response.data && typeof response.data === "object" ? response.data : {};
+            const rawProducts = Array.isArray(payload.products) ? payload.products : [];
+            const normalizedProducts = rawProducts.map((item) => ({
+                product_id: item.product_id,
+                product_name: item.product_name || "Unknown Product",
+                category_name: item.category_name || "Uncategorized",
+                total_quantity_sold: Number(item.total_quantity_sold) || 0,
+                total_revenue: Number(item.total_revenue) || 0,
+                total_profit: Number(item.total_profit) || 0,
+                total_cost: Number(item.total_cost) || 0,
+            }));
 
-            // Handle different response structures
-            if (Array.isArray(response.data)) {
-                setData(response.data);
-            } else if (response.data && typeof response.data === 'object') {
-                // Single product response
-                const singleData = {
-                    ...response.data,
-                    product_id: selectedProduct?.id,
-                    product_name: selectedProduct?.name,
-                    product_sku: selectedProduct?.sku,
-                    total_revenue: response.data.total_revenue,
-                    total_cost: response.data.total_cost,
-                    total_quantity: response.data.total_quantity_sold
-                };
-                setData([singleData]);
-            } else {
-                setData([]);
-            }
+            const fallbackSummary = normalizedProducts.reduce(
+                (acc, item) => {
+                    acc.total_quantity_sold += item.total_quantity_sold;
+                    acc.total_revenue += item.total_revenue;
+                    acc.total_profit += item.total_profit;
+                    acc.total_cost += item.total_cost;
+                    return acc;
+                },
+                { ...EMPTY_SUMMARY }
+            );
 
+            const summaryPayload = payload.summary && typeof payload.summary === "object" ? payload.summary : {};
+            const normalizedSummary = {
+                total_quantity_sold: Number(summaryPayload.total_quantity_sold ?? fallbackSummary.total_quantity_sold) || 0,
+                total_revenue: Number(summaryPayload.total_revenue ?? fallbackSummary.total_revenue) || 0,
+                total_profit: Number(summaryPayload.total_profit ?? fallbackSummary.total_profit) || 0,
+                total_cost: Number(summaryPayload.total_cost ?? fallbackSummary.total_cost) || 0,
+            };
+
+            setReport({
+                summary: normalizedSummary,
+                products: normalizedProducts,
+            });
         } catch (err) {
             console.error("Failed to fetch product performance:", err);
             setError("Failed to load data. Please try again.");
-            setData([]);
+            setReport({ summary: EMPTY_SUMMARY, products: [] });
         } finally {
             setLoading(false);
         }
@@ -114,16 +152,9 @@ export default function ProductPerformanceChart() {
         setSelectedProduct(null);
     };
 
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat("en-IN", {
-            style: "currency",
-            currency: "INR",
-            maximumFractionDigits: 0,
-        }).format(Number(val) || 0);
-
-    // Calculate summary statistics
     const summary = useMemo(() => {
-        if (!data || data.length === 0) {
+        const products = report.products || [];
+        if (!products.length) {
             return {
                 totalRevenue: 0,
                 totalCost: 0,
@@ -134,98 +165,88 @@ export default function ProductPerformanceChart() {
             };
         }
 
-        let totalRevenue = 0;
-        let totalCost = 0;
-        let totalQuantity = 0;
+        const totalRevenue = Number(report.summary?.total_revenue) || 0;
+        const totalCost = Number(report.summary?.total_cost) || 0;
+        const totalProfit = Number(report.summary?.total_profit) || 0;
+        const totalQuantity = Number(report.summary?.total_quantity_sold) || 0;
         let bestProduct = null;
         let maxProfit = -Infinity;
 
-        data.forEach((p) => {
-            const revenue = Number(p.total_revenue) || 0;
-            const cost = Number(p.total_cost) || 0;
-            const profit = revenue - cost;
-            const qty = Number(p.total_quantity || p.total_quantity_sold) || 0;
-
-            totalRevenue += revenue;
-            totalCost += cost;
-            totalQuantity += qty;
-
+        products.forEach((p) => {
+            const profit = Number(p.total_profit) || 0;
             if (profit > maxProfit) {
                 maxProfit = profit;
                 bestProduct = p;
             }
         });
 
-        if (selectedProduct && data.length === 1) {
-            bestProduct = data[0];
+        if (selectedProduct && products.length === 1) {
+            bestProduct = products[0];
         }
 
         return {
             totalRevenue,
             totalCost,
-            totalProfit: totalRevenue - totalCost,
+            totalProfit,
             totalQuantity,
             bestProduct,
-            productCount: data.length,
+            productCount: products.length,
         };
-    }, [data, selectedProduct]);
+    }, [report, selectedProduct]);
 
-    // Prepare chart data
     const chartData = useMemo(() => {
-        if (!data || data.length === 0) return { labels: [], costs: [], revenues: [], profits: [] };
+        const products = report.products || [];
+        if (!products.length) return { labels: [], costs: [], revenues: [], profits: [], quantities: [] };
 
         return {
-            labels: data.map((p) => p.product__name || p.product_name || `Product ${p.product_id || 'Unknown'}`),
-            costs: data.map((p) => Number(p.total_cost) || 0),
-            revenues: data.map((p) => Number(p.total_revenue) || 0),
-            profits: data.map((p) => (Number(p.total_revenue) || 0) - (Number(p.total_cost) || 0)),
-            skus: data.map((p) => p.product__sku || p.sku || p.product_sku || ""),
-            quantities: data.map((p) => Number(p.total_quantity || p.total_quantity_sold) || 0),
+            labels: products.map((p) => p.product_name || `Product ${p.product_id || "Unknown"}`),
+            costs: products.map((p) => Number(p.total_cost) || 0),
+            revenues: products.map((p) => Number(p.total_revenue) || 0),
+            profits: products.map((p) => Number(p.total_profit) || 0),
+            quantities: products.map((p) => Number(p.total_quantity_sold) || 0),
         };
-    }, [data]);
+    }, [report.products]);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-gray-100">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200">
                 <div className="flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl text-white">
-                                <FaChartBar size={20} />
+                            <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                                <FaChartBar size={18} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900">Product Performance</h3>
-                                <p className="text-sm text-gray-500">Cost vs Revenue vs Profit analysis</p>
+                                <h3 className="text-lg font-semibold text-slate-900">Product Performance</h3>
+                                <p className="text-sm text-slate-500">Cost vs revenue vs profit analysis</p>
                             </div>
                         </div>
 
-                        {/* Date Filters */}
-                        <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-3">
                             <div className="flex items-center gap-2">
-                                <FaCalendarAlt className="text-gray-400" size={14} />
-                                <span className="text-sm text-gray-500">From:</span>
+                                <FaCalendarAlt className="text-slate-400" size={14} />
+                                <span className="text-sm text-slate-500">From:</span>
                                 <input
                                     type="datetime-local"
                                     value={fromDate}
                                     max={toDate}
                                     onChange={(e) => setFromDate(e.target.value)}
-                                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                    className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">To:</span>
+                                <span className="text-sm text-slate-500">To:</span>
                                 <input
                                     type="datetime-local"
                                     value={toDate}
                                     min={fromDate}
                                     onChange={(e) => setToDate(e.target.value)}
-                                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                    className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
                                 />
                             </div>
                             <button
                                 onClick={handleApplyFilter}
-                                className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                                className="px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2"
                             >
                                 <FaSync size={12} />
                                 Apply
@@ -233,113 +254,119 @@ export default function ProductPerformanceChart() {
                         </div>
                     </div>
 
-                    {/* Product Search Section */}
-                    <div className="w-full max-w-md relative">
-                        {selectedProduct ? (
-                            <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
-                                <div>
-                                    <p className="font-semibold text-emerald-900">{selectedProduct.name}</p>
-                                    <p className="text-xs text-emerald-700">SKU: {selectedProduct.sku}</p>
+                    <div className="w-full max-w-md">
+                        <div className="space-y-3">
+                            {selectedProduct ? (
+                                <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{selectedProduct.name}</p>
+                                        <p className="text-xs text-slate-500">SKU: {selectedProduct.sku}</p>
+                                    </div>
+                                    <button
+                                        onClick={clearProductFilter}
+                                        className="p-2 text-slate-500 hover:bg-slate-200 rounded-full transition-colors"
+                                        title="Clear filter"
+                                    >
+                                        <FaTimes />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={clearProductFilter}
-                                    className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-full transition-colors"
-                                    title="Clear filter"
-                                >
-                                    <FaTimes />
-                                </button>
-                            </div>
-                        ) : (
-                            <ProductSearchInput onSelect={setSelectedProduct} />
-                        )}
+                            ) : (
+                                <ProductSearchInput onSelect={setSelectedProduct} />
+                            )}
+
+                            <input
+                                type="number"
+                                min="1"
+                                value={categoryId}
+                                onChange={(e) => setCategoryId(e.target.value)}
+                                placeholder="Category ID (optional)"
+                                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Content */}
             <div className="p-6">
-
                 {loading ? (
                     <div className="flex items-center justify-center py-16">
                         <div className="flex flex-col items-center gap-3">
-                            <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-gray-500 font-medium">Loading performance data...</p>
+                            <div className="w-10 h-10 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-slate-500 font-medium">Loading performance data...</p>
                         </div>
                     </div>
                 ) : error ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="p-4 bg-red-100 rounded-full mb-4">
-                            <FaChartBar className="text-red-500 text-2xl" />
+                        <div className="p-4 bg-rose-100 rounded-full mb-4">
+                            <FaChartBar className="text-rose-500 text-2xl" />
                         </div>
-                        <p className="text-gray-700 font-medium mb-2">{error}</p>
+                        <p className="text-slate-700 font-medium mb-2">{error}</p>
                         <button
                             onClick={fetchPerformance}
-                            className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+                            className="px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors"
                         >
                             Try Again
                         </button>
                     </div>
-                ) : data.length === 0 ? (
+                ) : report.products.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="p-4 bg-gray-100 rounded-full mb-4">
-                            <FaBoxOpen className="text-gray-400 text-3xl" />
+                        <div className="p-4 bg-slate-100 rounded-full mb-4">
+                            <FaBoxOpen className="text-slate-400 text-3xl" />
                         </div>
-                        <h4 className="text-lg font-bold text-gray-900 mb-2">No Data Available</h4>
-                        <p className="text-gray-500 max-w-sm">
-                            No product sales found for the selected {selectedProduct ? 'product and ' : ''}date range.
+                        <h4 className="text-lg font-semibold text-slate-900 mb-2">No Data Available</h4>
+                        <p className="text-slate-500 max-w-sm">
+                            No product sales found for the selected {selectedProduct ? "product and " : ""}date range.
                             Try adjusting the dates.
                         </p>
                     </div>
                 ) : (
                     <>
-                        {/* Summary Cards */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                             <SummaryCard
                                 icon={<FaShoppingCart />}
                                 label="Total Quantity"
                                 value={summary.totalQuantity}
-                                color="bg-blue-50 text-blue-600"
+                                tone="brand"
                             />
                             <SummaryCard
-                                icon={<FaDollarSign />}
+                                icon={<FaRupeeSign />}
                                 label="Total Revenue"
                                 value={formatCurrency(summary.totalRevenue)}
-                                color="bg-green-50 text-green-600"
+                                tone="emerald"
                                 trend="up"
                             />
                             <SummaryCard
                                 icon={<FaBoxOpen />}
                                 label="Total Cost"
                                 value={formatCurrency(summary.totalCost)}
-                                color="bg-red-50 text-red-600"
+                                tone="rose"
                                 trend="down"
                             />
                             <SummaryCard
                                 icon={<FaTrophy />}
                                 label="Net Profit"
                                 value={formatCurrency(summary.totalProfit)}
-                                color={summary.totalProfit >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}
+                                tone={summary.totalProfit >= 0 ? "emerald" : "rose"}
                                 trend={summary.totalProfit >= 0 ? "up" : "down"}
                             />
                         </div>
 
-                        {/* Bar Chart */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                            <div className="flex items-center justify-between mb-6">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 mb-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                 <div>
-                                    <h4 className="text-lg font-bold text-gray-900">Performance Analytics</h4>
-                                    <p className="text-sm text-gray-500">Comprehensive view of cost, revenue, and profit</p>
+                                    <h4 className="text-lg font-semibold text-slate-900">Performance Analytics</h4>
+                                    <p className="text-sm text-slate-500">Cost, revenue, and profit overview</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-xs font-medium text-red-700 border border-red-100">
-                                        <div className="w-2 h-2 rounded-full bg-red-500"></div> Cost
-                                    </div>
-                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-xs font-medium text-emerald-700 border border-emerald-100">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div> Revenue
-                                    </div>
-                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-xs font-medium text-blue-700 border border-blue-100">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div> Profit
-                                    </div>
+                                    <span className="px-3 py-1 rounded-full bg-rose-50 text-xs font-medium text-rose-700 border border-rose-100">
+                                        Cost
+                                    </span>
+                                    <span className="px-3 py-1 rounded-full bg-sky-50 text-xs font-medium text-sky-700 border border-sky-100">
+                                        Revenue
+                                    </span>
+                                    <span className="px-3 py-1 rounded-full bg-brand-50 text-xs font-medium text-brand-700 border border-brand-100">
+                                        Profit
+                                    </span>
                                 </div>
                             </div>
 
@@ -361,43 +388,75 @@ export default function ProductPerformanceChart() {
                                         {
                                             label: "Amount (₹)",
                                             tickLabelStyle: { fontSize: 12 },
-                                        }
+                                        },
                                     ]}
                                     series={[
                                         {
                                             data: chartData.costs,
                                             label: "Total Cost",
-                                            color: "#ef4444",
+                                            color: "#f43f5e",
                                             valueFormatter: (v) => formatCurrency(v),
-                                            highlightScope: { faded: 'global', highlighted: 'item' },
+                                            highlightScope: { faded: "global", highlighted: "item" },
                                         },
                                         {
                                             data: chartData.revenues,
                                             label: "Total Revenue",
-                                            color: "#10b981",
+                                            color: "#0ea5e9",
                                             valueFormatter: (v) => formatCurrency(v),
-                                            highlightScope: { faded: 'global', highlighted: 'item' },
+                                            highlightScope: { faded: "global", highlighted: "item" },
                                         },
                                         {
                                             data: chartData.profits,
                                             label: "Net Profit",
-                                            color: "#3b82f6",
+                                            color: "#14b8a6",
                                             valueFormatter: (v) => formatCurrency(v),
-                                            highlightScope: { faded: 'global', highlighted: 'item' },
+                                            highlightScope: { faded: "global", highlighted: "item" },
                                         },
                                     ]}
                                     height={400}
                                     grid={{ horizontal: true }}
                                     margin={{ left: 80, right: 30, top: 20, bottom: 60 }}
-                                    slotProps={{
-                                        legend: { hidden: true }, // Using custom legend above for better styling
-                                    }}
+                                    slotProps={{ legend: { hidden: true } }}
                                     sx={{
-                                        ".MuiBarElement-root": {
-                                            rx: 4, // Border radius
-                                        }
+                                        ".MuiBarElement-root": { rx: 4 },
                                     }}
                                 />
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                                <h4 className="text-sm font-semibold text-slate-700">Product Performance Details</h4>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-white border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Product</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Category</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Qty Sold</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Revenue</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Cost</th>
+                                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Profit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {[...report.products]
+                                            .sort((a, b) => b.total_profit - a.total_profit)
+                                            .map((item) => (
+                                                <tr key={item.product_id} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-3 font-medium text-slate-900">{item.product_name}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{item.category_name}</td>
+                                                    <td className="px-4 py-3 text-slate-700">{item.total_quantity_sold}</td>
+                                                    <td className="px-4 py-3 text-slate-700">{formatCurrency(item.total_revenue)}</td>
+                                                    <td className="px-4 py-3 text-slate-700">{formatCurrency(item.total_cost)}</td>
+                                                    <td className={`px-4 py-3 font-semibold ${item.total_profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                                        {formatCurrency(item.total_profit)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </>
@@ -407,21 +466,27 @@ export default function ProductPerformanceChart() {
     );
 }
 
-function SummaryCard({ icon, label, value, color, trend }) {
+function SummaryCard({ icon, label, value, tone, trend }) {
+    const tones = {
+        brand: "border-l-brand-500",
+        emerald: "border-l-emerald-500",
+        rose: "border-l-rose-500",
+    };
+
     return (
-        <div className={`rounded-xl p-4 ${color.split(" ")[0]} hover:shadow-md transition-all`}>
+        <div className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm border-l-4 ${tones[tone] || tones.brand}`}>
             <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-lg ${color}`}>
+                <div className="h-9 w-9 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 flex items-center justify-center">
                     {icon}
                 </div>
                 {trend && (
-                    <span className={`text-xs ${trend === "up" ? "text-green-600" : "text-red-600"}`}>
+                    <span className={`text-xs ${trend === "up" ? "text-emerald-600" : "text-rose-600"}`}>
                         {trend === "up" ? <FaArrowUp /> : <FaArrowDown />}
                     </span>
                 )}
             </div>
-            <p className="text-xs text-gray-500 mb-1">{label}</p>
-            <p className="text-lg font-bold text-gray-900">{value}</p>
+            <p className="text-xs text-slate-500 mb-1">{label}</p>
+            <p className="text-lg font-semibold text-slate-900">{value}</p>
         </div>
     );
 }
@@ -448,9 +513,8 @@ function ProductSearchInput({ onSelect }) {
     const fetchProducts = async (searchQuery) => {
         setLoading(true);
         try {
-            // Using 'name' parameter as requested
             const res = await api.get(`/product/?name=${encodeURIComponent(searchQuery)}`);
-            const products = res.data.results || res.data || []; // Handle pagination or list
+            const products = res.data.results || res.data || [];
             setResults(Array.isArray(products) ? products : []);
             setShowResults(true);
         } catch (err) {
@@ -463,20 +527,20 @@ function ProductSearchInput({ onSelect }) {
 
     return (
         <div className="relative">
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                <FaSearch className="text-gray-400" />
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
+                <FaSearch className="text-slate-400" />
                 <input
-                    className="w-full outline-none text-sm text-gray-700 placeholder-gray-400"
+                    className="w-full outline-none text-sm text-slate-700 placeholder-slate-400"
                     placeholder="Search product by name..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
                 />
-                {loading && <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>}
+                {loading && <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>}
             </div>
 
             {showResults && results.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 rounded-lg border border-slate-200 bg-white max-h-60 overflow-y-auto shadow-sm">
                     {results.map((product) => (
                         <button
                             key={product.id}
@@ -485,18 +549,18 @@ function ProductSearchInput({ onSelect }) {
                                 setShowResults(false);
                                 setQuery("");
                             }}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
                         >
-                            <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                            <p className="text-xs text-gray-500">SKU: {product.sku}</p>
+                            <p className="text-sm font-medium text-slate-900">{product.name}</p>
+                            <p className="text-xs text-slate-500">SKU: {product.sku}</p>
                         </button>
                     ))}
                 </div>
             )}
 
             {showResults && results.length === 0 && query && !loading && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-lg p-4 text-center">
-                    <p className="text-sm text-gray-500">No products found</p>
+                <div className="absolute z-10 w-full mt-1 rounded-lg border border-slate-200 bg-white p-4 text-center shadow-sm">
+                    <p className="text-sm text-slate-500">No products found</p>
                 </div>
             )}
         </div>

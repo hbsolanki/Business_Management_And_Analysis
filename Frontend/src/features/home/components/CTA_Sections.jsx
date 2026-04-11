@@ -2,9 +2,9 @@ import IMG from "@/assets/Home/productivity.png";
 
 export default function CTA_Sections() {
     return (
-        <div className="bg-gradient-to-r from-blue-50 via-white to-blue-50 md:mx-12 md:mt-12 ">
+        <div className="bg-gradient-to-r from-brand-50 via-white to-brand-50 md:mx-12 md:mt-12">
             <div className="">
-                <div className="relative isolate overflow-hidden bg-white px-6 pt-16 shadow-lg sm:rounded-3xl sm:px-16 md:pt-24 lg:flex lg:gap-x-20 lg:px-24 lg:pt-0">
+                <div className="glass-panel relative isolate overflow-hidden px-6 pt-16 sm:rounded-3xl sm:px-16 md:pt-24 lg:flex lg:gap-x-20 lg:px-24 lg:pt-0">
                     {/* Background Gradient */}
                     <svg
                         viewBox="0 0 1024 1024"
@@ -39,13 +39,13 @@ export default function CTA_Sections() {
                         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start">
                             <a
                                 href="/owner/registration"
-                                className="rounded-md bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                className="rounded-md bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
                             >
                                 Get Started
                             </a>
                             <a
                                 href="/"
-                                className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                                className="text-sm font-semibold text-brand-600 hover:text-brand-800"
                             >
                                 Learn More <span aria-hidden="true">→</span>
                             </a>

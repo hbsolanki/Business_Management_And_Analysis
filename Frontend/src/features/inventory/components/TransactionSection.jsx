@@ -1,5 +1,5 @@
 import TransactionFilter from "./TransactionFilter";
-import { FiArrowUp, FiArrowDown, FiClock, FiHash } from "react-icons/fi";
+import { FiArrowUp, FiArrowDown, FiClock, FiHash, FiRepeat } from "react-icons/fi";
 
 export default function TransactionSection({
   transactions,
@@ -7,21 +7,19 @@ export default function TransactionSection({
   onFilter,
 }) {
   return (
-    <div className="bg-white border rounded-xl p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">
-          Inventory Transactions
-        </h2>
-        <p className="text-sm text-gray-500">
-          Track stock in and stock out activities
-        </p>
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+      <div className="flex items-center gap-2">
+        <div className="h-9 w-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+          <FiRepeat className="text-sm" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Inventory Transactions</h2>
+          <p className="text-sm text-slate-500">Track stock in and stock out activities</p>
+        </div>
       </div>
 
-      {/* Filters */}
       <TransactionFilter onApply={onFilter} />
 
-      {/* Transactions */}
       <div className="space-y-4">
         {transactions.map((tx) => {
           const isIn = tx.action === "IN";
@@ -29,56 +27,50 @@ export default function TransactionSection({
           return (
             <div
               key={tx.id}
-              className="border rounded-lg p-4 hover:bg-gray-50 transition"
+              className="rounded-xl border border-slate-200 bg-slate-50 p-4"
             >
-              {/* Top Row */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Action Badge */}
                   <span
-                    className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${isIn
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
+                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded ${isIn
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-rose-50 text-rose-700"
                       }`}
                   >
                     {isIn ? <FiArrowUp /> : <FiArrowDown />}
                     {isIn ? "Stock In" : "Stock Out"}
                   </span>
 
-                  {/* Transaction ID */}
-                  <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
                     <FiHash />
                     TX-{tx.id}
                   </span>
                 </div>
 
-                {/* Time */}
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs text-slate-500">
                   <FiClock />
                   {new Date(tx.created_at).toLocaleString()}
                 </div>
               </div>
 
-              {/* Description */}
               {tx.description && (
-                <p className="mt-2 text-sm text-gray-600">{tx.description}</p>
+                <p className="mt-2 text-sm text-slate-600">{tx.description}</p>
               )}
 
-              {/* Items */}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {tx.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center text-xs border rounded-md px-3 py-2 bg-gray-50"
+                    className="flex justify-between items-center text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white"
                   >
                     <div>
-                      <p className="font-medium text-gray-800">
+                      <p className="font-semibold text-slate-800">
                         {item.product.name}
                       </p>
-                      <p className="text-gray-500">SKU: {item.product.sku}</p>
+                      <p className="text-slate-500">SKU: {item.product.sku}</p>
                     </div>
 
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-slate-900">
                       Qty: {item.quantity}
                     </span>
                   </div>
@@ -89,19 +81,17 @@ export default function TransactionSection({
         })}
       </div>
 
-      {/* Loading */}
       {loading && (
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-slate-500">
           Loading more transactions…
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && transactions.length === 0 && (
-        <div className="text-center text-sm text-gray-500 py-6">
+        <div className="text-center text-sm text-slate-500 py-6">
           No transactions found
         </div>
       )}
-    </div>
+    </section>
   );
 }

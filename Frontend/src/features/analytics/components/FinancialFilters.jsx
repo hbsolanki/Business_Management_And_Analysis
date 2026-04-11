@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FaFilter, FaCalendarAlt, FaTimes, FaSearch } from "react-icons/fa";
+import { useEffect } from "react";
+import { FaFilter, FaTimes, FaSearch } from "react-icons/fa";
 
 const MONTHS = [
     { value: 1, label: "January" },
@@ -16,91 +16,74 @@ const MONTHS = [
     { value: 12, label: "December" },
 ];
 
-export default function FinancialFilters({ onApply, onReset, isLoading = false }) {
+export default function FinancialFilters({ filters, onChange, onApply, onReset, isLoading = false }) {
     const currentDate = new Date();
-    const [filters, setFilters] = useState({
-        month: "",
-        year: "",
-        from_date: "",
-        to_date: "",
-    });
-    const [showAdvanced, setShowAdvanced] = useState(false);
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
 
     const handleChange = (field, value) => {
-        setFilters((prev) => ({ ...prev, [field]: value }));
+        onChange((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleApply = () => {
-        const cleanFilters = {};
-        if (filters.month) cleanFilters.month = filters.month;
-        if (filters.year) cleanFilters.year = filters.year;
-        if (filters.from_date) cleanFilters.from_date = filters.from_date;
-        if (filters.to_date) cleanFilters.to_date = filters.to_date;
-        onApply(cleanFilters);
-    };
+    useEffect(() => {
+        const yearValue = filters.year ? Number(filters.year) : currentYear;
+        if (yearValue === currentYear && Number(filters.month) > currentMonth) {
+            onChange((prev) => ({ ...prev, month: "" }));
+        }
+    }, [filters.year, filters.month, currentYear, currentMonth, onChange]);
 
-    const handleReset = () => {
-        setFilters({ month: "", year: "", from_date: "", to_date: "" });
-        onReset();
-    };
-
-    // Generate year options (last 5 years + next year)
     const yearOptions = [];
-    for (let y = currentDate.getFullYear() + 1; y >= currentDate.getFullYear() - 5; y--) {
+    for (let y = currentYear; y >= currentYear - 5; y--) {
         yearOptions.push(y);
     }
 
+    const maxMonth =
+        !filters.year || Number(filters.year) === currentYear ? currentMonth : 12;
+
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
                         <FaFilter size={16} />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Filters</h3>
+                    <div>
+                        <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
+                        <p className="text-xs text-slate-500">Refine monthly financial summaries.</p>
+                    </div>
                 </div>
-                <button
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors"
-                >
-                    {showAdvanced ? "Simple" : "Advanced"}
-                </button>
             </div>
 
-            {/* Filter Controls */}
-            <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Month Select */}
+            <div className="p-6 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-2">
+                        <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                             Month
                         </label>
                         <select
                             value={filters.month}
                             onChange={(e) => handleChange("month", e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
                         >
-                            <option value="">All Months</option>
+                            <option value="">All months</option>
                             {MONTHS.map((m) => (
-                                <option key={m.value} value={m.value}>
+                                <option key={m.value} value={m.value} disabled={m.value > maxMonth}>
                                     {m.label}
                                 </option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Year Select */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-2">
+                        <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                             Year
                         </label>
                         <select
                             value={filters.year}
                             onChange={(e) => handleChange("year", e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
                         >
-                            <option value="">All Years</option>
+                            <option value="">All years</option>
                             {yearOptions.map((y) => (
                                 <option key={y} value={y}>
                                     {y}
@@ -108,52 +91,21 @@ export default function FinancialFilters({ onApply, onReset, isLoading = false }
                             ))}
                         </select>
                     </div>
-
-                    {/* Advanced Date Filters */}
-                    {showAdvanced && (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-2">
-                                    <FaCalendarAlt className="inline mr-1" size={12} />
-                                    From Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={filters.from_date}
-                                    onChange={(e) => handleChange("from_date", e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-2">
-                                    <FaCalendarAlt className="inline mr-1" size={12} />
-                                    To Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={filters.to_date}
-                                    onChange={(e) => handleChange("to_date", e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
-                                />
-                            </div>
-                        </>
-                    )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3 mt-6">
+                <div className="flex flex-wrap items-center gap-3">
                     <button
-                        onClick={handleApply}
+                        onClick={() => onApply(filters)}
                         disabled={isLoading}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition disabled:opacity-60"
                     >
                         <FaSearch size={14} />
                         Apply Filters
                     </button>
                     <button
-                        onClick={handleReset}
+                        onClick={onReset}
                         disabled={isLoading}
-                        className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-200 transition disabled:opacity-60"
                     >
                         <FaTimes size={14} />
                         Reset

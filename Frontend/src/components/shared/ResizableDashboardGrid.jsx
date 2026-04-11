@@ -1,14 +1,13 @@
-import React, { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Responsive } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateLayout } from '@/redux/slices/dashboardSlice';
-import { useEffect, useRef, useState } from 'react';
 
 // Custom WidthProvider since 'react-grid-layout' export is missing/broken in this version
-const WidthProvider = (ComposedComponent) => {
-    return (props) => {
+function WidthProvider(ComposedComponent) {
+    function WidthProviderComponent(props) {
         const [width, setWidth] = useState(1200);
         const elementRef = useRef(null);
 
@@ -37,8 +36,11 @@ const WidthProvider = (ComposedComponent) => {
                 <ComposedComponent {...props} width={width} />
             </div>
         );
-    };
-};
+    }
+
+    WidthProviderComponent.displayName = `WidthProvider(${ComposedComponent.displayName || ComposedComponent.name || 'Component'})`;
+    return WidthProviderComponent;
+}
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -57,7 +59,7 @@ const ResizableDashboardGrid = ({ role, children, defaultLayouts }) => {
         return defaultLayouts; // { lg: [...], ... }
     }, [storedLayouts, defaultLayouts]);
 
-    const handleLayoutChange = (currentLayout, allLayouts) => {
+    const handleLayoutChange = (currentLayout) => {
         // We only persist the current breakpoint layout for simplicity in this mvp, 
         // or we could try to persist all. For now, saving the 'lg' or current result is typical.
         // allLayouts is an object { lg: [...], md: [...] }

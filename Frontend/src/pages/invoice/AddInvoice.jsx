@@ -1,28 +1,122 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import { invoiceService } from "@/features/invoice/services/invoiceService";
+import { branchService } from "@/features/business/services/branchService";
+import { tokenService } from "@/services/tokenService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import BackButton from "@/components/shared/BackButton";
 
 import {
     FaUser,
     FaPhone,
     FaEnvelope,
     FaMapMarkerAlt,
-    FaMoneyBillWave,
     FaVenusMars,
     FaBirthdayCake,
     FaFileInvoiceDollar,
     FaCreditCard,
-    FaWallet
+    FaWallet,
+    FaCodeBranch
 } from "react-icons/fa";
 
 // Lazy Imports
 const InvoiceItems = lazy(() => import("@/features/invoice/components/InvoiceItems"));
 const PaymentModal = lazy(() => import("@/features/payment/components/PaymentModal"));
 
+const resolveBranchId = (branch) => {
+    if (!branch && branch !== 0) return null;
+    if (typeof branch === "object") {
+        return branch.id ?? branch.branch_id ?? null;
+    }
+    return branch;
+};
+
+const resolveAssignedBranches = (profile, requiredWorkType = null) => {
+    if (!profile) return [];
+
+    const collected = [];
+    const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
+    const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
+
+    const pushBranch = (value, workType = null) => {
+        const id = resolveBranchId(value);
+        if (!id && id !== 0) return;
+
+        // If a specific work type is required, check if this branch/assignment matches
+        if (requiredWorkType && isRestricted) {
+            const normalizedRequired = requiredWorkType.toUpperCase();
+            const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
+
+            // If we have a structured assignment, it MUST match the required work type
+            if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
+                return;
+            }
+        }
+
+        const source = typeof value === "object" ? value : null;
+        const addr = source?.address || {};
+        collected.push({
+            id: String(id),
+            name: source?.name || source?.branch_name || `Branch #${id}`,
+            address: [
+                addr.address_line_1,
+                addr.address_line_2,
+                addr.city,
+                addr.state_name,
+                addr.country_name,
+                addr.pin_code,
+            ].filter(Boolean).join(", "),
+            is_default: Boolean(source?.is_default),
+        });
+    };
+
+    // 1. Primary: assigned_branches (new API structure)
+    if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
+        const allowedBranchIds = requiredWorkType && isRestricted
+            ? new Set(
+                (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
+            )
+            : null;
+
+        profile.assigned_branches.forEach(b => {
+            if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
+            pushBranch(b);
+        });
+    } else if (Array.isArray(profile.assigned_works)) {
+        // Fallback: use assigned_works if no assigned_branches
+        profile.assigned_works.forEach(w => pushBranch(w.branch_id || w, w.work_type));
+    }
+
+    // 2. Legacy fallbacks
+    if (collected.length === 0) {
+        if (Array.isArray(profile.branches)) profile.branches.forEach((branch) => pushBranch(branch));
+        if (Array.isArray(profile.branch)) profile.branch.forEach((branch) => pushBranch(branch));
+        if (profile.branch && typeof profile.branch !== 'object') pushBranch(profile.branch);
+        if (profile.branch_id || profile.branch_id === 0) pushBranch(profile.branch_id);
+    }
+
+    const seen = new Set();
+    return collected.filter((branch) => {
+        if (seen.has(branch.id)) return false;
+        seen.add(branch.id);
+        return true;
+    });
+};
+
 export default function AddInvoice() {
     const navigate = useNavigate();
+    const { profile } = useSelector((state) => state.user);
+    const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
+    const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
+    const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "INVOICE"), [profile]);
+    const [branches, setBranches] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState("");
+    const [fetchingBranches, setFetchingBranches] = useState(false);
+
+    const sanitizeMobileNumber = (value) =>
+        String(value ?? "").replace(/\D/g, "").slice(0, 10);
 
     const [customer, setCustomer] = useState({
         name: "",
@@ -38,30 +132,127 @@ export default function AddInvoice() {
     const [loading, setLoading] = useState(false);
     const [createdInvoice, setCreatedInvoice] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [errors, setErrors] = useState({});
 
-    const fetchCustomerByMobileNumber = async (mobile) => {
-        if (mobile.length !== 10) return;
+    /* ---------------- Fetch Branches ---------------- */
+    useEffect(() => {
+        async function fetchBranches() {
+            setFetchingBranches(true);
+            try {
+                const res = await branchService.list();
+                const branchData = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+
+                if (isRestrictedRole) {
+                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
+                    const visibleBranches = assignedIds.size > 0
+                        ? branchData.filter((branch) => assignedIds.has(String(branch.id)))
+                        : branchData;
+
+                    const resolvedBranches = visibleBranches.length > 0
+                        ? visibleBranches
+                        : assignedBranches;
+
+                    if (resolvedBranches.length > 0) {
+                        const defaultId = tokenService.getDefaultBranchId();
+                        const preSelected = defaultId
+                            ? resolvedBranches.find(b => String(b.id) === String(defaultId))
+                            : (resolvedBranches.find((b) => b.is_default) || resolvedBranches[0]);
+
+                        const finalBranch = preSelected || (resolvedBranches.find((b) => b.is_default) || resolvedBranches[0]);
+                        setSelectedBranch(finalBranch ? String(finalBranch.id) : "");
+                    } else {
+                        setSelectedBranch("");
+                    }
+                    setBranches(resolvedBranches);
+                    return;
+                }
+
+                setBranches(branchData);
+                setSelectedBranch((prev) => {
+                    if (prev && branchData.some((branch) => String(branch.id) === String(prev))) {
+                        return prev;
+                    }
+                    const mainBranch = branchData.find((branch) => branch.is_default) || branchData[0];
+                    return mainBranch ? String(mainBranch.id) : "";
+                });
+            } catch (err) {
+                console.error("Failed to fetch branches", err);
+            } finally {
+                setFetchingBranches(false);
+            }
+        }
+        fetchBranches();
+    }, [isRestrictedRole, assignedBranches]);
+
+    /* ---------------- Side Effects ---------------- */
+    useEffect(() => {
+        // Clear items when branch changes to avoid stock inconsistencies
+        setItems([]);
+        // Re-check customer if branch changes and mobile is valid
+        if (customer.mobile_number.length === 10) {
+            fetchCustomerByMobileNumber(customer.mobile_number, selectedBranch);
+        }
+        if (errors.branch_id) {
+            setErrors(prev => ({ ...prev, branch_id: null }));
+        }
+    }, [selectedBranch]);
+
+    const fetchCustomerByMobileNumber = async (mobile, branchId) => {
+        if (mobile.length !== 10) {
+            // Optional: reset fields if number is being edited/cleared
+            setCustomer(prev => ({
+                ...prev,
+                name: "",
+                email: "",
+                address: "",
+                age: "",
+                gender: "",
+            }));
+            return;
+        }
 
         try {
-            const res = await invoiceService.checkCustomer(mobile);
-            if (res.data?.exists) {
-                setCustomer(res.data.customer);
+            const res = await invoiceService.checkCustomer(mobile, branchId);
+            const customerData = res.data?.results?.[0];
+
+            if (customerData) {
+                setCustomer({
+                    ...customerData,
+                    gender: customerData.gender ? String(customerData.gender).toUpperCase() : ""
+                });
                 toast.success("Customer found");
+            } else {
+                // If 10 digits but NOT found, clear previous customer data
+                setCustomer(prev => ({
+                    ...prev,
+                    name: "",
+                    email: "",
+                    address: "",
+                    age: "",
+                    gender: "",
+                }));
             }
         } catch {
-            toast.error("Customer not found");
+            // Silently fail or log, don't toast error for every digit etc.
         }
     };
 
     const handleSubmit = async () => {
+        if (!selectedBranch) {
+            toast.error("Please select a branch");
+            return;
+        }
+
         if (
             !customer.name ||
-            !customer.mobile_number ||
-            !customer.address ||
-            !customer.age ||
-            !customer.gender
+            !customer.mobile_number
         ) {
             toast.error("Please complete customer details");
+            return;
+        }
+
+        if (sanitizeMobileNumber(customer.mobile_number).length !== 10) {
+            toast.error("Mobile number must be exactly 10 digits");
             return;
         }
 
@@ -77,16 +268,25 @@ export default function AddInvoice() {
         }
 
         setLoading(true);
+        setErrors({});
         try {
-            const res = await invoiceService.create({
-                items: items.map(({ productId, quantity }) => ({
-                    productId,
-                    quantity,
+            const payload = {
+                branch_id: Number(selectedBranch),
+                customer: {
+                    name: String(customer.name || "").trim(),
+                    mobile_number: String(customer.mobile_number || "").trim(),
+                    gender: customer.gender ? String(customer.gender).toUpperCase() : null,
+                    age: customer.age ? Number(customer.age) : null,
+                    email: customer.email ? String(customer.email).trim() : "",
+                },
+                invoice_items: items.map(({ productId, quantity }) => ({
+                    product_id: Number(productId),
+                    quantity: Number(quantity),
                 })),
-                payment_mode: paymentMode,
-                ...customer,
-                age: Number(customer.age),
-            });
+                payment_mode: String(paymentMode || "CASH").toUpperCase(),
+            };
+
+            const res = await invoiceService.create(payload);
 
             if (paymentMode === "ONLINE") {
                 setCreatedInvoice(res.data);
@@ -97,44 +297,56 @@ export default function AddInvoice() {
                 navigate(-1);
             }
         } catch (err) {
-            toast.error(err?.response?.data || "Invoice failed");
+            const errorData = err?.response?.data;
+            if (errorData && typeof errorData === 'object' && !Array.isArray(errorData)) {
+                setErrors(errorData);
+            }
+            const errorMsg = errorData?.detail ||
+                errorData?.non_field_errors?.[0] ||
+                errorData?.branch_id?.[0] ||
+                "Invoice creation failed";
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }
     };
 
-    const inputClass = "w-full rounded-xl border border-gray-200 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all shadow-sm";
+    const inputClass = "w-full rounded-xl border border-slate-200 input-icon-left pr-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all";
 
     return (
-        <div className="min-h-screen bg-gray-50/50">
-            <div className="pb-10">
+        <div className="min-h-screen bg-transparent">
+            <div className="pb-24 sm:pb-10">
                 <ProtectedHeader />
 
                 <div className="container mx-auto px-4 py-8 max-w-6xl space-y-8">
+                    <div>
+                        <BackButton />
+                    </div>
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-                                <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/30">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex-1">
+                            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+                                <div className="p-2 bg-slate-900 rounded-lg text-white shadow-sm">
                                     <FaFileInvoiceDollar className="text-xl" />
                                 </div>
                                 Create Invoice
                             </h1>
-                            <p className="text-gray-500 mt-2 font-medium">Generate a new invoice for customer</p>
+                            <p className="text-slate-500 mt-2 font-medium">Generate a new invoice for customer</p>
                         </div>
-                        <div className="flex gap-3">
+                        {/* Desktop Actions */}
+                        <div className="hidden md:flex gap-3">
                             <button
                                 onClick={() => navigate(-1)}
-                                className="px-6 py-2.5 rounded-xl font-semibold text-gray-600 hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition-all"
+                                className="bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 transition-all"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSubmit}
                                 disabled={loading}
-                                className={`px-8 py-2.5 rounded-xl text-white font-bold shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 flex items-center gap-2 ${loading
+                                className={`px-8 py-2.5 rounded-xl text-white font-semibold shadow-sm transition-all active:scale-95 flex items-center gap-2 ${loading
                                     ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                                    : "bg-slate-900 hover:bg-slate-800"
                                     }`}
                             >
                                 {loading ? "Creating..." : "Create Invoice"}
@@ -145,29 +357,69 @@ export default function AddInvoice() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* LEFT COLUMN: Customer Details */}
                         <div className="lg:col-span-1 space-y-6">
-                            <section className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden sticky top-24">
-                                <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                                    <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-                                        <FaUser className="text-blue-500" />
-                                        Customer Details
+                            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm sticky top-24">
+                                <div className="p-6 border-b border-slate-200 bg-slate-50">
+                                    <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+                                        <FaUser className="text-slate-900" />
                                     </h2>
                                 </div>
 
                                 <div className="p-6 space-y-5">
+                                    {(userRole === "OWNER" || isRestrictedRole) && (
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Branch <span className="text-red-500">*</span></label>
+                                            <div className="relative group">
+                                                <FaCodeBranch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition z-10" />
+                                                <select
+                                                    className={`${inputClass} appearance-none bg-transparent`}
+                                                    value={selectedBranch}
+                                                    onChange={(e) => setSelectedBranch(e.target.value)}
+                                                    disabled={fetchingBranches || (isRestrictedRole && branches.length <= 1)}
+                                                >
+                                                    <option value="">Select Branch</option>
+                                                    {branches.map(b => (
+                                                        <option key={b.id} value={b.id}>{b.name} {b.is_default ? "(Main)" : ""}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {errors.branch_id && (
+                                                <p className="mt-2 text-xs font-medium text-rose-600">
+                                                    {errors.branch_id[0]}
+                                                </p>
+                                            )}
+                                            {isRestrictedRole && !fetchingBranches && branches.length === 0 && (
+                                                <p className="mt-2 text-xs font-medium text-rose-600">
+                                                    No branch is assigned to your account.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Mobile */}
                                     <div>
-                                        <label className="text-xs font-bold text-gray-700 uppercase mb-1.5 block">Mobile Number <span className="text-red-500">*</span></label>
+                                        <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Mobile Number <span className="text-red-500">*</span></label>
                                         <div className="relative group">
-                                            <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+                                            <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition" />
                                             <input
                                                 className={inputClass}
+                                                type="tel"
+                                                inputMode="numeric"
+                                                autoComplete="tel-national"
+                                                pattern="[0-9]{10}"
                                                 value={customer.mobile_number}
                                                 placeholder="10-digit number"
                                                 maxLength={10}
                                                 onChange={(e) => {
-                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    const val = sanitizeMobileNumber(e.target.value);
                                                     setCustomer({ ...customer, mobile_number: val });
-                                                    fetchCustomerByMobileNumber(val);
+                                                    fetchCustomerByMobileNumber(val, selectedBranch);
+                                                }}
+                                                onPaste={(e) => {
+                                                    e.preventDefault();
+                                                    const pasted = e.clipboardData.getData("text");
+                                                    const val = sanitizeMobileNumber(pasted);
+                                                    setCustomer({ ...customer, mobile_number: val });
+                                                    fetchCustomerByMobileNumber(val, selectedBranch);
                                                 }}
                                             />
                                         </div>
@@ -175,9 +427,9 @@ export default function AddInvoice() {
 
                                     {/* Name */}
                                     <div>
-                                        <label className="text-xs font-bold text-gray-700 uppercase mb-1.5 block">Full Name <span className="text-red-500">*</span></label>
+                                        <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Full Name <span className="text-red-500">*</span></label>
                                         <div className="relative group">
-                                            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+                                            <FaUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition" />
                                             <input
                                                 className={inputClass}
                                                 value={customer.name}
@@ -191,9 +443,9 @@ export default function AddInvoice() {
 
                                     {/* Email */}
                                     <div>
-                                        <label className="text-xs font-bold text-gray-700 uppercase mb-1.5 block">Email</label>
+                                        <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Email</label>
                                         <div className="relative group">
-                                            <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+                                            <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition" />
                                             <input
                                                 className={inputClass}
                                                 value={customer.email}
@@ -208,11 +460,11 @@ export default function AddInvoice() {
 
                                     {/* Address */}
                                     <div>
-                                        <label className="text-xs font-bold text-gray-700 uppercase mb-1.5 block">Address <span className="text-red-500">*</span></label>
+                                        <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Address <span className="text-red-500">*</span></label>
                                         <div className="relative group">
-                                            <FaMapMarkerAlt className="absolute left-3 top-4 text-gray-400 group-focus-within:text-blue-600 transition" />
+                                            <FaMapMarkerAlt className="absolute left-3 top-4 text-slate-400 group-focus-within:text-slate-600 transition" />
                                             <textarea
-                                                className="w-full rounded-xl border border-gray-200 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all shadow-sm resize-none"
+                                                className="w-full rounded-xl border border-slate-200 input-icon-left pr-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all resize-none"
                                                 value={customer.address}
                                                 placeholder="Billing Address"
                                                 rows={2}
@@ -226,9 +478,9 @@ export default function AddInvoice() {
                                     <div className="grid grid-cols-2 gap-4">
                                         {/* Age */}
                                         <div>
-                                            <label className="text-xs font-bold text-gray-700 uppercase mb-1.5 block">Age <span className="text-red-500">*</span></label>
+                                            <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Age <span className="text-red-500">*</span></label>
                                             <div className="relative group">
-                                                <FaBirthdayCake className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+                                                <FaBirthdayCake className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition" />
                                                 <input
                                                     type="number"
                                                     className={inputClass}
@@ -243,9 +495,9 @@ export default function AddInvoice() {
 
                                         {/* Gender */}
                                         <div>
-                                            <label className="text-xs font-bold text-gray-700 uppercase mb-1.5 block">Gender <span className="text-red-500">*</span></label>
+                                            <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Gender <span className="text-red-500">*</span></label>
                                             <div className="relative group">
-                                                <FaVenusMars className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition z-0" />
+                                                <FaVenusMars className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition z-0" />
                                                 <select
                                                     className={`${inputClass} appearance-none bg-transparent`}
                                                     value={customer.gender}
@@ -254,36 +506,36 @@ export default function AddInvoice() {
                                                     }
                                                 >
                                                     <option value="">Select</option>
-                                                    <option value="male">Male</option>
-                                                    <option value="female">Female</option>
+                                                    <option value="MALE">Male</option>
+                                                    <option value="FEMALE">Female</option>
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Payment Mode Selection */}
-                                    <div className="pt-4 border-t border-gray-100">
-                                        <label className="text-xs font-bold text-gray-700 uppercase mb-3 block">Payment Method</label>
+                                    <div className="pt-4 border-t border-slate-200">
+                                        <label className="text-xs font-semibold text-slate-700 uppercase mb-3 block">Payment Method</label>
                                         <div className="grid grid-cols-2 gap-3">
                                             <button
                                                 onClick={() => setPaymentMode("CASH")}
-                                                className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${paymentMode === "CASH"
-                                                        ? "border-green-500 bg-green-50 text-green-700"
-                                                        : "border-gray-100 hover:border-gray-200 text-gray-500"
+                                                className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${paymentMode === "CASH"
+                                                    ? "border-slate-900 bg-slate-900 text-white"
+                                                    : "border-slate-200 hover:bg-slate-50 text-slate-600"
                                                     }`}
                                             >
                                                 <FaWallet className="text-xl" />
-                                                <span className="text-xs font-bold">Cash</span>
+                                                <span className="text-xs font-semibold">Cash</span>
                                             </button>
                                             <button
                                                 onClick={() => setPaymentMode("ONLINE")}
-                                                className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${paymentMode === "ONLINE"
-                                                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                                                        : "border-gray-100 hover:border-gray-200 text-gray-500"
+                                                className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${paymentMode === "ONLINE"
+                                                    ? "border-slate-900 bg-slate-900 text-white"
+                                                    : "border-slate-200 hover:bg-slate-50 text-slate-600"
                                                     }`}
                                             >
                                                 <FaCreditCard className="text-xl" />
-                                                <span className="text-xs font-bold">Online</span>
+                                                <span className="text-xs font-semibold">Online</span>
                                             </button>
                                         </div>
                                     </div>
@@ -294,17 +546,39 @@ export default function AddInvoice() {
                         {/* RIGHT COLUMN: Items */}
                         <div className="lg:col-span-2 space-y-6">
                             <Suspense fallback={
-                                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 h-64 flex items-center justify-center">
+                                <div className="bg-white border border-slate-200 rounded-2xl p-8 h-64 flex items-center justify-center shadow-sm">
                                     <div className="flex flex-col items-center gap-2">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                        <span className="text-gray-400 text-sm">Loading products...</span>
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+                                        <span className="text-slate-400 text-sm">Loading products...</span>
                                     </div>
                                 </div>
                             }>
-                                <InvoiceItems items={items} setItems={setItems} />
+                                <InvoiceItems items={items} setItems={setItems} branchId={selectedBranch} />
                             </Suspense>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Mobile Actions */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 md:hidden">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex-1 bg-white border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className={`flex-1 px-4 py-3 rounded-xl text-white font-semibold shadow-sm transition-all active:scale-95 ${loading
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-slate-900 hover:bg-slate-800"
+                            }`}
+                    >
+                        {loading ? "Creating..." : "Create"}
+                    </button>
                 </div>
             </div>
 

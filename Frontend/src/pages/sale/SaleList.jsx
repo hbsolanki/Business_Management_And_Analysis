@@ -79,11 +79,11 @@ function Sale() {
             to={`/sale/${sid}/new`}
             className="
             inline-flex items-center gap-2
-            bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800
+            bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800
             text-white font-medium
             px-5 py-2.5
             rounded-lg
-            shadow-lg shadow-blue-500/30
+            shadow-lg shadow-brand-500/30
             hover:scale-[1.02] transform transition-all
             "
           >
@@ -117,7 +117,7 @@ function Sale() {
             </div>
             <button
               onClick={handleFilterChange}
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+              className="bg-brand-500 text-white px-4 py-2 rounded"
             >
               Filter
             </button>
@@ -128,7 +128,7 @@ function Sale() {
         {loading ? (
           <div className="flex justify-center items-center">
             <svg
-              className="animate-spin h-8 w-8 text-blue-500"
+              className="animate-spin h-8 w-8 text-brand-500"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -153,13 +153,13 @@ function Sale() {
             {sortedSaleData.map((sale) => (
               <div
                 key={sale._id}
-                className="bg-white shadow-lg rounded-lg p-6 border border-gray-200 transition-transform duration-300 hover:shadow-xl"
+                className="glass-panel rounded-lg p-6 transition-transform duration-300 hover:shadow-xl"
               >
                 <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center gap-2">
-                  <FaCalendarAlt className="text-blue-500" />
+                  <FaCalendarAlt className="text-brand-500" />
                   {new Date(sale.date).toLocaleDateString()}
                   <span className="ml-4 flex items-center gap-2">
-                    <FaClock className="text-blue-500" />
+                    <FaClock className="text-brand-500" />
                     {new Date(sale.date).toLocaleTimeString("en-US", {
                       hour12: false,
                       hour: "2-digit",

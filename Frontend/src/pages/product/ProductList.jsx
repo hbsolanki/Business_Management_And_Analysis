@@ -17,18 +17,29 @@ export default function ProductList() {
         expandedId,
         toggleRead,
         removeProduct,
+        toggleProductStatus,
         loadMore,
         hasMore,
         loadingMore,
         applyFilters,
     } = useProducts();
 
-    const { categories, openAdd, openEdit, removeCategory, CategoryModalUI } =
+    const {
+        categories,
+        loading: loadingCategories,
+        loadMore: loadMoreCategories,
+        hasMore: hasMoreCategories,
+        loadingMore: loadingMoreCategories,
+        openAdd,
+        openEdit,
+        removeCategory,
+        CategoryModalUI,
+    } =
         useCategories();
 
     const [deleteModal, setDeleteModal] = useState({
         isOpen: false,
-        type: null, // "PRODUCT" or "CATEGORY"
+        type: null,
         id: null,
     });
 
@@ -55,41 +66,55 @@ export default function ProductList() {
     return (
         <>
             <ProtectedHeader />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-                <Suspense fallback={<div className="h-10 bg-gray-100 rounded animate-pulse"></div>}>
-                    <ProductHeader />
-                </Suspense>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+                <div>
+                    <Suspense fallback={<div className="h-10 rounded-lg bg-slate-100 animate-pulse"></div>}>
+                        <ProductHeader />
+                    </Suspense>
+                </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-                    <Suspense fallback={<div className="h-20 bg-gray-100 rounded animate-pulse"></div>}>
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <Suspense fallback={<div className="h-20 rounded-lg bg-slate-100 animate-pulse"></div>}>
                         <CategoryList
                             categories={categories}
+                            loading={loadingCategories}
+                            hasMore={hasMoreCategories}
+                            loadingMore={loadingMoreCategories}
+                            onLoadMore={loadMoreCategories}
                             onAdd={openAdd}
                             onEdit={openEdit}
                             onDelete={(id) => openDeleteModal("CATEGORY", id)}
                         />
                     </Suspense>
-                </div>
+                </section>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-                    <Suspense fallback={<div className="h-20 bg-gray-100 rounded animate-pulse"></div>}>
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+                    <Suspense fallback={<div className="h-20 rounded-lg bg-slate-100 animate-pulse"></div>}>
                         <ProductFilters categories={categories} onApply={applyFilters} />
                     </Suspense>
 
-                    <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+                    <Suspense
+                        fallback={
+                            <div className="h-64 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+                            </div>
+                        }
+                    >
                         <ProductSection
                             products={products}
                             loading={loading}
                             expandedId={expandedId}
                             toggleRead={toggleRead}
                             onDeleteProduct={(id) => openDeleteModal("PRODUCT", id)}
+                            onToggleStatus={toggleProductStatus}
                             loadMore={loadMore}
                             hasMore={hasMore}
                             loadingMore={loadingMore}
+                            showFinancials
                         />
                     </Suspense>
-                </div>
-            </div>
+                </section>
+            </main>
 
             {CategoryModalUI}
 

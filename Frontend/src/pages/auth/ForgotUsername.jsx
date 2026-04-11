@@ -28,7 +28,7 @@ export default function ForgotUsername() {
             const response = await authService.forgetUsername(email);
             toast.success(response.message || "Username sent to your email!");
             // Optional: Navigate back to login after a delay or let user choose
-            setTimeout(() => navigate("/login"), 3000);
+            setTimeout(() => navigate(-1), 3000);
         } catch (err) {
             console.error(err);
             toast.error(getErrorMessage(err, "Failed to process request"));
@@ -38,33 +38,27 @@ export default function ForgotUsername() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col">
+        <div className="min-h-screen flex flex-col bg-transparent">
             <Header />
 
-            {/* Background Decor */}
-            <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
-                <div className="absolute top-1/2 right-0 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl"></div>
-            </div>
-
-            <div className="container mx-auto px-4 flex justify-center items-center flex-grow pt-20 pb-10 relative z-10">
-                <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-30 skew-x-12 transform -translate-x-1/2"></div>
-                        <h2 className="text-2xl font-bold text-white mb-1 relative z-10">
-                            Forgot Username
-                        </h2>
-                        <p className="text-blue-100 text-sm relative z-10">
-                            Enter your email to retrieve your username.
-                        </p>
+            <div className="flex-grow flex items-center justify-center px-4 py-12">
+                <div className="w-full max-w-md form-card overflow-hidden">
+                    <div className="form-header">
+                        <div className="form-header-icon">
+                            <FaEnvelope />
+                        </div>
+                        <div>
+                            <h2 className="form-title">Forgot Username</h2>
+                            <p className="form-subtitle">Enter your email to retrieve your username.</p>
+                        </div>
                     </div>
 
-                    <div className="p-8">
+                    <div className="form-section">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                                <div className="relative group">
-                                    <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition" />
+                                <label>Email Address</label>
+                                <div className="relative">
+                                    <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         name="email"
                                         type="email"
@@ -72,14 +66,14 @@ export default function ForgotUsername() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="Enter your registered email"
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                                        className="w-full input-icon-left pr-4 py-3"
                                     />
                                 </div>
                             </div>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all disabled:opacity-50"
+                                className={`btn-primary w-full ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
                             >
                                 {loading ? "Sending..." : <><FaPaperPlane /> Send Username</>}
                             </button>
@@ -88,7 +82,7 @@ export default function ForgotUsername() {
                         <div className="text-center pt-6 mt-2 border-t border-gray-100">
                             <Link
                                 to="/login"
-                                className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-blue-600 transition"
+                                className="inline-flex items-center text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
                             >
                                 <FaArrowLeft className="mr-2" /> Back to Login
                             </Link>

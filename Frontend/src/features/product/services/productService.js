@@ -7,6 +7,6 @@ export const productService = {
     update: (id, data) => api.patch(`/product/${id}/`, data),
     delete: (id) => api.delete(`/product/${id}/`),
 
-    getCategories: () => api.get("/product/category/"),
+    getCategories: (url = "/product/category/") => api.get(url),
     deleteCategory: (id) => api.delete(`/product/category/${id}/`),
 };

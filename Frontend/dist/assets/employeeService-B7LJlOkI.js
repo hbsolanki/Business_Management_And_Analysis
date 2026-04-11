@@ -1,1 +1,0 @@
-import{a as t}from"./api-BsG4zq5T.js";const s={getAll:()=>t.get("/user/employee/"),getById:e=>t.get(`/user/${e}/`),create:e=>t.post("/user/employee/create/",e),update:(e,r)=>t.patch(`/user/${e}/`,r),delete:e=>t.delete(`/user/${e}/`)};export{s as e};

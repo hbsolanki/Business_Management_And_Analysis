@@ -69,7 +69,13 @@ export const decodedTokenAndGetInfo = () => {
 export const getLandingPath = (profile) => {
     if (!profile) return { path: "/", branchId: null };
 
-    const role = (typeof profile.role === "object" ? profile.role?.role : profile.role || "").toUpperCase();
+    // If user has no business assigned, send them to business setup
+    if (!profile.business_id) {
+        return { path: "/business/new", branchId: null };
+    }
+
+    const roleStr = typeof profile.role === "object" ? (profile.role?.role || "") : (profile.role || "");
+    const role = String(roleStr).toUpperCase();
 
     if (role === "OWNER") {
         return { path: "/owner", branchId: null };
@@ -77,10 +83,9 @@ export const getLandingPath = (profile) => {
 
     // For Managers and Employees, check assigned_works
     if (Array.isArray(profile.assigned_works) && profile.assigned_works.length > 0) {
-        // Priority order based on the first assigned work
-        const firstWork = profile.assigned_works[0];
-        const workType = (firstWork.work_type || "").toUpperCase();
-        const branchId = firstWork.branch_id || null;
+        // Priority order based on the first assigned work string
+        const workType = String(profile.assigned_works[0]).toUpperCase();
+        const branchId = profile.default_branch_id || null; // Fallback or handle separately
 
         const pathMap = {
             "INVOICE": "/invoice/new",

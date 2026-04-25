@@ -1,7 +1,11 @@
 import os
 import environ
+import certifi
 from datetime import timedelta
 from pathlib import Path
+
+# Fix for macOS SSL Certificate issue
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -21,6 +25,7 @@ DB_PORT = env("DB_PORT", default="5432")
 
 # Redis & Celery
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
+REDIS_PASSWORD = env("REDIS_PASSWORD", default=None)
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
 CELERY_ACCEPT_CONTENT = env.list("CELERY_ACCEPT_CONTENT", default=["json"])
@@ -45,6 +50,13 @@ STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 
 # Email / Brevo
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="smtp-relay.brevo.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="apikey")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 DEFAULT_FROM_NAME_EMAIL = env("DEFAULT_FROM_NAME_EMAIL")
 BREVO_API_KEY = env("BREVO_API_KEY")

@@ -18,6 +18,8 @@ from apps.employee.utils.permission_utils import sync_user_work_groups as sync_u
 from apps.activity_log.models import ActivityLog
 from apps.activity_log.mixins import ActivityLogMixin
 from apps.employee.models import UserBusinessRole, UserRole
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 class UserViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
@@ -47,8 +49,8 @@ class UserViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
         if self.action == "create":
             return OwnerSerializer
 
-        if self.action in ["retrieve", "update", "partial_update"]:
-            obj = self.get_object()
+        if self.action in ["retrieve", "update", "partial_update", "me"]:
+            obj = self.get_object() if self.action != "me" else self.request.user
             if obj.role_name == UserRole.MANAGER:
                 return ManagerSerializer
             if obj.role_name == UserRole.EMPLOYEE:
@@ -107,6 +109,124 @@ class UserViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
                 details.save(update_fields=["is_deleted", "is_active"])
             
             super().perform_destroy(instance)
+
+    def create(self, request, *args, **kwargs):
+        user_data = request.data.get("user")
+        if not user_data:
+            return Response({"error": "User data required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        email = user_data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Check if email is blocked (1-hour lock)
+        block_key = f"otp_block_{email}"
+        if cache.get(block_key):
+            return Response({
+                "error": "This email is temporarily blocked due to too many attempts. Please try again after 1 hour."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        otp = request.data.get("otp")
+        if not otp:
+            return Response({"error": "OTP is required for registration"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        cached_otp = cache.get(f"otp_registration_{email}")
+        
+        # 2. Track verification attempts
+        attempt_key = f"otp_verify_attempts_{email}"
+        attempts = cache.get(attempt_key, 0)
+        
+        if not cached_otp or str(cached_otp) != str(otp):
+            attempts += 1
+            cache.set(attempt_key, attempts, 3600) # Keep track for an hour
+            
+            if attempts >= 3:
+                cache.set(block_key, True, 3600)
+                return Response({
+                    "error": "Too many invalid OTP attempts. Your email is now blocked for 1 hour."
+                }, status=status.HTTP_403_FORBIDDEN)
+                
+            return Response({
+                "error": f"Invalid or expired OTP. {3 - attempts} attempts remaining."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # OTP is valid, proceed with creation
+        response = super().create(request, *args, **kwargs)
+        
+        # Clear tracking after successful registration
+        if response.status_code == status.HTTP_201_CREATED:
+            cache.delete(f"otp_registration_{email}")
+            cache.delete(attempt_key)
+            cache.delete(f"otp_send_attempts_{email}")
+            
+        return response
+
+    @action(detail=False, methods=['post'], url_path='send-otp', permission_classes=[AllowAny])
+    def send_otp(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if email is blocked
+        block_key = f"otp_block_{email}"
+        if cache.get(block_key):
+            return Response({
+                "error": "This email is temporarily blocked due to too many attempts. Please try again after 1 hour."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Check if user already exists
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "A user with this email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. Track send attempts
+        send_attempt_key = f"otp_send_attempts_{email}"
+        send_count = cache.get(send_attempt_key, 0)
+        
+        if send_count >= 3:
+            cache.set(block_key, True, 3600)
+            return Response({
+                "error": "You have requested OTP too many times. Your email is now blocked for 1 hour."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        otp = str(random.randint(100000, 999999))
+        cache.set(f"otp_registration_{email}", otp, 600)  # 10 minutes
+        
+        # Increment send count
+        cache.set(send_attempt_key, send_count + 1, 3600)
+
+        try:
+            import sib_api_v3_sdk
+            configuration = sib_api_v3_sdk.Configuration()
+            configuration.api_key['api-key'] = settings.BREVO_API_KEY
+            
+            api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+            
+            send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                to=[{"email": email}],
+                sender={"email": settings.DEFAULT_FROM_EMAIL, "name": "BMA"},
+                subject="Your BMA Verification Code",
+                html_content=f"<html><body><h3>Verification Code</h3><p>Your code for registration is: <strong>{otp}</strong></p><p>This code will expire in 10 minutes.</p></body></html>"
+            )
+            
+            api_instance.send_transac_email(send_smtp_email)
+            return Response({"message": f"OTP sent successfully. {2 - send_count} requests remaining."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"BREVO API ERROR: {e}")
+            # Fallback to local log for debugging if API fails
+            from django.core.mail import send_mail
+            send_mail(
+                subject="[FALLBACK] Your BMA Verification Code",
+                message=f"Code: {otp}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=True
+            )
+            return Response({"message": f"OTP sent (check debug logs). {2 - send_count} requests remaining."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='me')
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'], url_path='logout')
     def logout(self, request):

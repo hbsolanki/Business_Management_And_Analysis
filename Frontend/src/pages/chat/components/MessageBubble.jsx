@@ -4,14 +4,11 @@ import remarkGfm from "remark-gfm";
 import {
   FaUser,
   FaRobot,
-  FaListUl,
-  FaChevronUp,
-  FaChevronDown,
   FaCopy,
   FaPen,
   FaLock,
+  FaSync,
 } from "react-icons/fa";
-import WorkflowPanel from "./WorkflowPanel";
 
 const normalizeChartSrcdoc = (srcdocContent) => {
   if (!srcdocContent) return srcdocContent;
@@ -61,16 +58,43 @@ const getRestrictionCard = (value) => {
   return null;
 };
 
+const ChartRenderer = ({ chartId, chartsCache = {} }) => {
+  const cachedHtml = chartsCache[chartId];
+
+  if (!cachedHtml) {
+    return (
+      <div className="flex h-[300px] w-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-50/50">
+        <div className="flex flex-col items-center gap-2">
+          <FaSync className="animate-spin text-slate-400" size={18} />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Waiting for visualization data...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      srcDoc={normalizeChartSrcdoc(cachedHtml)}
+      width="100%"
+      height="500"
+      frameBorder="0"
+      sandbox="allow-scripts allow-same-origin"
+      className="rounded-2xl border border-slate-200/80 bg-transparent shadow-sm"
+      title={`Chart ${chartId}`}
+    />
+  );
+};
+
 const MessageBubble = memo(function MessageBubble({
   msg,
+  chartsCache = {},
   onCopyMessage,
   onReuseMessage,
 }) {
-  const [showProcess, setShowProcess] = useState(false);
   const [showUserActions, setShowUserActions] = useState(false);
   const isUser = msg.type === "user";
-  const hasProcess =
-    Array.isArray(msg.statusHistory) && msg.statusHistory.length > 0;
   const hideActionsTimeoutRef = useRef(null);
 
   useEffect(() => {
@@ -127,17 +151,79 @@ const MessageBubble = memo(function MessageBubble({
       );
     }
 
-    // Detect and extract iframe HTML from the message
-    if (content.includes("<iframe") && content.includes("</iframe>")) {
+    // Handle structured content (array) from backend serializer
+    if (Array.isArray(content)) {
+      return (
+        <div className="flex flex-col gap-4">
+          {content.map((part, i) =>
+            part.type === "text" ? (
+              part.value.trim() ? (
+                <div key={i} className="agent-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {part.value}
+                  </ReactMarkdown>
+                </div>
+              ) : null
+            ) : (
+              <ChartRenderer 
+                key={i} 
+                chartId={part.id} 
+                chartsCache={{ ...chartsCache, [part.id]: part.html || chartsCache[part.id] }} 
+              />
+            ),
+          )}
+        </div>
+      );
+    }
+
+    // Detect and extract ChartRef tags from string (streaming)
+    if (typeof content === "string" && content.includes("<ChartRef:")) {
+      const chartRefRegex = /<ChartRef:([a-f0-9-]+)>/gi;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      while ((match = chartRefRegex.exec(content)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push({
+            type: "text",
+            value: content.slice(lastIndex, match.index),
+          });
+        }
+        parts.push({ type: "chart", value: match[1] });
+        lastIndex = match.index + match[0].length;
+      }
+      if (lastIndex < content.length) {
+        parts.push({ type: "text", value: content.slice(lastIndex) });
+      }
+
+      return (
+        <div className="flex flex-col gap-4">
+          {parts.map((part, i) =>
+            part.type === "text" ? (
+              part.value.trim() ? (
+                <div key={i} className="agent-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {part.value}
+                  </ReactMarkdown>
+                </div>
+              ) : null
+            ) : (
+              <ChartRenderer key={i} chartId={part.value} chartsCache={chartsCache} />
+            ),
+          )}
+        </div>
+      );
+    }
+
+    // Detect and extract iframe HTML from the message (Legacy/Fallback)
+    if (typeof content === "string" && content.includes("<iframe") && content.includes("</iframe>")) {
       const iframeStart = content.indexOf("<iframe");
       const iframeEnd = content.indexOf("</iframe>") + "</iframe>".length;
 
       if (iframeStart !== -1 && iframeEnd > iframeStart) {
         const iframeHtml = content.slice(iframeStart, iframeEnd);
 
-        // Extract the srcdoc value — we always use single quotes: srcdoc='...'
-        // Since all internal single quotes are escaped as &apos;, the first ' after
-        // the marker is always the closing delimiter.
         let srcdocContent = null;
         const srcdocMarker = "srcdoc='";
         const markerIdx = iframeHtml.indexOf(srcdocMarker);
@@ -145,7 +231,6 @@ const MessageBubble = memo(function MessageBubble({
           const contentStart = markerIdx + srcdocMarker.length;
           const contentEnd = iframeHtml.indexOf("'", contentStart);
           if (contentEnd !== -1) {
-            // Decode HTML entities so the browser sees real HTML/JS
             srcdocContent = iframeHtml
               .slice(contentStart, contentEnd)
               .replace(/&apos;/g, "'")
@@ -174,9 +259,6 @@ const MessageBubble = memo(function MessageBubble({
                 </ReactMarkdown>
               </div>
             ) : null}
-            {/* Use a real JSX iframe element — setting srcdoc as a prop
-                            is the most reliable way, as React sets the DOM property
-                            directly without any re-encoding. */}
             {iframeRestrictionCard ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-amber-950 shadow-sm">
                 <div className="flex items-start gap-3">
@@ -221,8 +303,9 @@ const MessageBubble = memo(function MessageBubble({
     }
 
     return (
-      <div className="agent-markdown">
+      <div className="agent-markdown relative">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        {msg.isStreaming && <span className="agent-typing-cursor" />}
       </div>
     );
   };
@@ -236,7 +319,6 @@ const MessageBubble = memo(function MessageBubble({
       <div
         className={`flex w-full max-w-5xl flex-col gap-3 sm:gap-4 ${isUser ? "items-end sm:flex-row-reverse sm:items-start" : "items-start sm:flex-row"}`}
       >
-        {/* Avatar */}
         <div
           className={`flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm transition-transform hover:scale-105 ${
             isUser
@@ -247,7 +329,6 @@ const MessageBubble = memo(function MessageBubble({
           {isUser ? <FaUser size={14} /> : <FaRobot size={15} />}
         </div>
 
-        {/* Content Area */}
         <div
           className={`flex min-w-0 w-full flex-1 flex-col gap-2 sm:gap-3 ${isUser ? "items-end" : "items-start"}`}
         >
@@ -285,36 +366,6 @@ const MessageBubble = memo(function MessageBubble({
                   </button>
                 </div>
               </div>
-            </div>
-          ) : null}
-
-          {/* Workflow Toggle */}
-          {hasProcess ? (
-            <div
-              className={`w-full ${isUser ? "max-w-[95%] sm:max-w-[85%]" : "max-w-full"}`}
-            >
-              <button
-                type="button"
-                onClick={() => setShowProcess((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 transition-all hover:border-brand-300 hover:text-brand-700 hover:bg-brand-50 shadow-sm active:scale-95"
-              >
-                <FaListUl size={10} />
-                {showProcess ? "Hide Workflow" : "View Workflow"}
-                {showProcess ? (
-                  <FaChevronUp size={9} />
-                ) : (
-                  <FaChevronDown size={9} />
-                )}
-              </button>
-
-              {showProcess && (
-                <div className="mt-2 overflow-hidden transition-all duration-500">
-                  <WorkflowPanel
-                    statuses={msg.statusHistory}
-                    title="Execution Workflow"
-                  />
-                </div>
-              )}
             </div>
           ) : null}
         </div>

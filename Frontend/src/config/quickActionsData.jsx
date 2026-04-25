@@ -181,7 +181,7 @@ export const OWNER_ACTIONS = {
     aiAgent: {
         id: "aiAgent",
         label: "AI Agent",
-        path: "/chat/agent",
+        path: "/ai-agent/session",
         icon: <FaRobot />,
         desc: "AI Business Assistant",
         color: "text-brand-600",
@@ -331,7 +331,7 @@ export const MANAGER_ACTIONS = {
     aiAgent: {
         id: "aiAgent",
         label: "AI Agent",
-        path: "/chat/agent",
+        path: "/ai-agent/session",
         icon: <FaRobot />,
         desc: "AI Business Assistant",
         color: "text-brand-600",
@@ -428,7 +428,7 @@ export const EMPLOYEE_ACTIONS = {
     aiAgent: {
         id: "aiAgent",
         label: "AI Agent",
-        path: "/chat/agent",
+        path: "/ai-agent/session",
         icon: <FaRobot />,
         desc: "AI Business Assistant",
         color: "text-brand-600",

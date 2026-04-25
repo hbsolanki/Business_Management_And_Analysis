@@ -6,27 +6,14 @@ import api from '@/services/api';
 
 const NotificationContext = createContext();
 
-const resolveNotificationWsUrl = (token) => {
-    const fallbackProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const fallbackHost = window.location.host;
-
-    try {
-        const parsed = new URL(API_BASE_URL, window.location.origin);
-        const protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
-        const baseHost = ['0.0.0.0', '::', '[::]'].includes(parsed.hostname)
-            ? window.location.hostname
-            : parsed.hostname;
-        const host = `${baseHost}${parsed.port ? `:${parsed.port}` : ''}`;
-        return `${protocol}//${host}/ws/notifications/?token=${token}`;
-    } catch {
-        return `${fallbackProtocol}//${fallbackHost}/ws/notifications/?token=${token}`;
-    }
+const resolveNotificationSSEUrl = () => {
+    return `${API_BASE_URL}/notification/stream/`;
 };
 
 export const NotificationProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
-    const socketRef = useRef(null);
+    const abortControllerRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
 
     const fetchNotifications = useCallback(async () => {
@@ -44,73 +31,90 @@ export const NotificationProvider = ({ children }) => {
         }
     }, []);
 
-    const connectWebSocket = useCallback(() => {
+    const connectSSE = useCallback(() => {
         const token = tokenService.getAccessToken();
         if (!token) return;
 
-        if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
-            return;
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
         }
 
-        const wsUrl = resolveNotificationWsUrl(token);
-        socketRef.current = new WebSocket(wsUrl);
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
 
-        socketRef.current.onopen = () => {
-            console.log('Notification WebSocket Connected (Global)');
-            setIsConnected(true);
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
-                reconnectTimeoutRef.current = null;
-            }
-        };
-
-        socketRef.current.onmessage = (event) => {
+        const connect = async () => {
             try {
-                const data = JSON.parse(event.data);
-                const payload =
-                    data && typeof data === 'object' && data.type === 'notification' && !data.message
-                        ? data
-                        : data?.type === 'notification'
-                            ? data.message
-                            : data;
+                const response = await fetch(resolveNotificationSSEUrl(), {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    signal: abortController.signal,
+                });
 
-                const newNotification = typeof payload === 'string'
-                    ? {
-                        id: Date.now(),
-                        title: 'New Notification',
-                        content: payload,
-                        created_at: new Date().toISOString(),
-                        is_read: false,
+                if (!response.ok) {
+                    throw new Error('Notification stream connection failed');
+                }
+
+                setIsConnected(true);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.type === 'connection') {
+                                    console.log('Notification SSE Connected');
+                                    continue;
+                                }
+
+                                const payload = data;
+                                const newNotification = typeof payload === 'string'
+                                    ? {
+                                        id: Date.now(),
+                                        title: 'New Notification',
+                                        content: payload,
+                                        created_at: new Date().toISOString(),
+                                        is_read: false,
+                                    }
+                                    : payload;
+
+                                if (!newNotification) continue;
+                                setNotifications((prev) => [newNotification, ...(Array.isArray(prev) ? prev : [])].filter(Boolean));
+                            } catch (e) {
+                                console.error('Error parsing notification SSE data:', e);
+                            }
+                        }
                     }
-                    : payload;
-
-                if (!newNotification) return;
-                setNotifications((prev) => [newNotification, ...(Array.isArray(prev) ? prev : [])].filter(Boolean));
+                }
             } catch (error) {
-                console.error('Error parsing notification message:', error);
+                if (error.name === 'AbortError') {
+                    console.log('Notification stream aborted');
+                    return;
+                }
+                console.error('Notification SSE Error:', error);
+                setIsConnected(false);
+                reconnectTimeoutRef.current = setTimeout(connect, 5000);
             }
         };
 
-        socketRef.current.onclose = (event) => {
-            console.log('Notification WebSocket Closed', event.code);
-            setIsConnected(false);
-            // Reconnect if not explicitly closed and user is still logged in
-            if (event.code !== 1000 && tokenService.getAccessToken()) {
-                reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
-            }
-        };
-
-        socketRef.current.onerror = (error) => {
-            console.error('Notification WebSocket Error:', error);
-            socketRef.current.close();
-        };
+        connect();
     }, []);
 
-    const closeWebSocket = useCallback(() => {
-        if (socketRef.current) {
-            console.log('Explicitly closing Notification WebSocket');
-            socketRef.current.close(1000, 'User logged out');
-            socketRef.current = null;
+    const closeSSE = useCallback(() => {
+        if (abortControllerRef.current) {
+            console.log('Closing Notification SSE Stream');
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
         }
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
@@ -124,15 +128,18 @@ export const NotificationProvider = ({ children }) => {
     useEffect(() => {
         const token = tokenService.getAccessToken();
         if (token && user) {
-            connectWebSocket();
+            connectSSE();
         } else {
-            closeWebSocket();
+            closeSSE();
         }
 
         return () => {
-            // No-op here because we handle closing in the else branch and in specific logout flows
+            // Cleanup on unmount
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
         };
-    }, [connectWebSocket, closeWebSocket, user]);
+    }, [connectSSE, closeSSE, user]);
 
     const markAsRead = async (id) => {
         if (!id) return;
@@ -202,8 +209,8 @@ export const NotificationProvider = ({ children }) => {
             clearNotifications,
             deleteNotification,
             bulkDeleteNotifications,
-            connectWebSocket,
-            closeWebSocket
+            connectSSE,
+            closeSSE
         }}>
             {children}
         </NotificationContext.Provider>

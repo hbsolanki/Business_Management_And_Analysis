@@ -18,7 +18,10 @@ export const tokenService = {
             "id",
             "work",
             "user_profile",
-            "default_branch_id"
+            "default_branch_id",
+            "first_name",
+            "last_name",
+            "email"
         ];
         keysToRemove.forEach(key => localStorage.removeItem(key));
     },

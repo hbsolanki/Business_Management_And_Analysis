@@ -173,44 +173,43 @@ function ManagerDashboard() {
   const openChatInbox = () => navigate("/chat");
   const openChatPicker = () => setIsChatModalOpen(true);
 
-  const greeting = getTimeBasedGreeting();
 
   return (
     <div className="min-h-screen bg-transparent">
       <ManagerHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Section */}
-        <div className="relative rounded-3xl bg-gradient-to-br from-purple-700 to-indigo-800 text-white shadow-xl p-8 md:p-10">
-          <div className="absolute inset-0 overflow-hidden rounded-3xl">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <FaCogs size={200} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Hero Section - Tightened */}
+        <div className="relative rounded-[2rem] bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-800 text-white shadow-xl p-6 md:p-7">
+          <div className="absolute inset-0 overflow-hidden rounded-[2rem]">
+            <div className="absolute -top-10 -right-10 p-4 opacity-5">
+              <FaCogs size={250} />
             </div>
           </div>
 
-          <div className="relative z-10 max-w-3xl">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              {greeting}, {manager.first_name}!
-            </h1>
-            <p className="text-purple-100 text-lg mb-8">
-              Ready to manage operations today?
-            </p>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] border border-white/10">Manager Portal</span>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+                {manager.first_name}
+              </h1>
+            </div>
 
-            <div className="relative max-w-2xl">
+            <div className="relative w-full max-w-xl">
               <form onSubmit={handleSearchSubmit}>
-                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search operations, tasks, inventory..."
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/95 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400/30 shadow-lg text-base"
+                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-4 focus:ring-white/10 focus:bg-white/20 transition-all shadow-inner text-sm font-medium backdrop-blur-md"
                 />
               </form>
 
               {/* Search Results Dropdown */}
               {debouncedQuery && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden py-2 z-50 animate-fade-in-up">
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl overflow-hidden py-2 z-50 animate-fade-in-up border border-slate-100">
                   <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between">
                     <span>Search Results</span>
                     <button
@@ -412,8 +411,8 @@ function ManagerDashboard() {
                         <p className="font-semibold text-slate-900">
                           {subscription.start_date
                             ? new Date(
-                                subscription.start_date,
-                              ).toLocaleDateString()
+                              subscription.start_date,
+                            ).toLocaleDateString()
                             : "—"}
                         </p>
                       </div>
@@ -424,8 +423,8 @@ function ManagerDashboard() {
                         <p className="font-semibold text-slate-900">
                           {subscription.end_date
                             ? new Date(
-                                subscription.end_date,
-                              ).toLocaleDateString()
+                              subscription.end_date,
+                            ).toLocaleDateString()
                             : "—"}
                         </p>
                       </div>
@@ -637,11 +636,10 @@ function AppCard({
   return (
     <Link
       to={to}
-      className={`group rounded-2xl transition-all ${
-        featured
+      className={`group rounded-2xl transition-all ${featured
           ? "col-span-2 md:col-span-4 flex flex-col md:flex-row md:items-center md:justify-between gap-5 rounded-3xl p-5 hover:bg-white/60"
           : "flex flex-col items-center justify-center gap-3 p-4 text-center hover:bg-gray-50"
-      }`}
+        }`}
     >
       <div
         className={`flex ${featured ? "items-start gap-4" : "flex-col items-center gap-3"} min-w-0`}

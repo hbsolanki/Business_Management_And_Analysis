@@ -14,8 +14,9 @@ class EmployeeSerializer(serializers.Serializer):
     user = UserSerializer(source='*')
     employee_details = EmployeeDetailsSerializer()
     assigned_branches = UserBranchSerializer(many=True)
-    assigned_works = UserBranchWorkSerializer(many=True, required=False)
-    role = UserBusinessRoleSerializer(read_only=True)
+    assigned_works = serializers.ListField(child=serializers.CharField(), read_only=True, source="assigned_works_list")
+    role = serializers.CharField(source="role_name", read_only=True)
+    business_id = serializers.UUIDField(read_only=True)
 
     def validate(self, attrs):
         request = self.context.get("request")

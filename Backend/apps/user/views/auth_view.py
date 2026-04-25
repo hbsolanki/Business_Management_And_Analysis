@@ -45,8 +45,4 @@ class LoginView(GenericAPIView):
         )
         
         token=get_tokens_for_user(user)
-
-        return Response(
-            {**token, "user": {"id": user.id}},
-            status=status.HTTP_200_OK
-        )
+        return Response(token, status=status.HTTP_200_OK)

@@ -65,7 +65,7 @@ const WORK_MODULES = {
   },
   ai_agent: {
     key: "ai_agent",
-    path: "/chat/agent",
+    path: "/ai-agent/session",
     icon: FaRobot,
     label: "AI Agent",
     color: "bg-brand-500",
@@ -177,7 +177,8 @@ const toDisplayLabel = (value) => {
   return String(value)
     .split(/[_\s-]+/)
     .filter(Boolean)
-    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .map((word) => (word && word[0] ? word[0].toUpperCase() + word.slice(1) : ""))
+    .filter(Boolean)
     .join(" ");
 };
 
@@ -273,50 +274,53 @@ export default function EmployeeDashboard() {
     total: tasks.length,
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
-  };
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-12">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans selection:bg-brand-100 selection:text-brand-900 pb-12">
       <EmployeeHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
-              {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{employee.first_name}</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <span className="px-3 py-1 rounded-full bg-brand-50 text-[10px] font-black uppercase tracking-[0.2em] text-brand-600 border border-brand-100">Employee Workspace</span>
+            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 animate-gradient-x">{employee.first_name}</span>
             </h1>
-            <p className="text-gray-500 mt-2 font-medium">Here&apos;s what&apos;s happening today.</p>
           </div>
-          <div className="glass-panel flex items-center gap-3 px-4 py-2 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-sm font-semibold text-gray-700">{format(new Date(), "EEEE, MMMM do")}</span>
+          <div className="glass-panel flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/40 shadow-sm backdrop-blur-md bg-white/30">
+            <div className="relative">
+              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75"></div>
+            </div>
+            <span className="text-xs font-bold text-slate-700 tracking-tight">{format(new Date(), "EEEE, MMM do")}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Main Work Area */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="glass-panel rounded-3xl p-8 shadow-[0_2px_20px_rgb(0,0,0,0.04)] relative overflow-hidden group border border-white/60">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-700"></div>
+          <div className="lg:col-span-8 space-y-8">
+            <div className="glass-panel rounded-[2.5rem] p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] relative overflow-hidden group border border-white/60 bg-white/70">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-brand-50 via-indigo-50/30 to-transparent rounded-bl-[10rem] -mr-20 -mt-20 transition-transform group-hover:scale-110 duration-1000 opacity-60"></div>
 
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <FaBriefcase className="text-indigo-600" /> My Workspace
-                  </h3>
-                  <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wide border border-indigo-100">
-                    {assignedModules.length} Modules
+                <div className="flex items-center justify-between mb-10">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
+                      <div className="p-2.5 rounded-2xl bg-brand-50 text-brand-600 shadow-sm border border-brand-100/50">
+                        <FaBriefcase size={20} />
+                      </div>
+                      My Workspace
+                    </h3>
+                    <p className="text-slate-500 text-sm font-bold mt-1 opacity-70">Access your assigned operational modules</p>
+                  </div>
+                  <span className="px-4 py-1.5 rounded-xl bg-white/80 text-slate-700 text-[10px] font-black uppercase tracking-widest border border-slate-200/50 shadow-sm">
+                    {assignedModules.length + 2} Active Tools
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                  <AppIcon to="/chat" icon={FaComments} label="Chat" color="bg-rose-500" shadow="shadow-rose-200" />
-                  <AppIcon to="/chat/agent" icon={FaRobot} label="AI Agent" color="bg-brand-600" shadow="shadow-brand-200" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-6">
+                  <AppIcon to="/chat" icon={FaComments} label="Team Chat" color="bg-rose-500" shadow="shadow-rose-200" />
+                  <AppIcon to="/ai-agent/session" icon={FaRobot} label="AI Intelligence" color="bg-slate-900" shadow="shadow-slate-300" />
 
                   {assignedModules.map((module) => (
                     <AppIcon
@@ -391,23 +395,27 @@ export default function EmployeeDashboard() {
 }
 
 const StatsCard = ({ title, count, icon: Icon, color, bg, trend }) => (
-  <div className="glass-panel rounded-3xl p-6 shadow-[0_2px_20px_rgb(0,0,0,0.04)] hover:shadow-md transition-shadow">
-    <div className={`w-10 h-10 rounded-2xl ${bg} ${color} flex items-center justify-center mb-4`}>
-      <Icon size={18} />
+  <div className="glass-panel rounded-[2rem] p-8 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.05)] hover:shadow-xl transition-all duration-500 border border-white/60 bg-white/50 group">
+    <div className={`w-14 h-14 rounded-2xl ${bg} ${color} flex items-center justify-center mb-6 shadow-sm group-hover:scale-110 transition-transform duration-500`}>
+      <Icon size={22} />
     </div>
-    <p className="text-gray-500 text-sm font-medium">{title}</p>
-    <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{count}</h3>
-    <p className={`text-xs font-semibold mt-3 ${color} bg-opacity-10 px-2 py-1 rounded-md inline-block bg-white/70`}>
-      {trend}
-    </p>
+    <p className="text-slate-500 text-xs font-black uppercase tracking-widest opacity-60">{title}</p>
+    <h3 className="text-4xl font-black text-slate-900 mt-2 tracking-tight">{count}</h3>
+    <div className="mt-4 flex items-center gap-2">
+      <div className={`h-1.5 w-1.5 rounded-full ${color.replace('text-', 'bg-')} animate-pulse`}></div>
+      <p className={`text-[10px] font-black uppercase tracking-widest ${color}`}>
+        {trend}
+      </p>
+    </div>
   </div>
 );
 
 const AppIcon = ({ to, icon: Icon, label, color, shadow }) => (
-  <Link to={to} className="group flex flex-col items-center justify-center p-4 rounded-3xl hover:bg-white/50 transition-colors">
-    <div className={`w-16 h-16 mx-auto rounded-[1.25rem] ${color} text-white flex items-center justify-center mb-4 shadow-lg ${shadow} group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-300 relative after:absolute after:inset-0 after:rounded-[1.25rem] after:ring-2 after:ring-white/50 after:opacity-0 group-hover:after:opacity-100`}>
-      <Icon size={26} />
+  <Link to={to} className="group flex flex-col items-center justify-center p-4 rounded-[2.5rem] hover:bg-white/80 transition-all duration-500 border border-transparent hover:border-slate-100 hover:shadow-sm">
+    <div className={`w-16 h-16 mx-auto rounded-2xl ${color} text-white flex items-center justify-center mb-4 shadow-xl ${shadow} group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 relative`}>
+      <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      <Icon size={24} />
     </div>
-    <span className="font-bold text-gray-700 text-sm group-hover:text-indigo-600 transition-colors">{label}</span>
+    <span className="font-black text-slate-700 text-[11px] uppercase tracking-widest group-hover:text-brand-600 transition-colors duration-300">{label}</span>
   </Link>
 );

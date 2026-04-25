@@ -14,7 +14,8 @@ class User(BaseModel, AbstractUser):
     objects = ActiveUserManager()
     all_objects = UserManager()
 
-    mobile_number = models.CharField(max_length=10)
+    email = models.EmailField(unique=True)
+    mobile_number = models.CharField(max_length=10, null=True, blank=True)
     profile_picture = models.ImageField(
         upload_to=user_avatar_path,
         null=True,
@@ -91,6 +92,10 @@ class User(BaseModel, AbstractUser):
     def business_id(self):
         bus = self.business
         return bus.id if bus else None
+
+    @property
+    def assigned_works_list(self):
+        return list(self.branch_works.values_list('work_type', flat=True).distinct())
 
     def __str__(self):
         return self.username

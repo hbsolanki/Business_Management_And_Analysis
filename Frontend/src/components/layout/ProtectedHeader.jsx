@@ -17,8 +17,6 @@ export default function ProtectedHeader() {
         case "MANAGER":
             return <ManagerHeader />;
         default:
-            // Fallback for unexpected roles or if somehow accessed without valid role
-            // Maybe could be just Header? But assumption is this is for protected routes.
-            return <OwnerHeader />;
+            return null;
     }
 }

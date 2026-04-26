@@ -26,24 +26,32 @@ class GoogleOAuthLoginAPIView(APIView):
 
         try:
             # exchange code for id_token
+            payload = {
+                "code": code,
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "grant_type": "authorization_code",
+                "redirect_uri": "postmessage",
+            }
+            
             token_res = requests.post(
                 "https://oauth2.googleapis.com/token",
-                data={
-                    "code": code,
-                    "client_id": settings.GOOGLE_CLIENT_ID,
-                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "grant_type": "authorization_code",
-                    "redirect_uri": "postmessage",
-                },
+                data=payload,
                 timeout=10,
-            ).json()
+            )
+            
+            token_data = token_res.json()
 
-            if "id_token" not in token_res:
-                return Response({"error": "Invalid Google token"}, status=status.HTTP_401_UNAUTHORIZED)
+            if "id_token" not in token_data:
+                print(f"GOOGLE AUTH ERROR: {token_data}")
+                return Response({
+                    "error": "Invalid Google token",
+                    "details": token_data
+                }, status=status.HTTP_401_UNAUTHORIZED)
 
             # verify token
             info = id_token.verify_oauth2_token(
-                token_res["id_token"],
+                token_data["id_token"],
                 google_requests.Request(),
                 settings.GOOGLE_CLIENT_ID,
             )
@@ -51,27 +59,22 @@ class GoogleOAuthLoginAPIView(APIView):
             email = info["email"]
             name = info.get("name", "")
 
-            # create or get user
-            user, created = User.objects.get_or_create(
-                email=email,
-                defaults={
-                    "username": email,
-                    "first_name": name,
-                },
-            )
-
-            # create business if first login
-            if created or not user.business_id:
-                if not user.business_id:
-                    user.business = Business.objects.create()
-                    user.save(update_fields=["business"])
-                
-                from apps.employee.models import UserBusinessRole
-                UserBusinessRole.objects.get_or_create(
-                    user=user,
-                    business=user.business,
-                    role=UserRole.OWNER
+            # create or get user (more robustly)
+            user = User.objects.filter(email=email).first()
+            if not user:
+                user = User.objects.filter(username=email).first()
+            
+            created = False
+            if not user:
+                user = User.objects.create(
+                    email=email,
+                    username=email,
+                    first_name=name
                 )
+                created = True
+            elif not user.email:
+                user.email = email
+                user.save(update_fields=["email"])
 
             # generate jwt
             refresh = RefreshToken.for_user(user)
@@ -97,8 +100,13 @@ class GoogleOAuthLoginAPIView(APIView):
                     "access": str(refresh.access_token),
                     "refresh": str(refresh),
                 },
-                status=status.HTTP_201_CREATED,
+                status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED,
             )
 
-        except Exception:
-            return Response({"error": "Authentication Failed"}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                "error": "Authentication Failed",
+                "details": str(e)
+            }, status=status.HTTP_401_UNAUTHORIZED)

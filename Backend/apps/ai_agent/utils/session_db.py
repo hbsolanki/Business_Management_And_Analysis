@@ -1,5 +1,5 @@
 from channels.db import database_sync_to_async
-from apps.ai_agent.models import AiChatSession, AiChatMessage, AiChatMessageSenderChoices, AiAgentMessageWorkflow
+from apps.ai_agent.models import AiChatSession, AiChatMessage, AiChatMessageSenderChoices, AiChartRef
 from apps.user.models import User
 
 
@@ -17,26 +17,13 @@ def get_or_create_session(user_id, session_id=None):
 @database_sync_to_async
 def save_message(session_id, sender, content):
     session = AiChatSession.objects.get(id=session_id)
-    message = AiChatMessage.objects.create(session=session, sender=sender, content=content)
-    if session.title == "New Chat" and sender == AiChatMessageSenderChoices.ASSISTANT:
-        clean = content.replace('#', '').replace('*', '').strip().split('\n')[0]
-        if len(clean) > 10:
-            session.title = clean[:60] + ("..." if len(clean) > 60 else "")
-            session.save(update_fields=["title"])
-            return message, True
-    return message, False
+    return AiChatMessage.objects.create(session=session, sender=sender, content=content), False
 
 
 @database_sync_to_async
 def create_assistant_message(session_id):
     session = AiChatSession.objects.get(id=session_id)
     return AiChatMessage.objects.create(session=session, sender=AiChatMessageSenderChoices.ASSISTANT, content="")
-
-
-@database_sync_to_async
-def save_workflow_step(message_id, event_type, data):
-    message = AiChatMessage.objects.get(id=message_id)
-    return AiAgentMessageWorkflow.objects.create(message=message, type=event_type, data=data)
 
 
 @database_sync_to_async
@@ -68,3 +55,8 @@ def get_user_context_data(user_id):
 @database_sync_to_async
 def get_session_title(session_id):
     return AiChatSession.objects.get(id=session_id).title
+
+
+@database_sync_to_async
+def create_chart_ref(message_id, html):
+    return AiChartRef.objects.create(message_id=message_id, html=html)

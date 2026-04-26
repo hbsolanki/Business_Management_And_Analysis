@@ -49,81 +49,44 @@ const normalizeWork = (user) => {
 };
 
 export const authService = {
+    getMe: async () => {
+        const response = await api.get("/user/me/");
+        const userProfile = response.data;
+        
+        if (userProfile.role) {
+            const roleString = typeof userProfile.role === "object" ? userProfile.role.role : userProfile.role;
+            tokenService.setRole(roleString);
+        }
+
+        tokenService.setWork(normalizeWork(userProfile));
+
+        const { branchId } = getLandingPath(userProfile);
+        if (branchId) {
+            tokenService.setDefaultBranchId(branchId);
+        }
+
+        return userProfile;
+    },
+
     login: async (credentials) => {
         const response = await api.post("/user/login/", credentials);
-        const { user: loginUser, access, refresh } = response.data;
+        const { access, refresh } = response.data;
 
         tokenService.setTokens({ access, refresh });
-        tokenService.setId(loginUser.id);
 
-        // If role is present in initial response, set it as fallback
-        if (loginUser.role) {
-            const roleStr = typeof loginUser.role === 'object' ? loginUser.role.role : loginUser.role;
-            tokenService.setRole(roleStr);
-        }
-
-        // Fetch complete user profile for Redux
-        let userProfile = loginUser;
-        try {
-            const profileResponse = await api.get(`/user/${loginUser.id}/`);
-            userProfile = profileResponse.data;
-
-            // Set role from complete profile
-            if (userProfile.role) {
-                const roleString = typeof userProfile.role === "object" ? userProfile.role.role : userProfile.role;
-                tokenService.setRole(roleString);
-            }
-
-            tokenService.setWork(normalizeWork(userProfile));
-
-            // Set default branch if applicable
-            const { branchId } = getLandingPath(userProfile);
-            if (branchId) {
-                tokenService.setDefaultBranchId(branchId);
-            }
-        } catch (error) {
-            console.error("Failed to fetch user profile", error);
-            tokenService.setWork(normalizeWork(loginUser));
-        }
-
+        const userProfile = await authService.getMe();
+        tokenService.setId(userProfile.id);
         return { ...response.data, user: userProfile, userProfile };
     },
 
     googleLogin: async (code) => {
         const response = await api.post("/user/auth/google/", { code });
-        const { user: loginUser, access, refresh } = response.data;
+        const { access, refresh } = response.data;
 
         tokenService.setTokens({ access, refresh });
-        tokenService.setId(loginUser.id);
 
-        if (loginUser.role) {
-            const roleStr = typeof loginUser.role === 'object' ? loginUser.role.role : loginUser.role;
-            tokenService.setRole(roleStr);
-        }
-
-        // Fetch complete user profile for Redux
-        let userProfile = loginUser;
-        try {
-            const profileResponse = await api.get(`/user/${loginUser.id}/`);
-            userProfile = profileResponse.data;
-
-            if (userProfile.role) {
-                const roleString = typeof userProfile.role === "object" ? userProfile.role.role : userProfile.role;
-                tokenService.setRole(roleString);
-            }
-
-            tokenService.setWork(normalizeWork(userProfile));
-
-            // Set default branch if applicable
-            const { branchId } = getLandingPath(userProfile);
-            if (branchId) {
-                tokenService.setDefaultBranchId(branchId);
-            }
-        } catch (error) {
-            console.error("Failed to fetch user profile", error);
-            tokenService.setWork(normalizeWork(loginUser));
-        }
-
+        const userProfile = await authService.getMe();
+        tokenService.setId(userProfile.id);
         return { ...response.data, user: userProfile, userProfile };
     },
 
@@ -151,6 +114,7 @@ export const authService = {
     },
 
 
+    sendOtp: (email) => api.post("/user/send-otp/", { email }),
     validateUsername: (username) => api.post("/user/forget/password/validate-username/", { username }),
     verifyOtp: (username, otp) => api.post("/user/forget/password/validate-otp/", { username, otp }),
     resetPassword: (username, otp, password) => api.post("/user/forget/password/reset/", { username, otp, password }),
@@ -159,10 +123,15 @@ export const authService = {
 
 
     logout: async () => {
-        const refresh = tokenService.getRefreshToken();
-        if (refresh) {
-            await api.post("/user/logout/", { refresh });
+        try {
+            const refresh = tokenService.getRefreshToken();
+            if (refresh) {
+                await api.post("/user/logout/", { refresh });
+            }
+        } catch (error) {
+            console.error("Logout API error:", error);
+        } finally {
+            tokenService.clearTokens();
         }
-        tokenService.clearTokens();
     },
 };

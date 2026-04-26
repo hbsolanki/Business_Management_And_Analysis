@@ -102,6 +102,9 @@ DATABASES = {
         "PASSWORD": DB_PASS,
         "HOST": DB_HOST,
         "PORT": DB_PORT,
+        "OPTIONS": {
+            "sslmode": "require",
+        },
     }
 }
 
@@ -111,9 +114,12 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+        }
     }
 }
+
+if REDIS_PASSWORD:
+    CACHES["default"]["OPTIONS"]["PASSWORD"] = REDIS_PASSWORD
 
 CHANNEL_LAYERS = {
     "default": {

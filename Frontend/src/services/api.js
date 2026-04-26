@@ -1,7 +1,7 @@
 import axios from "axios";
 import { tokenService } from "./tokenService";
 
-export const API_BASE_URL = "http://0.0.0.0:8000";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://0.0.0.0:8000";
 
 const api = axios.create({
   baseURL: API_BASE_URL,

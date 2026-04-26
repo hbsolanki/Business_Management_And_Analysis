@@ -126,7 +126,7 @@ const AddSale = lazy(() => import("@/pages/sale/AddSale"));
 const Chat = lazy(() => import("@/pages/chat/Chat"));
 const Broadcast = lazy(() => import("@/pages/chat/Broadcast"));
 const NewBroadcast = lazy(() => import("@/pages/chat/NewBroadcast"));
-const AiAgent = lazy(() => import("@/pages/chat/AiAgent"));
+const AiAgent = lazy(() => import("@/pages/chat/ai-agent/AiAgent"));
 
 // Task Management
 const TaskDashboard = lazy(() => import("@/pages/task/TaskDashboard"));
@@ -134,12 +134,31 @@ const TaskDetails = lazy(() => import("@/pages/task/TaskDetails"));
 const EditTask = lazy(() => import("@/pages/task/EditTask"));
 const CreateTask = lazy(() => import("@/pages/task/CreateTask"));
 
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { authService } from "@/services/authService";
+import { setUserProfile } from "@/redux/slices/userSlice";
+import { tokenService } from "@/services/tokenService";
 
 function App() {
   const theme = useSelector((state) => state.theme.mode);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = tokenService.getAccessToken();
+      if (token) {
+        try {
+          const profile = await authService.getMe();
+          dispatch(setUserProfile(profile));
+        } catch (error) {
+          console.error("Auth init failed", error);
+        }
+      }
+    };
+    initAuth();
+  }, [dispatch]);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -181,6 +200,7 @@ function App() {
                 <Route path="/user/:id" element={<ProfileViewer />} />
                 <Route path="/sale/:sid" element={<SaleList />} />
                 <Route path="/sale/:sid/new" element={<AddSale />} />
+                <Route path="/business/new" element={<CreateBusiness />} />
               </Route>
 
               <Route path="/info" element={<InfoLayout />}>
@@ -212,7 +232,6 @@ function App() {
                 <Route path="/owner" element={<Owner />} />
                 <Route path="/owner/edit" element={<OwnerEdit />} />
                 <Route path="/business/edit/:bid" element={<BusinessEdit />} />
-                <Route path="/business/new" element={<CreateBusiness />} />
                 <Route
                   element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}
                 >
@@ -429,8 +448,8 @@ function App() {
                   path="/chat/broadcast/:id/edit"
                   element={<NewBroadcast />}
                 />
-                <Route path="/chat/agent" element={<AiAgent />} />
-                <Route path="/chat/agent/:sessionId" element={<AiAgent />} />
+                <Route path="/ai-agent/session" element={<AiAgent />} />
+                <Route path="/ai-agent/session/:sessionId" element={<AiAgent />} />
               </Route>
 
               <Route

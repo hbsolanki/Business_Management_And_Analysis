@@ -61,13 +61,20 @@ function ManagerHeader() {
         dispatch(toggleHeaderAction(id));
     };
 
+    // Auto-navigate to home when logged out
+    useEffect(() => {
+        if (!user) {
+            navigate("/", { replace: true });
+        }
+    }, [user, navigate]);
+
     const handleLogout = async () => {
         try {
             await authService.logout();
             dispatch(clearUserProfile());
-            window.location.href = "/";
         } catch (error) {
             console.error("Logout failed:", error);
+            dispatch(clearUserProfile());
         }
     };
 
@@ -117,7 +124,7 @@ function ManagerHeader() {
                                         </button>
 
                                         {activeDropdown === "quickActions" && (
-                                            <div className="glass-panel bg-white/90 absolute top-full left-0 mt-2 w-64 rounded-xl shadow-xl py-2 z-50 animate-fade-in-down">
+                                            <div className="glass-panel bg-white absolute top-full left-0 mt-2 w-64 rounded-xl shadow-xl py-2 z-50 animate-fade-in-down">
                                                 {activeActionIds.length > 0 ? (
                                                     activeActionIds.map(id => {
                                                         const action = MANAGER_ACTIONS[id];
@@ -172,7 +179,7 @@ function ManagerHeader() {
                                     </button>
 
                                     {activeDropdown === "profile" && (
-                                        <div className="glass-panel backdrop-blur-xl bg-white/90 absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
+                                        <div className="glass-panel backdrop-blur-xl bg-white absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
                                             <div className="px-5 py-4 border-b border-slate-100 mb-2">
                                                 <p className="text-sm font-bold text-slate-900 truncate">
                                                     {(user?.user || user)?.first_name && (user?.user || user)?.last_name ? `${(user.user || user).first_name} ${(user.user || user).last_name}` : "Hardik Solanki"}
@@ -184,8 +191,7 @@ function ManagerHeader() {
 
                                             <div className="space-y-0.5 px-2">
                                                 <DropdownItem to="/profile" text="My Profile" icon={<FaUserCircle />} onClick={() => setActiveDropdown(null)} />
-                                                <DropdownItem to="/business/branch" text="Manage Branches" icon={<FaCodeBranch />} onClick={() => setActiveDropdown(null)} />
-                                                <DropdownItem to="/chat/agent" text="AI Agent" icon={<FaBrain />} onClick={() => setActiveDropdown(null)} />
+                                                <DropdownItem to="/ai-agent/session" text="AI Agent" icon={<FaBrain />} onClick={() => setActiveDropdown(null)} />
                                                 <DropdownItem to="/activity-logs" text="Activity Logs" icon={<FaHistory />} onClick={() => setActiveDropdown(null)} />
                                                 <DropdownItem to="/manager/edit" text="Edit Profile" icon={<FaUserEdit />} onClick={() => setActiveDropdown(null)} />
                                             </div>
@@ -194,6 +200,7 @@ function ManagerHeader() {
 
                                             <div className="px-2">
                                                 <button
+                                                    type="button"
                                                     onClick={() => {
                                                         setActiveDropdown(null);
                                                         setIsModalOpen(true);
@@ -285,7 +292,7 @@ function ManagerHeader() {
                                             </span>
                                         </Link>
                                         <Link
-                                            to="/chat/agent"
+                                            to="/ai-agent/session"
                                             onClick={() => setIsMobileMenuOpen(false)}
                                             className="glass-panel flex items-center justify-center text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/70 transition"
                                         >
@@ -308,6 +315,7 @@ function ManagerHeader() {
                                             setIsModalOpen(true);
                                             setIsMobileMenuOpen(false);
                                         }}
+                                        type="button"
                                         className="glass-panel w-full flex items-center justify-center border-red-100 text-red-600 px-4 py-3 rounded-xl font-bold hover:bg-red-50 transition-all"
                                     >
                                         <span className="flex items-center gap-2">

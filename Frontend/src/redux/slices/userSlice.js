@@ -32,9 +32,7 @@ export const fetchUserProfile = createAsyncThunk(
     'user/fetchUserProfile',
     async (_, { rejectWithValue }) => {
         try {
-            const id = tokenService.getId();
-            if (!id) throw new Error("No user ID found");
-            const response = await api.get(`/user/${id}/`);
+            const response = await api.get("/user/me/");
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data || "Failed to fetch profile");

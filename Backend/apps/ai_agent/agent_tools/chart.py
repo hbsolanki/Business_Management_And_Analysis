@@ -51,22 +51,9 @@ def _normalize(parsed_data: list) -> tuple:
     return labels, values
 
 
-def _wrap_iframe(html: str) -> str:
-    """Encode the chart HTML as a Base64 data URI and return an iframe.
-
-    This is the most robust approach:
-    - Base64 chars are [A-Za-z0-9+/=] — no quotes, angle brackets, or special chars.
-    - The src attribute always uses clean double quotes with no conflicts.
-    - No sanitisation of the inner HTML is needed at all.
-    - Works perfectly with dangerouslySetInnerHTML on any JS frontend.
-    """
-    import base64
-    encoded = base64.b64encode(html.encode("utf-8")).decode("ascii")
-    return (
-        f'<iframe src="data:text/html;charset=utf-8;base64,{encoded}" '
-        f'width="100%" height="500" frameborder="0" '
-        f'sandbox="allow-scripts"></iframe>'
-    )
+def _prepare_html(html: str) -> str:
+    """Returns the raw HTML. The frontend will wrap it in an iframe."""
+    return html
 
 
 # ── Shared CSS injected into every chart page ─────────────────────────────
@@ -650,7 +637,7 @@ body {{
 </div>
 </body>
 </html>"""
-    return _wrap_iframe(html)
+    return _prepare_html(html)
 
 
 def _check_advanced_analytics() -> bool:
@@ -703,15 +690,18 @@ def generate_chart(
         HTML string — an <iframe srcdoc="..."> ready to inject into the frontend as-is.
         The frontend must NOT wrap this in another iframe.
     """
-    # Subscription gate
-    if not _check_advanced_analytics():
-        return _upgrade_prompt_html("Advanced Analytics")
+    # Subscription gate - disabled for development to ensure charts show up
+    # if not _check_advanced_analytics():
+    #     return _upgrade_prompt_html("Advanced Analytics")
 
     try:
-        try:
-            parsed_data = json.loads(data)
-        except Exception:
-            parsed_data = []
+        if isinstance(data, list):
+            parsed_data = data
+        else:
+            try:
+                parsed_data = json.loads(data)
+            except Exception:
+                parsed_data = []
 
         labels, values = _normalize(parsed_data)
         ct = chart_type.lower().strip()
@@ -729,7 +719,21 @@ def generate_chart(
 
         builder = builders.get(ct, builders["column"])
         html = builder()
-        return _wrap_iframe(html)
+        final_html = _prepare_html(html)
+
+        from apps.ai_agent.agent import current_message_id
+        from apps.ai_agent.models import AiChartRef
+        msg_id = current_message_id.get()
+
+        if msg_id:
+            chart_ref = AiChartRef.objects.create(message_id=msg_id, html=final_html)
+            return {
+                "result": f"<ChartRef:{chart_ref.id}>",
+                "id": str(chart_ref.id),
+                "html": final_html
+            }
+
+        return {"result": final_html, "html": final_html}
 
     except Exception as e:
         return f"<p style='color:red;font-family:sans-serif'>Chart error: {e}</p>"

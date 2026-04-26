@@ -14,7 +14,7 @@ const RECENT_FEATURES = [
     title: "AI Agent Workspace",
     description:
       "A structured business assistant with sessions, workflow visibility, chart rendering, and operational prompts.",
-    to: "/chat/agent",
+    to: "/ai-agent/session",
     icon: FaRobot,
     accent: "text-brand-700",
     bg: "bg-brand-50/80",

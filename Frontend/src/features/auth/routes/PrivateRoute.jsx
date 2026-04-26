@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { isAuthenticated } from "../utils/authUtils";
 import { tokenService } from "@/services/tokenService";
 
@@ -14,46 +15,26 @@ const normalizeWorkItem = (item) => {
 
 const parseWorkList = (value) => {
     if (!value && value !== 0) return [];
-
     let list = [];
     if (Array.isArray(value)) {
         list = value;
     } else if (typeof value === "string") {
         const raw = value.trim();
         if (!raw) return [];
-
         if (raw.startsWith("[") && raw.endsWith("]")) {
             try {
                 const parsed = JSON.parse(raw);
                 list = Array.isArray(parsed) ? parsed : [parsed];
-            } catch (_error) {
+            } catch {
                 list = raw.split(",");
             }
-        } else if (raw.includes(",")) {
-            list = raw.split(",");
         } else {
-            list = [raw];
+            list = raw.split(",");
         }
     } else {
         list = [value];
     }
-
     return list.map(normalizeWorkItem).filter(Boolean);
-};
-
-const getProfileWorkList = () => {
-    try {
-        const rawProfile = localStorage.getItem("user_profile");
-        if (!rawProfile) return [];
-
-        const profile = JSON.parse(rawProfile);
-        return [
-            ...parseWorkList(profile?.assigned_works),
-            ...parseWorkList(profile?.work),
-        ];
-    } catch (_error) {
-        return [];
-    }
 };
 
 const WORK_ALIASES = {
@@ -73,12 +54,9 @@ const hasWorkPermission = (workSet, requiredWork) => {
 
 const PrivateRoute = ({ allowedRoles = [], requiredWork = null }) => {
     const isAuth = isAuthenticated();
+    const userProfile = useSelector((state) => state.user.profile);
     const userRole = (tokenService.getRole() || "").toUpperCase();
     const allowedRoleSet = new Set(allowedRoles.map((role) => String(role).toUpperCase()));
-    const workSet = new Set([
-        ...parseWorkList(tokenService.getWork()),
-        ...getProfileWorkList(),
-    ]);
 
     if (!isAuth) {
         return <Navigate to="/login" replace />;
@@ -88,7 +66,14 @@ const PrivateRoute = ({ allowedRoles = [], requiredWork = null }) => {
         return <Navigate to="/404" replace />;
     }
 
+    // Work-based permission check for Employees
     if (userRole === "EMPLOYEE" && requiredWork) {
+        const workSet = new Set([
+            ...parseWorkList(tokenService.getWork()),
+            ...parseWorkList(userProfile?.assigned_works),
+            ...parseWorkList(userProfile?.work),
+        ]);
+
         if (!hasWorkPermission(workSet, requiredWork)) {
             return <Navigate to="/404" replace />;
         }

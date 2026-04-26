@@ -231,7 +231,7 @@ export default function AddTransaction() {
     // Resolve branch_id
     const selectedBranch = branches.find((branch) => String(branch.id) === String(selectedBranchId));
     const branchId = Number(selectedBranch?.id ?? selectedBranchId);
-    console.log(branchId);
+
     if (!branchId) {
       setError("Branch is required");
       return;

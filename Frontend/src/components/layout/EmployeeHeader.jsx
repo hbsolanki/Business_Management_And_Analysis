@@ -100,13 +100,20 @@ function EmployeeHeader() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Auto-navigate to home when logged out
+    useEffect(() => {
+        if (!profile) {
+            navigate("/", { replace: true });
+        }
+    }, [profile, navigate]);
+
     const handleLogout = async () => {
         try {
             await authService.logout();
-            dispatch(clearUserProfile()); // Optional, just to clear state if it exists
-            window.location.href = "/";
+            dispatch(clearUserProfile());
         } catch (error) {
             console.error("Logout failed:", error);
+            dispatch(clearUserProfile());
         }
     };
 
@@ -177,7 +184,7 @@ function EmployeeHeader() {
                                     </button>
 
                                     {activeDropdown === "profile" && (
-                                        <div className="glass-panel backdrop-blur-xl bg-white/90 absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
+                                        <div className="glass-panel backdrop-blur-xl bg-white absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
                                             <div className="px-5 py-4 border-b border-slate-100 mb-2">
                                                 <p className="text-sm font-bold text-slate-900 truncate">
                                                     {firstName && lastName ? `${firstName} ${lastName}` : "Hardik Solanki"}
@@ -197,6 +204,7 @@ function EmployeeHeader() {
 
                                             <div className="px-2">
                                                 <button
+                                                    type="button"
                                                     onClick={() => {
                                                         setActiveDropdown(null);
                                                         setIsModalOpen(true);
@@ -267,6 +275,7 @@ function EmployeeHeader() {
                                     setIsModalOpen(true);
                                     setIsMobileMenuOpen(false);
                                 }}
+                                type="button"
                                 className="glass-panel w-full flex items-center justify-center border-red-100 text-red-600 px-4 py-3 rounded-xl font-bold hover:bg-red-50 transition-all"
                             >
                                 <span className="flex items-center gap-2">

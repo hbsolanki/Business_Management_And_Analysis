@@ -7,7 +7,7 @@ const AI_AGENT_DESCRIPTION =
 export default function AiAgentFeaturedCard() {
   return (
     <Link
-      to="/chat/agent"
+      to="/ai-agent/session"
       className="group col-span-2 md:col-span-4 flex flex-col md:flex-row md:items-center md:justify-between gap-5 rounded-3xl p-5 transition-all hover:bg-white/60"
     >
       <div className="flex items-start gap-4 min-w-0">

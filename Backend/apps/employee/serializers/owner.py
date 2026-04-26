@@ -8,13 +8,11 @@ from apps.employee.models import UserBusinessRole, EmployeeDetails, UserRole
 
 class OwnerSerializer(serializers.Serializer):
     user = UserSerializer(source='*')
-    employee_details = EmployeeDetailsSerializer(required=False)
-    role = UserBusinessRoleSerializer(read_only=True)
+    role = serializers.CharField(source="role_name", read_only=True)
+    business_id = serializers.UUIDField(read_only=True)
+    assigned_works = serializers.ListField(child=serializers.CharField(), read_only=True, source="assigned_works_list")
 
     def create(self, validated_data):
-        # We use initial_data for user because it's nested but source='*' 
-        # makes DRF struggle with required fields in the nested object 
-        # if they aren't also at the root.
         user_data = self.initial_data.get("user")
         if not user_data:
             raise serializers.ValidationError({"user": "This field is required."})
@@ -39,8 +37,6 @@ class OwnerSerializer(serializers.Serializer):
                 details_serializer.is_valid(raise_exception=True)
                 details_serializer.save()
 
-
-
             return user
 
     def update(self, instance, validated_data):
@@ -60,7 +56,5 @@ class OwnerSerializer(serializers.Serializer):
                 details_serializer = EmployeeDetailsSerializer(details, data=details_data, partial=True)
                 details_serializer.is_valid(raise_exception=True)
                 details_serializer.save()
-
-
 
             return instance

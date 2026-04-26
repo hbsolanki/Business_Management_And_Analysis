@@ -5,7 +5,6 @@ import CallToAction from "@/features/home/components/CallToAction";
 import FeaturesSection from "@/features/home/components/FeaturesSection";
 import HowItWorks from "@/features/home/components/HowItWorks";
 import InfoPromoSection from "@/features/home/components/InfoPromoSection";
-import ProjectStackSection from "@/features/home/components/ProjectStackSection";
 import PlansSection from "@/features/subscription/components/PlansSection";
 
 export default function Home() {
@@ -16,9 +15,6 @@ export default function Home() {
 
             {/* Hero Section */}
             <HeroSection />
-
-            {/* Project Analysis Stack Section */}
-            <ProjectStackSection />
 
             {/* Features Section */}
             <FeaturesSection />

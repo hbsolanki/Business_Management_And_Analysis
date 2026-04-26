@@ -1,5 +1,5 @@
-import { useState, memo } from "react";
-import { FaMagic, FaChevronUp, FaChevronDown, FaLock } from "react-icons/fa";
+import { useState, useEffect, memo } from "react";
+import { FaMagic, FaChevronUp, FaChevronDown, FaLock, FaSync } from "react-icons/fa";
 
 const normalizeChartSrcdoc = (srcdocContent) => {
   if (!srcdocContent) return srcdocContent;
@@ -98,8 +98,38 @@ const getRestrictionCard = (value) => {
   return null;
 };
 
+const ChartRenderer = ({ chartId, chartsCache = {} }) => {
+  const cachedHtml = chartsCache[chartId];
+
+  if (!cachedHtml) {
+    return (
+      <div className="flex h-[200px] w-full items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/50">
+        <div className="flex flex-col items-center gap-2">
+          <FaSync className="animate-spin text-slate-500" size={16} />
+          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+            Loading...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      srcDoc={normalizeChartSrcdoc(cachedHtml)}
+      width="100%"
+      height="450"
+      frameBorder="0"
+      sandbox="allow-scripts allow-same-origin"
+      className="rounded-xl bg-transparent"
+      title={`Chart ${chartId}`}
+    />
+  );
+};
+
 const WorkflowPanel = memo(function WorkflowPanel({
   statuses,
+  chartsCache = {},
   title = "Agent Workflow",
 }) {
   const [expandedIds, setExpandedIds] = useState([]);
@@ -232,6 +262,13 @@ const WorkflowPanel = memo(function WorkflowPanel({
                               </a>
                             </div>
                           </div>
+                        </div>
+                      ) : formattedOutput && formattedOutput.includes("<ChartRef:") ? (
+                        <div className="overflow-hidden rounded-2xl border border-slate-700/70 bg-transparent p-2">
+                           <ChartRenderer 
+                              chartId={formattedOutput.match(/<ChartRef:([a-f0-9-]+)>/i)?.[1]} 
+                              chartsCache={chartsCache}
+                           />
                         </div>
                       ) : iframePayload ? (
                         <div className="overflow-hidden rounded-2xl border border-slate-700/70 bg-transparent p-2">

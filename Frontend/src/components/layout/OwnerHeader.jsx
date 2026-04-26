@@ -59,16 +59,22 @@ function OwnerHeader() {
     const toggleAction = (id) => {
         dispatch(toggleHeaderAction(id));
     };
+    
+    // Auto-navigate to home when logged out
+    useEffect(() => {
+        if (!user) {
+            navigate("/", { replace: true });
+        }
+    }, [user, navigate]);
 
     const handleLogout = async () => {
         try {
             await authService.logout();
             dispatch(clearUserProfile());
-            window.location.href = "/";
         } catch (error) {
             console.error("Logout failed:", error);
-            // Optionally clear anyway if you want it to be "smooth" even on failure
-            // but the user said "if 200 then..."
+            // Clear profile anyway to ensure the user is logged out locally
+            dispatch(clearUserProfile());
         }
     };
 
@@ -118,7 +124,7 @@ function OwnerHeader() {
                                             </button>
 
                                             {activeDropdown === "quickActions" && (
-                                                <div className="glass-panel bg-white/90 absolute top-full left-0 mt-2 w-64 rounded-xl shadow-xl py-2 z-50 animate-fade-in-down">
+                                                <div className="glass-panel bg-white absolute top-full left-0 mt-2 w-64 rounded-xl shadow-xl py-2 z-50 animate-fade-in-down">
                                                     {activeActionIds.length > 0 ? (
                                                         activeActionIds.map(id => {
                                                             const action = OWNER_ACTIONS[id];
@@ -174,7 +180,7 @@ function OwnerHeader() {
                                     </button>
 
                                     {activeDropdown === "profile" && (
-                                        <div className="glass-panel backdrop-blur-xl bg-white/90 absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
+                                        <div className="glass-panel backdrop-blur-xl bg-white absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
                                             <div className="px-5 py-4 border-b border-slate-100 mb-2">
                                                 <p className="text-sm font-bold text-slate-900 truncate">
                                                     {(user?.user || user)?.first_name && (user?.user || user)?.last_name ? `${(user.user || user).first_name} ${(user.user || user).last_name}` : "Hardik Solanki"}
@@ -186,16 +192,16 @@ function OwnerHeader() {
 
                                             <div className="space-y-0.5 px-2">
                                                 <DropdownItem to="/profile" text="My Profile" icon={<FaUserCircle />} onClick={() => setActiveDropdown(null)} />
-                                                <DropdownItem to="/business/branch" text="Manage Branches" icon={<FaCodeBranch />} onClick={() => setActiveDropdown(null)} />
                                                 <DropdownItem to="/activity-logs" text="Activity Logs" icon={<FaHistory />} onClick={() => setActiveDropdown(null)} />
                                                 <DropdownItem to="/owner/edit" text="Edit Profile" icon={<FaUserEdit />} onClick={() => setActiveDropdown(null)} />
-                                                <DropdownItem to="/chat/agent" text="AI Agent" icon={<FaBrain />} onClick={() => setActiveDropdown(null)} />
+                                                <DropdownItem to="/ai-agent/session" text="AI Agent" icon={<FaBrain />} onClick={() => setActiveDropdown(null)} />
                                             </div>
 
                                             <div className="border-t border-slate-100 my-2 mx-2"></div>
 
                                             <div className="px-2">
                                                 <button
+                                                    type="button"
                                                     onClick={() => {
                                                         setActiveDropdown(null);
                                                         setIsModalOpen(true);
@@ -295,6 +301,7 @@ function OwnerHeader() {
                                     </Link>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         setIsModalOpen(true);
                                         setIsMobileMenuOpen(false);

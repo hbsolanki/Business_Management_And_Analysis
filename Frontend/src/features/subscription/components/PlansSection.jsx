@@ -1,28 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "@/services/api";
-import { FaCheckCircle, FaCrown, FaUsers, FaBoxOpen, FaFileInvoice, FaCodeBranch } from "react-icons/fa";
+import { FaCheck, FaCrown, FaUsers, FaBoxOpen, FaFileInvoice, FaCodeBranch, FaChevronRight, FaGem, FaRocket, FaShieldAlt } from "react-icons/fa";
 import toast from "react-hot-toast";
 import PaymentModal from "@/features/payment/components/PaymentModal";
 
-
-const fallbackPlans = [
-    {
-        id: 1,
-        name: "Basic Plan",
-        price: "99.00",
-        duration_days: 28,
-        max_products: 10,
-        max_invoices: 200,
-        max_staff: 5,
-        max_branches: 1,
-        has_advanced_analytics: false,
-        has_chat: true,
-        has_ai_agent: false,
-        has_api_access: false
-    }
-];
-
-export default function PlansSection({ compact = false, title = "Our Plans", subtitle = "Choose a plan that fits your team size and workflow needs.", currentPlan = null, onSuccess }) {
+export default function PlansSection({ compact = false, title = "Select Your Experience", subtitle = "Choose a plan that fits your business scale. From startups to enterprises, we have you covered.", currentPlan = null, onSuccess }) {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -33,7 +15,6 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
 
     useEffect(() => {
         let isMounted = true;
-
         const fetchPlans = async () => {
             try {
                 const res = await api.get("/subscription/plan/");
@@ -42,64 +23,37 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
                 setPlans(data);
             } catch {
                 if (!isMounted) return;
-                setError("Failed to load plans");
+                setError("Service temporarily unavailable");
                 setPlans([]);
             } finally {
                 if (isMounted) setLoading(false);
             }
         };
-
         fetchPlans();
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
     }, []);
 
     const visiblePlans = useMemo(() => {
-        let sourcePlans = plans.length > 0 ? plans : (loading || error ? fallbackPlans : []);
-
-        // 1. Sort: Free plan first (assuming price 0 or duration 0 is Free)
-        // Adjust sort logic based on price
-        const sorted = [...sourcePlans].sort((a, b) => {
-            const priceA = parseFloat(a.price || 0);
-            const priceB = parseFloat(b.price || 0);
-            return priceA - priceB;
-        });
-
-        // 2. Filter: If user has a paid active plan (id exists and duration > 0), hide Free plans
-        const isPaidActive = currentPlan && currentPlan.duration_days > 0 && currentPlan.is_active;
-
-        if (isPaidActive) {
-            return sorted.filter(p => parseFloat(p.price || 0) > 0);
-        }
-
-        return sorted;
-    }, [plans, loading, error, currentPlan]);
+        return [...plans].sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0));
+    }, [plans]);
 
     const handleChoosePlan = async (plan) => {
         if (!plan?.id) return;
-
-        // If it's a free plan, the old logic might still apply OR it might be handled by the same endpoint.
-        // Assuming the user wants the new flow for paid plans.
         const price = parseFloat(plan.price || 0);
-
         setPurchasingId(plan.id);
         try {
             const res = await api.post("/subscription/plan/purchase/", { plan_id: plan.id });
-
             if (price > 0) {
-                // Paid plan: Get subscription_id and open payment modal
                 const { subscription_id } = res.data;
                 setSelectedSubscriptionId(subscription_id);
                 setSelectedPlanAmount(price);
                 setIsPaymentModalOpen(true);
             } else {
-                // Free plan: Success immediately
                 toast.success("Plan activated successfully");
                 if (onSuccess) onSuccess();
             }
         } catch (err) {
-            toast.error(err?.response?.data?.detail || "Failed to choose plan");
+            toast.error(err?.response?.data?.detail || "Action failed");
         } finally {
             setPurchasingId(null);
         }
@@ -107,136 +61,147 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
 
     const handlePaymentSuccess = () => {
         setIsPaymentModalOpen(false);
-        toast.success("Subscription activated successfully!");
+        toast.success("Subscription activated!");
         if (onSuccess) onSuccess();
     };
 
+    if (loading) {
+        return (
+            <div className="py-24 flex items-center justify-center">
+                <div className="h-12 w-12 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (!loading && plans.length === 0) {
+        return null;
+    }
+
     return (
-        <section className="py-10">
-            <div className={`mx-auto ${compact ? "max-w-6xl" : "max-w-5xl"} px-4 sm:px-6 lg:px-8`}>
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm">
-                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-                        <div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-                                <FaCrown className="text-slate-500" /> Plans
-                            </div>
-                            <h2 className="mt-3 text-3xl font-bold text-slate-900">{title}</h2>
-                            <p className="mt-2 text-slate-500">{subtitle}</p>
-                        </div>
-                        {loading && (
-                            <div className="text-xs text-slate-400">Loading plans...</div>
-                        )}
-                    </div>
+        <section className="relative py-16 overflow-hidden">
+            {/* Background Elements */}
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl -z-10"></div>
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl -z-10"></div>
 
-                    {error && (
-                        <div className="mb-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                            {error}. Showing available plan details.
-                        </div>
-                    )}
+            <div className="section-shell">
+                <div className="text-center max-w-3xl mx-auto mb-12">
+                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-4">
+                        {title}
+                    </h2>
+                    <p className="text-base text-slate-500 font-medium leading-relaxed">
+                        {subtitle}
+                    </p>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="overflow-x-auto pb-8 custom-scrollbar">
+                    <div className="flex xl:grid xl:grid-cols-4 gap-6 min-w-max xl:min-w-0 p-4">
                         {visiblePlans.map((plan, index) => {
-                            const isCurrent = currentPlan && (currentPlan.plan === plan.id || currentPlan.plan_id === plan.id);
+                            const isRecommended = index === 1 || plan.name?.toLowerCase().includes("pro");
                             const isFree = parseFloat(plan.price || 0) === 0;
-                            const isRecommended = index === 1;
+                            // Multi-strategy plan matching for robustness
+                            const isCurrent = currentPlan && (
+                                currentPlan.plan === plan.id || 
+                                currentPlan.plan_id === plan.id || 
+                                currentPlan.id === plan.id
+                            );
+                            const isEnterprise = index === visiblePlans.length - 1 && visiblePlans.length > 2;
 
                             return (
                                 <div
                                     key={plan.id ?? index}
-                                    className={`relative flex flex-col p-8 rounded-2xl transition-all duration-300 ${isCurrent
-                                        ? "bg-white border-2 border-slate-900 shadow-xl"
-                                        : isRecommended
-                                            ? "bg-white border-2 border-blue-600 shadow-lg"
-                                            : "bg-white border border-slate-200 shadow-sm hover:shadow-md"
-                                        }`}
+                                    className={`relative flex flex-col group transition-all duration-500 hover:-translate-y-2 w-[280px] sm:w-[320px] xl:w-full ${
+                                        isRecommended 
+                                        ? "bg-white border-2 border-brand-500 shadow-2xl shadow-brand-500/20 z-10 rounded-3xl" 
+                                        : "bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-xl shadow-slate-200/50 rounded-3xl"
+                                    }`}
                                 >
-                                    {isCurrent && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-md shadow-sm">
-                                            Active Plan
+                                    {isRecommended && (
+                                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-brand-600 to-brand-400 text-white text-[9px] font-black uppercase tracking-widest px-5 py-1.5 rounded-full shadow-lg">
+                                            Most Popular
                                         </div>
                                     )}
 
-                                    <div className="mb-8">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h3 className="text-xl font-bold text-slate-900">
-                                                {plan.name}
-                                            </h3>
+                                    <div className="p-6 pb-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm ${
+                                                isRecommended ? "bg-brand-50 text-brand-600" : "bg-slate-50 text-slate-400"
+                                            }`}>
+                                                {isFree ? <FaRocket /> : isRecommended ? <FaGem /> : isEnterprise ? <FaCrown /> : <FaShieldAlt />}
+                                            </div>
+                                            
+                                            {isCurrent && (
+                                                currentPlan.is_active ? (
+                                                    <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border border-emerald-100">
+                                                        <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                        Current
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-1.5 bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border border-rose-100">
+                                                        <div className="h-1 w-1 rounded-full bg-rose-500 animate-pulse"></div>
+                                                        Expired
+                                                    </div>
+                                                )
+                                            )}
                                         </div>
 
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-4xl font-extrabold text-slate-900">
+                                        <h3 className="text-lg font-black text-slate-900 mb-1">{plan.name}</h3>
+                                        
+                                        <div className="flex items-baseline gap-1 mt-3">
+                                            <span className="text-3xl font-black text-slate-900 tracking-tight">
                                                 {isFree ? "Free" : `₹${Math.floor(plan.price)}`}
                                             </span>
                                             {!isFree && (
-                                                <span className="text-slate-500 font-semibold text-sm">
-                                                    /{plan.duration_days} days
-                                                </span>
+                                                <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">/{plan.duration_days}d</span>
                                             )}
                                         </div>
-                                        <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-                                            {isFree
-                                                ? "Essential features to get your business started."
-                                                : `Full access to all business features for ${plan.duration_days} days.`}
-                                        </p>
                                     </div>
 
-                                    <div className="flex-1 space-y-4 pt-6 border-t border-slate-100">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                            Plan Features
+                                    <div className="px-6 py-4 flex-1 space-y-6">
+                                        <div className="space-y-3">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Quotas</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <QuotaCard icon={<FaCodeBranch />} label="Branches" value={plan.max_branches} />
+                                                <QuotaCard icon={<FaBoxOpen />} label="Products" value={plan.max_products} />
+                                                <QuotaCard icon={<FaFileInvoice />} label="Invoices" value={plan.max_invoices} />
+                                                <QuotaCard icon={<FaUsers />} label="Staff" value={plan.max_staff} />
+                                            </div>
                                         </div>
-                                        <FeatureItem
-                                            icon={<FaCodeBranch className="text-slate-400" size={16} />}
-                                            label={`${plan.max_branches || "Unlimited"} Branches`}
-                                        />
-                                        <FeatureItem
-                                            icon={<FaBoxOpen className="text-slate-400" size={16} />}
-                                            label={`${plan.max_products || "Unlimited"} Products`}
-                                        />
-                                        <FeatureItem
-                                            icon={<FaFileInvoice className="text-slate-400" size={16} />}
-                                            label={`${plan.max_invoices || "Unlimited"} Invoices`}
-                                        />
-                                        <FeatureItem
-                                            icon={<FaUsers className="text-slate-400" size={16} />}
-                                            label={`${plan.max_staff || "Unlimited"} Staff Members`}
-                                        />
 
-                                        <div className="pt-4 space-y-3">
-                                            <FeatureRow label="Team Chat & Collaboration" enabled={plan.has_chat} />
-                                            <FeatureRow label="AI Agent Access" enabled={plan.has_ai_agent} />
-                                            <FeatureRow label="Advanced Business Analytics" enabled={plan.has_advanced_analytics} />
-                                            <FeatureRow label="Standard API Access" enabled={plan.has_api_access} />
+                                        <div className="space-y-3">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Features</p>
+                                            <div className="space-y-2">
+                                                <FeatureItem label="Advanced Analytics" enabled={plan.has_advanced_analytics} />
+                                                <FeatureItem label="Team Chat" enabled={plan.has_chat} />
+                                                <FeatureItem label="AI Operations Agent" enabled={plan.has_ai_agent} />
+                                                <FeatureItem label="API Access" enabled={plan.has_api_access} />
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {!isFree && (
+                                    <div className="p-6 pt-2">
                                         <button
-                                            onClick={() => handleChoosePlan(plan)}
+                                            onClick={() => !isCurrent && handleChoosePlan(plan)}
                                             disabled={purchasingId === plan.id || isCurrent}
-                                            className={`mt-10 w-full rounded-xl py-3.5 text-sm font-bold transition-all duration-200 ${isCurrent
-                                                ? "bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                            className={`w-full group/btn relative flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black transition-all duration-300 ${
+                                                isCurrent
+                                                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                                                 : isRecommended
-                                                    ? "bg-blue-600 text-white hover:bg-blue-700 shadow-sm active:scale-95"
-                                                    : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-95"
-                                                }`}
+                                                    ? "bg-brand-500 text-white hover:bg-brand-600 shadow-xl shadow-brand-500/20"
+                                                    : "bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/10"
+                                            }`}
                                         >
                                             {purchasingId === plan.id ? (
-                                                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             ) : isCurrent ? (
-                                                "Current Plan"
+                                                "Active Plan"
                                             ) : (
-                                                "Select Plan"
+                                                <>
+                                                    <span>{isFree ? "Start Now" : "Get Started"}</span>
+                                                    <FaChevronRight size={10} className="transition-transform group-hover/btn:translate-x-1" />
+                                                </>
                                             )}
                                         </button>
-                                    )}
-
-                                    {isFree && !isCurrent && (
-                                        <div className="mt-10 py-3.5 px-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-                                            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                                                Active
-                                            </span>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -251,33 +216,31 @@ export default function PlansSection({ compact = false, title = "Our Plans", sub
                 amount={selectedPlanAmount}
                 onPaymentSuccess={handlePaymentSuccess}
             />
-        </section >
+        </section>
     );
 }
 
-function FeatureItem({ icon, label }) {
+function QuotaCard({ icon, label, value }) {
     return (
-        <div className="flex items-center gap-3">
-            <div className="text-slate-400">
-                {icon}
+        <div className="bg-slate-50/50 border border-slate-100 p-2.5 rounded-xl">
+            <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                <span className="text-[9px]">{icon}</span>
+                <span className="text-[8px] font-black uppercase tracking-wider">{label}</span>
             </div>
-            <span className="text-sm font-semibold text-slate-700">
-                {label}
-            </span>
+            <div className="text-xs font-black text-slate-900">{value || "∞"}</div>
         </div>
     );
 }
 
-function FeatureRow({ label, enabled }) {
+function FeatureItem({ label, enabled }) {
     return (
-        <div className="flex items-center gap-3">
-            <div className={`flex-shrink-0 h-4 w-4 rounded-full flex items-center justify-center ${enabled ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-300"}`}>
-                <FaCheckCircle size={10} />
+        <div className="flex items-center gap-2.5">
+            <div className={`h-4 w-4 rounded-md flex items-center justify-center ${
+                enabled ? "bg-emerald-50 text-emerald-600 shadow-sm shadow-emerald-500/10" : "bg-slate-50 text-slate-300"
+            }`}>
+                <FaCheck size={7} strokeWidth={3} />
             </div>
-            <span className={`text-[13px] font-medium ${enabled
-                ? "text-slate-600"
-                : "text-slate-400 line-through decoration-slate-200"}`}
-            >
+            <span className={`text-[12px] font-bold ${enabled ? "text-slate-700" : "text-slate-400 line-through decoration-slate-200"}`}>
                 {label}
             </span>
         </div>

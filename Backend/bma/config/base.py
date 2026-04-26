@@ -92,6 +92,7 @@ AUTH_PASSWORD_VALIDATORS = [
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://bma2-0.d2h4yodyrjngfa.amplifyapp.com'
 ]
 
 DATABASES = {

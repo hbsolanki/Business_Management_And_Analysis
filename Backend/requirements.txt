@@ -45,6 +45,7 @@ watchdog>=4.0.0
 # PDF & HTML
 xhtml2pdf>=0.2.13
 reportlab>=4.0.0
+python-bidi==0.4.2
 
 # External APIs
 sib-api-v3-sdk>=7.6.0

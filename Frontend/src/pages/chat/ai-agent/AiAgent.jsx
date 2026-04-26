@@ -303,13 +303,33 @@ export default function AiAgent() {
 
             {/* Access Restriction Overlay */}
             {agentAccessMessage && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-sm p-6 text-center">
-                <div className="max-w-sm rounded-[2rem] bg-white p-8 shadow-2xl border border-slate-100">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 mb-6">
-                    <FaRobot size={28} />
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-md p-6 text-center">
+                <div className="max-w-md rounded-[2.5rem] bg-white p-10 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-500">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-rose-50 text-rose-500 mb-8 relative">
+                    <div className="absolute inset-0 rounded-[2rem] bg-rose-500/10 animate-ping" />
+                    <FaRobot size={32} className="relative z-10" />
                   </div>
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-2">Access Restricted</h3>
-                  <p className="text-sm font-medium text-slate-500 leading-relaxed">{agentAccessMessage}</p>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">Service Restriction</h3>
+                  <p className="text-base font-medium text-slate-500 leading-relaxed mb-8">
+                    {agentAccessMessage}
+                  </p>
+                  
+                  {agentAccessMessage.toLowerCase().includes("subscription") && (
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={() => navigate("/subscriptions")}
+                        className="w-full py-4 rounded-2xl bg-slate-900 text-white font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                      >
+                        Explore Enterprise Plans
+                      </button>
+                      <button
+                        onClick={() => navigate("/")}
+                        className="w-full py-4 rounded-2xl bg-white text-slate-500 font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-100"
+                      >
+                        Return to Dashboard
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

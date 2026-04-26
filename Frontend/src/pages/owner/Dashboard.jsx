@@ -118,7 +118,7 @@ function OwnerDashboard() {
       path: `/business/edit/${businessData.id}`,
     }
     : {
-      label: "Owner Register",
+      label: "Business Register",
       desc: "Create your business profile",
       path: "/business/new",
     };
@@ -300,7 +300,7 @@ function OwnerDashboard() {
               <FaBuilding />
             </div>
             <h2 className="text-2xl font-bold text-slate-900">
-              Owner register
+              Business register
             </h2>
             <p className="text-slate-500 mt-2">
               You need a business profile before accessing products, invoices,
@@ -310,7 +310,7 @@ function OwnerDashboard() {
               onClick={() => setShowBusinessModal(true)}
               className="mt-6 inline-flex items-center justify-center px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all"
             >
-              Owner Register
+              Business Register
             </button>
           </div>
         ) : (
@@ -390,8 +390,8 @@ function OwnerDashboard() {
                             onClick={() => handleSearchSelect(item)}
                             onMouseEnter={() => setSelectedIndex(index)}
                             className={`w-full text-left px-5 py-3 flex items-center gap-4 transition-all group border-l-4 ${selectedIndex === index
-                                ? "bg-brand-50/50 border-brand-500"
-                                : "hover:bg-slate-50 border-transparent"
+                              ? "bg-brand-50/50 border-brand-500"
+                              : "hover:bg-slate-50 border-transparent"
                               }`}
                           >
                             <div
@@ -843,8 +843,8 @@ function OwnerDashboard() {
                   type="submit"
                   disabled={businessSaving}
                   className={`px-5 py-2 rounded-xl text-white font-semibold transition ${businessSaving
-                      ? "bg-slate-300 cursor-not-allowed"
-                      : "bg-slate-900 hover:bg-slate-800"
+                    ? "bg-slate-300 cursor-not-allowed"
+                    : "bg-slate-900 hover:bg-slate-800"
                     }`}
                 >
                   {businessSaving ? "Saving..." : "Create Business"}
@@ -873,8 +873,8 @@ function AppCard({
     <Link
       to={to}
       className={`group rounded-[2rem] transition-all duration-500 ${featured
-          ? "col-span-2 sm:col-span-3 md:col-span-4 flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-8 bg-white border border-white/60 shadow-sm hover:shadow-xl hover:bg-white/80"
-          : "flex flex-col items-center justify-center gap-4 p-5 text-center bg-white/40 border border-transparent hover:bg-white/80 hover:border-slate-100 hover:shadow-sm"
+        ? "col-span-2 sm:col-span-3 md:col-span-4 flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-8 bg-white border border-white/60 shadow-sm hover:shadow-xl hover:bg-white/80"
+        : "flex flex-col items-center justify-center gap-4 p-5 text-center bg-white/40 border border-transparent hover:bg-white/80 hover:border-slate-100 hover:shadow-sm"
         }`}
     >
       <div

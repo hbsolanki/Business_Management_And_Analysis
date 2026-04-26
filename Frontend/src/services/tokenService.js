@@ -14,20 +14,22 @@ export const tokenService = {
         const keysToRemove = [
             ACCESS_TOKEN_KEY,
             REFRESH_TOKEN_KEY,
-            "role",
-            "id",
+            "username",
+            "email",
+            "business_id",
             "work",
-            "user_profile",
             "default_branch_id",
             "first_name",
             "last_name",
-            "email"
         ];
         keysToRemove.forEach(key => localStorage.removeItem(key));
     },
 
     getRole: () => localStorage.getItem("role"),
     setRole: (role) => localStorage.setItem("role", role),
+
+    getBusinessId: () => localStorage.getItem("business_id"),
+    setBusinessId: (id) => localStorage.setItem("business_id", id || ""),
 
     getId: () => localStorage.getItem("id"),
     setId: (id) => localStorage.setItem("id", id),
@@ -49,4 +51,10 @@ export const tokenService = {
             localStorage.setItem("default_branch_id", String(id));
         }
     },
+
+    getUsername: () => localStorage.getItem("username"),
+    setUsername: (username) => localStorage.setItem("username", username || ""),
+
+    getEmail: () => localStorage.getItem("email"),
+    setEmail: (email) => localStorage.setItem("email", email || ""),
 };

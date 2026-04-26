@@ -41,31 +41,50 @@ const normalizeWorkList = (value) => {
     return list.map(normalizeWorkItem).filter(Boolean);
 };
 
-const normalizeWork = (user) => {
-    if (!user) return "";
-    const assignedWorks = normalizeWorkList(user.assigned_works);
-    const legacyWorks = normalizeWorkList(user.work);
+const normalizeWork = (input) => {
+    if (!input) return "";
+    
+    // If input is already an array, normalize it directly
+    if (Array.isArray(input)) {
+        return [...new Set(normalizeWorkList(input))].join(",");
+    }
+
+    // If input is an object, try to find assigned_works or work fields
+    const assignedWorks = normalizeWorkList(input.assigned_works);
+    const legacyWorks = normalizeWorkList(input.work);
     return [...new Set([...assignedWorks, ...legacyWorks])].join(",");
 };
 
 export const authService = {
     getMe: async () => {
         const response = await api.get("/user/me/");
-        const userProfile = response.data;
+        const data = response.data;
         
-        if (userProfile.role) {
-            const roleString = typeof userProfile.role === "object" ? userProfile.role.role : userProfile.role;
+        // Extract from nested structure: response.data.user and response.data.business
+        const user = data.user || {};
+        const business = data.business || {};
+
+        // Store only relevant details as requested
+        tokenService.setId(user.id);
+        tokenService.setUsername(user.username);
+        tokenService.setEmail(user.email);
+        tokenService.setBusinessId(business.id);
+
+        const roleValue = data.role || user.role;
+        if (roleValue) {
+            const roleString = typeof roleValue === "object" ? roleValue.role : roleValue;
             tokenService.setRole(roleString);
         }
 
-        tokenService.setWork(normalizeWork(userProfile));
+        // Use top-level assigned_works or user.assigned_works
+        tokenService.setWork(normalizeWork(data.assigned_works || user.assigned_works));
 
-        const { branchId } = getLandingPath(userProfile);
+        const { branchId } = getLandingPath(data);
         if (branchId) {
             tokenService.setDefaultBranchId(branchId);
         }
 
-        return userProfile;
+        return data;
     },
 
     login: async (credentials) => {

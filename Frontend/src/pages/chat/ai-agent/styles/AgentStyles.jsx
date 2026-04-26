@@ -164,10 +164,17 @@ export const AI_AGENT_CSS = `
   @keyframes agentFadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes agentRiseIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes agentSlideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+  @keyframes agentZoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
   @keyframes agent-cursor-blink { 
     0%, 100% { opacity: 1; } 
     50% { opacity: 0; } 
   }
+  
+  .animate-in { animation-fill-mode: forwards; }
+  .fade-in { animation-name: agentFadeIn; }
+  .zoom-in { animation-name: agentZoomIn; }
+  .duration-500 { animation-duration: 500ms; }
+
   .agent-slide-in-left {
     animation: agentSlideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }

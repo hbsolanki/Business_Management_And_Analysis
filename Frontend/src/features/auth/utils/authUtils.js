@@ -69,12 +69,14 @@ export const decodedTokenAndGetInfo = () => {
 export const getLandingPath = (profile) => {
     if (!profile) return { path: "/", branchId: null };
 
-    // If user has no business assigned, send them to business setup
-    if (!profile.business_id) {
-        return { path: "/business/new", branchId: null };
-    }
+    const businessId = profile.business?.id || profile.business_id;
+    const roleValue = profile.role || profile.user?.role;
+    const assignedWorksList = profile.assigned_works || profile.user?.assigned_works || [];
 
-    const roleStr = typeof profile.role === "object" ? (profile.role?.role || "") : (profile.role || "");
+    // If user has no business assigned, we just let them go to their default dashboard
+    // The dashboard itself can handle showing a "Create Business" prompt if needed.
+
+    const roleStr = typeof roleValue === "object" ? (roleValue?.role || "") : (roleValue || "");
     const role = String(roleStr).toUpperCase();
 
     if (role === "OWNER") {
@@ -82,10 +84,10 @@ export const getLandingPath = (profile) => {
     }
 
     // For Managers and Employees, check assigned_works
-    if (Array.isArray(profile.assigned_works) && profile.assigned_works.length > 0) {
+    if (Array.isArray(assignedWorksList) && assignedWorksList.length > 0) {
         // Priority order based on the first assigned work string
-        const workType = String(profile.assigned_works[0]).toUpperCase();
-        const branchId = profile.default_branch_id || null; // Fallback or handle separately
+        const workType = String(assignedWorksList[0]).toUpperCase();
+        const branchId = profile.default_branch_id || profile.user?.default_branch_id || null;
 
         const pathMap = {
             "INVOICE": "/invoice/new",

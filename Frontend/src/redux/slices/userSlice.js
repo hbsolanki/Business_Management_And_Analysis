@@ -1,31 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '@/services/api';
-import { tokenService } from '@/services/tokenService';
-
-const USER_PROFILE_KEY = 'user_profile';
-
-// Helper functions for localStorage
-const loadUserFromStorage = () => {
-    try {
-        const stored = localStorage.getItem(USER_PROFILE_KEY);
-        return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-        console.error('Failed to load user profile from storage:', error);
-        return null;
-    }
-};
-
-const saveUserToStorage = (profile) => {
-    try {
-        if (profile) {
-            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
-        } else {
-            localStorage.removeItem(USER_PROFILE_KEY);
-        }
-    } catch (error) {
-        console.error('Failed to save user profile to storage:', error);
-    }
-};
 
 // Async thunk to fetch user profile
 export const fetchUserProfile = createAsyncThunk(
@@ -43,7 +17,7 @@ export const fetchUserProfile = createAsyncThunk(
 const userSlice = createSlice({
     name: 'user',
     initialState: {
-        profile: loadUserFromStorage(), // Load from localStorage on init
+        profile: null, // No longer loading from localStorage on init
         loading: false,
         error: null,
     },
@@ -52,17 +26,14 @@ const userSlice = createSlice({
             state.profile = null;
             state.loading = false;
             state.error = null;
-            saveUserToStorage(null); // Clear from localStorage
         },
         setUserProfile: (state, action) => {
             state.profile = action.payload;
             state.loading = false;
             state.error = null;
-            saveUserToStorage(action.payload); // Save to localStorage
         },
         updateUserProfile: (state, action) => {
             state.profile = { ...state.profile, ...action.payload };
-            saveUserToStorage(state.profile); // Update localStorage
         }
     },
     extraReducers: (builder) => {
@@ -74,7 +45,6 @@ const userSlice = createSlice({
             .addCase(fetchUserProfile.fulfilled, (state, action) => {
                 state.loading = false;
                 state.profile = action.payload;
-                saveUserToStorage(action.payload); // Save to localStorage
             })
             .addCase(fetchUserProfile.rejected, (state, action) => {
                 state.loading = false;

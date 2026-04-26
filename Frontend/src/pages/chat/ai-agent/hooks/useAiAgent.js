@@ -21,10 +21,9 @@ export function useAiAgent(currentSessionId, navigate) {
   }, [currentSessionId]);
 
   const extractAiAgentAccessMessage = useCallback((error) => {
-    const detail = error?.response?.data?.detail;
-    const message = error?.response?.data?.message;
-    const fallbackMessage = error?.message;
-    const resolved = detail || message || fallbackMessage || "";
+    const detail = error?.response?.data?.detail || error?.detail;
+    const message = error?.response?.data?.message || error?.message;
+    const resolved = detail || message || "";
     return String(resolved);
   }, []);
 
@@ -59,8 +58,14 @@ export function useAiAgent(currentSessionId, navigate) {
     } catch (error) {
       console.error("Failed to fetch messages:", error);
       const msg = extractAiAgentAccessMessage(error);
-      if (msg.toLowerCase().includes("access") || msg.toLowerCase().includes("permission")) {
-        setAgentAccessMessage(msg);
+      const lowerMsg = msg.toLowerCase();
+      if (
+        lowerMsg.includes("access") || 
+        lowerMsg.includes("permission") || 
+        lowerMsg.includes("subscription") ||
+        error?.response?.status === 403
+      ) {
+        setAgentAccessMessage(msg || "Neural Intelligence requires an active enterprise subscription.");
       }
     } finally {
       setIsLoadingMoreMessages(false);
@@ -166,7 +171,16 @@ export function useAiAgent(currentSessionId, navigate) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Stream error: ${response.status}`);
+        const errorMsg = errorData.detail || errorData.message || `Error ${response.status}`;
+        
+        if (response.status === 403 || errorMsg.toLowerCase().includes("subscription")) {
+          setAgentAccessMessage(errorMsg || "Neural Intelligence requires an active enterprise subscription.");
+          setIsProcessing(false);
+          setShowLiveProcess(false);
+          return;
+        }
+        
+        throw new Error(errorMsg);
       }
 
       const reader = response.body.getReader();
@@ -246,9 +260,11 @@ export function useAiAgent(currentSessionId, navigate) {
         }
       }
     } catch (error) {
+      if (error.name === "AbortError") return;
       console.error("Send Message Error:", error);
       setIsProcessing(false);
-      toast.error("Failed to reach agent");
+      setShowLiveProcess(false);
+      toast.error(error.message || "Failed to reach agent");
     }
   };
 

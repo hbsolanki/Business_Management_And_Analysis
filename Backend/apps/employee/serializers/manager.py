@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied
 
+from apps.business.serializers.business import BusinessBasicDetailsSerializer
 from apps.user.serializers.user import UserSerializer
 from apps.employee.serializers.employee_details import EmployeeDetailsSerializer
 from apps.employee.serializers.user_branch import UserBranchSerializer
@@ -14,7 +15,7 @@ class ManagerSerializer(serializers.Serializer):
     employee_details = EmployeeDetailsSerializer()
     assigned_branches = UserBranchSerializer(many=True)
     role = serializers.CharField(source="role_name", read_only=True)
-    business_id = serializers.UUIDField(read_only=True)
+    business=BusinessBasicDetailsSerializer(read_only=True)
     assigned_works = serializers.ListField(child=serializers.CharField(), read_only=True, source="assigned_works_list")
 
     def validate(self, attrs):

@@ -11,22 +11,24 @@ class ActivityLogConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
 
-        has_permission = await database_sync_to_async(user.has_perm)("activity_log.view_activitylog")
-        if not has_permission:
+        # Use helper to get all necessary data in one DB call
+        user_data = await self._get_user_context(user)
+        
+        if not user_data["has_permission"]:
             await self.close()
             return
 
-
         self.user = user
-        self.business_id = user.business_id
+        self.business_id = user_data["business_id"]
+        self.role_name = user_data["role_name"]
         self.active_groups = []
 
-        if user.role_name == UserRole.OWNER:
+        if self.role_name == UserRole.OWNER:
             # Owners see everything in their business
             self.active_groups.append(f"activity_logs_{self.business_id}")
-        elif user.role_name in (UserRole.MANAGER, UserRole.EMPLOYEE):
+        elif self.role_name in (UserRole.MANAGER, UserRole.EMPLOYEE):
             # Managers and Employees see only their assigned branches
-            branch_ids = await self._get_branch_ids(user)
+            branch_ids = user_data["branch_ids"]
             for b_id in branch_ids:
                 self.active_groups.append(f"activity_logs_branch_{b_id}")
 
@@ -39,8 +41,13 @@ class ActivityLogConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     @database_sync_to_async
-    def _get_branch_ids(self, user):
-        return list(user.branches.values_list('id', flat=True))
+    def _get_user_context(self, user):
+        return {
+            "has_permission": user.has_perm("activity_log.view_activitylog"),
+            "business_id": user.business_id,
+            "role_name": user.role_name,
+            "branch_ids": list(user.branches.values_list('id', flat=True))
+        }
 
     async def disconnect(self, close_code):
         if hasattr(self, "active_groups"):

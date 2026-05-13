@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toggleHeaderAction } from "@/redux/slices/quickActionsSlice";
 import { clearUserProfile } from "@/redux/slices/userSlice";
 import { OWNER_ACTIONS } from "@/config/quickActionsData";
+import { getProfileImageUrl } from "@/utils/imageUtils";
 import {
     FaChevronDown,
     FaHome,
@@ -17,7 +18,6 @@ import {
     FaUserEdit,
     FaSignOutAlt,
     FaHistory,
-    FaCodeBranch,
     FaBrain
 } from "react-icons/fa";
 
@@ -60,12 +60,6 @@ function OwnerHeader() {
         dispatch(toggleHeaderAction(id));
     };
     
-    // Auto-navigate to home when logged out
-    useEffect(() => {
-        if (!user) {
-            navigate("/", { replace: true });
-        }
-    }, [user, navigate]);
 
     const handleLogout = async () => {
         try {
@@ -80,12 +74,14 @@ function OwnerHeader() {
 
     const getProfileImage = () => {
         const data = user?.user || user;
-        if (data?.profile_picture) {
-            return <img src={data.profile_picture} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-indigo-100" />;
+        const imageUrl = getProfileImageUrl(data?.profile_picture);
+        
+        if (imageUrl) {
+            return <img src={imageUrl} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-indigo-100 shadow-sm" />;
         }
         const initials = `${data?.first_name?.[0] || ""}${data?.last_name?.[0] || ""}`.trim() || "U";
         return (
-            <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-semibold">
+            <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-semibold shadow-sm border border-indigo-200">
                 {initials.toUpperCase()}
             </div>
         );
@@ -183,10 +179,10 @@ function OwnerHeader() {
                                         <div className="glass-panel backdrop-blur-xl bg-white absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
                                             <div className="px-5 py-4 border-b border-slate-100 mb-2">
                                                 <p className="text-sm font-bold text-slate-900 truncate">
-                                                    {(user?.user || user)?.first_name && (user?.user || user)?.last_name ? `${(user.user || user).first_name} ${(user.user || user).last_name}` : "Hardik Solanki"}
+                                                    {(user?.user || user)?.first_name && (user?.user || user)?.last_name ? `${(user.user || user).first_name} ${(user.user || user).last_name}` : "User Profile"}
                                                 </p>
                                                 <p className="text-xs font-medium text-slate-500 truncate mt-0.5">
-                                                    {(user?.user || user)?.email || "hbsolanki0524@gmail.com"}
+                                                    {(user?.user || user)?.email || ""}
                                                 </p>
                                             </div>
 

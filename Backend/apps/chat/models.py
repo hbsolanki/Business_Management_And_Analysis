@@ -36,9 +36,21 @@ class Conversation(BaseModel):
 
     class Meta:
         db_table = 'bma_conversation'
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['user1', 'user2']),
+        ]
         constraints = [
-            models.UniqueConstraint(fields=["user1", "user2"],condition=models.Q(is_deleted=False),name="unique_active_conversation_users")]
-
+            models.UniqueConstraint(
+                fields=["user1", "user2"],
+                condition=models.Q(is_deleted=False),
+                name="unique_active_conversation_users"
+            ),
+            models.CheckConstraint(
+                check=~models.Q(user1=models.F('user2')),
+                name="prevent_self_conversation"
+            )
+        ]
 
 
 def message_media_path(instance, filename):
@@ -67,8 +79,8 @@ class Message(BaseModel):
     text = models.TextField(blank=True, null=True)
 
     # attachment
-    from apps.chat.services.cloudinary_storage import MessageMediaCloudinaryStorage
-    media = models.FileField(upload_to=message_media_path, null=True, blank=True, storage=MessageMediaCloudinaryStorage())
+    from apps.chat.services.s3_storage import MessageMediaS3Storage
+    media = models.FileField(upload_to=message_media_path, null=True, blank=True, storage=MessageMediaS3Storage())
     message_type = models.CharField(max_length=10, choices=MessageType.choices,null=True,blank=True)
 
     is_updated = models.BooleanField(default=False)
@@ -77,6 +89,9 @@ class Message(BaseModel):
     class Meta:
         db_table = 'bma_message'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['conversation', '-created_at']),
+        ]
 
 
 class BroadcastGroup(BaseModel):
@@ -85,6 +100,9 @@ class BroadcastGroup(BaseModel):
 
     class Meta:
         db_table = 'bma_broadcast_group'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'name'], name='unique_broadcast_group_name_per_user')
+        ]
 
 class BroadcastGroupMember(BaseModel):
     user_member = models.ForeignKey(User,on_delete=models.CASCADE,related_name='conversation_broadcast_group_member')
@@ -92,3 +110,6 @@ class BroadcastGroupMember(BaseModel):
 
     class Meta:
         db_table = 'bma_broadcast_group_member'
+        constraints = [
+            models.UniqueConstraint(fields=['user_member', 'broadcast_group'], name='unique_broadcast_group_member')
+        ]

@@ -206,14 +206,14 @@ class TasksTestCase(BaseTestCase):
         self.assertEqual(response.data["results"][1]["assigned_by"]["id"], self.owner_a.id)
 
         # 5. From date
-        from_date = (timezone.now().date() - timedelta(days=1)).isoformat()
+        from_date = (timezone.localdate() - timedelta(days=1)).isoformat()
         response = self.client.get(f"{self.task_list_url}?from_date={from_date}")
         self.assertEqual(len(response.data["results"]), 2)
         self.assertGreaterEqual(response.data["results"][0]["created_at"][:10], from_date)
         self.assertGreaterEqual(response.data["results"][1]["created_at"][:10], from_date)
 
         # 6. To date
-        to_date = (timezone.now().date() - timedelta(days=1)).isoformat()
+        to_date = (timezone.localdate() - timedelta(days=1)).isoformat()
         response = self.client.get(f"{self.task_list_url}?to_date={to_date}")
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["created_at"][:10], to_date)

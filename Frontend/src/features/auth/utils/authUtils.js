@@ -9,7 +9,7 @@ const isTokenExpired = (token) => {
         if (!decodedToken?.exp) return false;
         const currentTime = Date.now() / 1000;
         return decodedToken.exp < currentTime;
-    } catch (_error) {
+    } catch {
         return true;
     }
 };
@@ -69,12 +69,8 @@ export const decodedTokenAndGetInfo = () => {
 export const getLandingPath = (profile) => {
     if (!profile) return { path: "/", branchId: null };
 
-    const businessId = profile.business?.id || profile.business_id;
     const roleValue = profile.role || profile.user?.role;
     const assignedWorksList = profile.assigned_works || profile.user?.assigned_works || [];
-
-    // If user has no business assigned, we just let them go to their default dashboard
-    // The dashboard itself can handle showing a "Create Business" prompt if needed.
 
     const roleStr = typeof roleValue === "object" ? (roleValue?.role || "") : (roleValue || "");
     const role = String(roleStr).toUpperCase();
@@ -85,8 +81,11 @@ export const getLandingPath = (profile) => {
 
     // For Managers and Employees, check assigned_works
     if (Array.isArray(assignedWorksList) && assignedWorksList.length > 0) {
-        // Priority order based on the first assigned work string
-        const workType = String(assignedWorksList[0]).toUpperCase();
+        // Find the first work type, handling both strings and objects
+        const firstWork = assignedWorksList[0];
+        const workTypeRaw = typeof firstWork === 'object' ? (firstWork.work_type || "") : String(firstWork);
+        const workType = workTypeRaw.toUpperCase();
+        
         const branchId = profile.default_branch_id || profile.user?.default_branch_id || null;
 
         const pathMap = {
@@ -105,6 +104,8 @@ export const getLandingPath = (profile) => {
     // Fallbacks if no specific work area is matched
     if (role === "MANAGER") return { path: "/manager", branchId: null };
     if (role === "EMPLOYEE") return { path: "/employee", branchId: null };
+    if (role === "OWNER") return { path: "/owner", branchId: null };
 
-    return { path: "/", branchId: null };
+    // New users or owners without a business yet should go to business creation
+    return { path: "/business/new", branchId: null };
 };

@@ -33,21 +33,24 @@ class InventoryProductTests(BaseTestCase):
         self.assertEqual(len(results), 2)
         
         prod_a1_stock = next(r for r in results if r['product']['id'] == self.product_a1.id)['stock_quantity']
-        self.assertEqual(prod_a1_stock, 100)
+        initial_stock = self.inventory_product_a1_1.stock_quantity
+        self.assertEqual(prod_a1_stock, initial_stock)
 
-        self.create_inventory_transaction(self.branch_a1.id, InventoryTransaction.Action.IN, 10, self.product_a1.id)
+        in_qty = 10
+        self.create_inventory_transaction(self.branch_a1.id, InventoryTransaction.Action.IN, in_qty, self.product_a1.id)
         
         response = self.client.get(url_a)
         results = response.data.get("results", [])
         prod_a1_stock = next(r for r in results if r['product']['id'] == self.product_a1.id)['stock_quantity']
-        self.assertEqual(prod_a1_stock, 110)
+        self.assertEqual(prod_a1_stock, initial_stock + in_qty)
 
-        self.create_inventory_transaction(self.branch_a1.id, InventoryTransaction.Action.OUT, 4, self.product_a1.id)
+        out_qty = 4
+        self.create_inventory_transaction(self.branch_a1.id, InventoryTransaction.Action.OUT, out_qty, self.product_a1.id)
 
         response = self.client.get(url_a)
         results = response.data.get("results", [])
         prod_a1_stock = next(r for r in results if r['product']['id'] == self.product_a1.id)['stock_quantity']
-        self.assertEqual(prod_a1_stock, 106)
+        self.assertEqual(prod_a1_stock, initial_stock + in_qty - out_qty)
 
     def test_inventory_product_by_manager_on_assigned_branch(self):
         """Manager success."""
@@ -75,13 +78,15 @@ class InventoryProductTests(BaseTestCase):
         self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.INVENTORY)
         self.client.force_authenticate(user=self.employee_a1)
 
-        url_a = f"{self.stock_url}?branch={self.branch_a1.id}"
-        self.create_inventory_transaction(self.branch_a1.id, InventoryTransaction.Action.IN, 15, self.product_a1.id)
+        initial_stock = self.inventory_product_a1_1.stock_quantity
+        in_qty = 15
+        self.create_inventory_transaction(self.branch_a1.id, InventoryTransaction.Action.IN, in_qty, self.product_a1.id)
         
+        url_a = f"{self.stock_url}?branch={self.branch_a1.id}"
         response = self.client.get(url_a)
         results = response.data.get("results", [])
         prod_a1_stock = next(r for r in results if r['product']['id'] == self.product_a1.id)['stock_quantity']
-        self.assertEqual(prod_a1_stock, 115)
+        self.assertEqual(prod_a1_stock, initial_stock + in_qty)
 
         url_b = f"{self.stock_url}?branch={self.branch_b1.id}"
         response_b = self.client.get(url_b)
@@ -178,27 +183,35 @@ class InventoryProductTests(BaseTestCase):
         base_url = f"{self.stock_url}?branch={self.branch_a1.id}"
 
         # 1. Name filter (icontains)
-        response = self.client.get(f"{base_url}&name=A1")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_name = "A1"
+        response = self.client.get(f"{base_url}&name={search_name}")
+        from apps.inventory.models import InventoryProduct
+        expected_count = InventoryProduct.objects.filter(inventory__branch=self.branch_a1, product__name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["product"]["name"], "Product A1")
 
         # 2. SKU filter (icontains)
-        response = self.client.get(f"{base_url}&sku=PRD-A2")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_sku = "PRD-A2"
+        response = self.client.get(f"{base_url}&sku={search_sku}")
+        expected_count = InventoryProduct.objects.filter(inventory__branch=self.branch_a1, product__sku__icontains=search_sku).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["product"]["sku"], "PRD-A2")
 
         # 3. Branch filter (mandatory)
         response = self.client.get(f"{self.stock_url}?branch={self.branch_a2.id}")
-        self.assertEqual(len(response.data["results"]), 2)
+        expected_count = InventoryProduct.objects.filter(inventory__branch=self.branch_a2, inventory__business=self.owner_a.business).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["branch_id"], self.branch_a2.id)
         self.assertEqual(response.data["results"][1]["branch_id"], self.branch_a2.id)
 
         response = self.client.get(f"{self.stock_url}?branch={self.branch_b1.id}")
-        self.assertEqual(len(response.data["results"]), 0)
+        expected_count = InventoryProduct.objects.filter(inventory__branch=self.branch_b1, inventory__business=self.owner_a.business).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
 
         # 4. Name + SKU
         response = self.client.get(f"{base_url}&name={self.product_a1.name}&sku={self.product_a1.sku}")
-        self.assertEqual(len(response.data["results"]), 1)
+        expected_count = InventoryProduct.objects.filter(inventory__branch=self.branch_a1, product__name=self.product_a1.name, product__sku=self.product_a1.sku).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["product"]["name"], "Product A1")
         self.assertEqual(response.data["results"][0]["product"]["sku"], "PRD-A1")
 

@@ -16,6 +16,20 @@ const ChatHeader = ({
     onToggleSelectionMode,
     onDeleteSelectedClick
 }) => {
+    const navigate = useNavigate();
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        const closeOnOutside = (event) => {
+            if (!menuRef.current?.contains(event.target)) {
+                setShowMenu(false);
+            }
+        };
+        window.addEventListener("mousedown", closeOnOutside);
+        return () => window.removeEventListener("mousedown", closeOnOutside);
+    }, []);
+
     if (isSelectionMode) {
         return (
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-brand-50/80 backdrop-blur-md z-30 shrink-0 sticky top-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] animate-fade-in-up">
@@ -42,20 +56,6 @@ const ChatHeader = ({
         );
     }
 
-    const navigate = useNavigate();
-    const [showMenu, setShowMenu] = useState(false);
-    const menuRef = useRef(null);
-
-    useEffect(() => {
-        const closeOnOutside = (event) => {
-            if (!menuRef.current?.contains(event.target)) {
-                setShowMenu(false);
-            }
-        };
-        window.addEventListener("mousedown", closeOnOutside);
-        return () => window.removeEventListener("mousedown", closeOnOutside);
-    }, []);
-
     if (!selectedUser) return null;
 
     return (
@@ -69,8 +69,12 @@ const ChatHeader = ({
                 </button>
 
                 <div
-                    className="flex items-center gap-3.5 p-1 -ml-1 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group"
-                    onClick={() => navigate(`/profile/${selectedUser.id}`)}
+                    className={`flex items-center gap-3.5 p-1 -ml-1 rounded-2xl transition-all ${(!selectedUser.other_user_context || selectedUser.other_user_context.type === "INTERNAL") ? "hover:bg-slate-50 cursor-pointer group" : "cursor-default"}`}
+                    onClick={() => {
+                        if (!selectedUser.other_user_context || selectedUser.other_user_context.type === "INTERNAL") {
+                            navigate(`/profile/${selectedUser.id}`);
+                        }
+                    }}
                 >
                     <div className="relative shrink-0">
                         {selectedUser.profile_picture ? (
@@ -90,12 +94,23 @@ const ChatHeader = ({
 
                     <div className="min-w-0">
                         <h3 className="text-[15px] font-bold text-slate-900 leading-tight truncate group-hover:text-brand-600 transition-colors">
-                            {selectedUser.first_name ? `${selectedUser.first_name} ${selectedUser.last_name}` : selectedUser.username}
+                            {selectedUser.display_name || (selectedUser.first_name ? `${selectedUser.first_name} ${selectedUser.last_name}` : selectedUser.username)}
                         </h3>
                         <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap overflow-hidden">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                {selectedUser.role || 'User'}
-                            </span>
+                            {selectedUser.other_user_context && selectedUser.other_user_context.type !== "INTERNAL" ? (
+                                <span className="flex items-center gap-1">
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${selectedUser.other_user_context.type === 'SUPPLIER' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}`}>
+                                        {selectedUser.other_user_context.type}
+                                    </span>
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-[120px]">
+                                        {selectedUser.other_user_context.business_name || selectedUser.other_user_context.name || selectedUser.role || 'User'}
+                                    </span>
+                                </span>
+                            ) : (
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                    {selectedUser.role || 'User'}
+                                </span>
+                            )}
                             <span className="text-slate-300 scale-150 relative -top-px">·</span>
                             <span className="text-[12px] text-slate-500 font-medium capitalize">{userStatus}</span>
                         </div>

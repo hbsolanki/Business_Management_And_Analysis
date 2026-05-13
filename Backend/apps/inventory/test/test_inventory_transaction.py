@@ -293,13 +293,13 @@ class InventoryTransactionTests(BaseTestCase):
         self.assertEqual(response.data["results"][0]["branch"], self.branch_a1.id)
 
         # 5. From date filter
-        from_date = (timezone.now().date()).isoformat()
+        from_date = (timezone.localdate()).isoformat()
         response = self.client.get(f"{base_url}&from_date={from_date}")
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["created_at"][:10], from_date)
 
         # 6. To date filter
-        to_date = (timezone.now().date()).isoformat()
+        to_date = (timezone.localdate()).isoformat()
         response = self.client.get(f"{base_url_a2}&to_date={to_date}")
         self.assertEqual(len(response.data["results"]), 1)
         self.assertLessEqual(response.data["results"][0]["created_at"][:10], to_date)

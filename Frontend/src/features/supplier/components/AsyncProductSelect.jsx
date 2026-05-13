@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaBoxOpen, FaSearch, FaSpinner } from "react-icons/fa";
 import { productService } from "@/features/product/services/productService";
 

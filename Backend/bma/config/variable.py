@@ -22,6 +22,7 @@ DB_NAME = env("DB_NAME", default="bma_db")
 DB_USER = env("DB_USER", default="postgres")
 DB_PASS = env("DB_PASS", default="")
 DB_PORT = env("DB_PORT", default="5432")
+DB_SSLMODE = env("DB_SSLMODE", default="prefer")
 
 # Redis & Celery
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
@@ -34,11 +35,15 @@ CELERY_TIMEZONE = env("CELERY_TIMEZONE", default="UTC")
 CELERY_TASK_TRACK_STARTED = env.bool("CELERY_TASK_TRACK_STARTED", default=True)
 CELERY_TASK_TIME_LIMIT = env.int("CELERY_TASK_TIME_LIMIT", default=1800)
 
-# Media & Cloudinary
-MEDIA_URL = env("MEDIA_URL")
-CLOUDINARY_CLOUD_NAME = env("CLOUDINARY_CLOUD_NAME")
-CLOUDINARY_API_KEY = env("CLOUDINARY_API_KEY")
-CLOUDINARY_API_SECRET = env("CLOUDINARY_API_SECRET")
+# Media & AWS S3
+MEDIA_URL = env("MEDIA_URL", default="/media/")
+AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", default="")
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
+AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="ap-south-1")
+AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default=None)
+AWS_S3_FILE_OVERWRITE = env.bool("AWS_S3_FILE_OVERWRITE", default=False)
+AWS_DEFAULT_ACL = env("AWS_DEFAULT_ACL", default=None)
 
 # Google OAuth
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")

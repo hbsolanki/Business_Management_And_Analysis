@@ -6,8 +6,9 @@ export const activityService = {
      * @param {string} cursor - The cursor for the next or previous page.
      * @param {Object} filters - Optional filters (module, action, actor).
      */
-    getActivityLogs: (cursor = null, filters = {}) => {
+    getLogs: (params = {}) => {
         let url = "/activity-log/";
+        const { cursor, ...filters } = params;
 
         // If we have a cursor, it usually comes as a full URL or a query param from the backend
         if (cursor) {
@@ -29,21 +30,21 @@ export const activityService = {
         }
 
         // Add other filters if present
-        const params = new URLSearchParams();
+        const searchParams = new URLSearchParams();
         if (filters.module && String(filters.module).trim()) {
-            params.append("module", String(filters.module).trim());
+            searchParams.append("module", String(filters.module).trim());
         }
         if (filters.action && String(filters.action).trim()) {
-            params.append("action", String(filters.action).trim());
+            searchParams.append("action", String(filters.action).trim());
         }
         if (filters.actor !== undefined && filters.actor !== null && String(filters.actor).trim()) {
-            params.append("actor", String(filters.actor).trim());
+            searchParams.append("actor", String(filters.actor).trim());
         }
         if (filters.branch && String(filters.branch).trim()) {
-            params.append("branch", String(filters.branch).trim());
+            searchParams.append("branch", String(filters.branch).trim());
         }
 
-        const queryString = params.toString();
+        const queryString = searchParams.toString();
         if (queryString) {
             url += (url.includes("?") ? "&" : "?") + queryString;
         }

@@ -252,11 +252,22 @@ const ChatSidebar = ({
                                 <div className="ml-4 flex-1 min-w-0">
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         <h3 className={`text-sm font-semibold truncate ${selectedUser?.id === user.id && !isSelectionMode ? 'text-slate-900' : 'text-slate-800'}`}>
-                                            {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
+                                            {user.display_name || (user.first_name ? `${user.first_name} ${user.last_name}` : user.username)}
                                         </h3>
                                     </div>
                                     <p className={`text-xs truncate transition-colors ${selectedUser?.id === user.id && !isSelectionMode ? 'text-slate-600' : 'text-slate-500 group-hover:text-slate-600'}`}>
-                                        {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : user.email}
+                                        {(user.type || user.other_user_context?.type) && (user.type !== "INTERNAL" && user.other_user_context?.type !== "INTERNAL") ? (
+                                            <span className="flex items-center gap-1">
+                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${(user.type || user.other_user_context?.type) === 'SUPPLIER' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}`}>
+                                                    {user.type || user.other_user_context?.type}
+                                                </span>
+                                                <span className="truncate">
+                                                    {user.other_user_context?.business_name || user.other_user_context?.name || user.display_name || user.role || user.email}
+                                                </span>
+                                            </span>
+                                        ) : (
+                                            user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : user.email
+                                        )}
                                     </p>
                                 </div>
                             </div>

@@ -22,19 +22,45 @@ class SupplierSerializer(BaseSerializer):
         read_only_fields = BaseSerializer.Meta.read_only_fields + [ "supplier_business"]
 
     def validate(self, attrs):
-        same_platform = attrs.get("same_platform")
-        supplier_business = attrs.get("supplier_business")
-
-        if self.instance:
-            if "same_platform" not in attrs:
-                same_platform = self.instance.same_platform
-            if "supplier_business" not in attrs:
-                supplier_business = self.instance.supplier_business
+        request = self.context.get("request")
+        business = request.user.business if request else None
+        
+        # 1. Base Logic for Platform Link
+        same_platform = attrs.get("same_platform", self.instance.same_platform if self.instance else False)
+        supplier_business = attrs.get("supplier_business", self.instance.supplier_business if self.instance else None)
 
         if same_platform and not supplier_business:
             raise serializers.ValidationError({"supplier_business_id": "Supplier business is required when same_platform is True."})
         if not same_platform and supplier_business:
             raise serializers.ValidationError({"supplier_business_id": "Supplier business must be None when same_platform is False."})
+
+        # 2. Unique Constraints Validation (Per Business)
+        if business:
+            # Check Mobile Uniqueness
+            mobile = attrs.get("mobile_number")
+            if mobile:
+                qs = Supplier.objects.filter(business=business, mobile_number=mobile)
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    raise serializers.ValidationError({"mobile_number": "A supplier with this mobile number already exists in your business."})
+
+            # Check GST Uniqueness
+            gst = attrs.get("gst_number")
+            if gst:
+                qs = Supplier.objects.filter(business=business, gst_number=gst)
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    raise serializers.ValidationError({"gst_number": "A supplier with this GST number already exists in your business."})
+
+            # Check Platform Business Link Uniqueness
+            if supplier_business:
+                qs = Supplier.objects.filter(business=business, supplier_business=supplier_business)
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    raise serializers.ValidationError({"supplier_business_id": "This business is already linked as a supplier in your list."})
 
         return attrs
 

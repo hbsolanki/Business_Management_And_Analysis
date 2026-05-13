@@ -16,6 +16,11 @@ User = get_user_model()
 from apps.employee.models import UserRole
 
 
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
+
 class GoogleOAuthLoginAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -43,7 +48,7 @@ class GoogleOAuthLoginAPIView(APIView):
             token_data = token_res.json()
 
             if "id_token" not in token_data:
-                print(f"GOOGLE AUTH ERROR: {token_data}")
+                logger.error(f"GOOGLE AUTH ERROR: {token_data}")
                 return Response({
                     "error": "Invalid Google token",
                     "details": token_data
@@ -66,11 +71,16 @@ class GoogleOAuthLoginAPIView(APIView):
             
             created = False
             if not user:
+                from apps.employee.models import UserBusinessRole, UserRole
+                from apps.employee.utils.permission_utils import sync_user_role_permissions
                 user = User.objects.create(
                     email=email,
                     username=email,
                     first_name=name
                 )
+                # Assign OWNER role by default for self-signup
+                UserBusinessRole.objects.create(user=user, role=UserRole.OWNER)
+                sync_user_role_permissions(user)
                 created = True
             elif not user.email:
                 user.email = email
@@ -104,8 +114,7 @@ class GoogleOAuthLoginAPIView(APIView):
             )
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Authentication Failed: {str(e)}\n{traceback.format_exc()}")
             return Response({
                 "error": "Authentication Failed",
                 "details": str(e)

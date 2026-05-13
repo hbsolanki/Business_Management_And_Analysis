@@ -5,6 +5,10 @@ from apps.master.tasks import send_email_task
 import json
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @shared_task
 def send_analytics_report_email(*, to_email: str, business_name: str, start_date: str, end_date: str, report_data_json: str):
     report_data = json.loads(report_data_json)
@@ -18,7 +22,7 @@ def send_analytics_report_email(*, to_email: str, business_name: str, start_date
         )
         encoded_pdf = base64.b64encode(pdf_bytes).decode()
     except Exception as e:
-        print(f"Failed to generate analytics PDF: {e}")
+        logger.error(f"Failed to generate analytics PDF: {e}")
         return
 
     # Create safe filename out of business name and dates

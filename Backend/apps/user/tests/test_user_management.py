@@ -20,20 +20,22 @@ class UserManagementTests(BaseTestCase):
             "user": {
                 "username": "newowner",
                 "password": "Password123!",
+                "email": "newowner@example.com",
                 "mobile_number": "1234567890",
                 "first_name": "New",
                 "last_name": "Owner"
-            }
+            },
+            "otp": "123456"
         }
         response = self.client.post(self.user_list_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
         # Read
-        user = User.objects.get(username="newowner")
+        user = User.objects.get(username=data["user"]["username"])
         self.assertEqual(user.role_name, UserRole.OWNER)
-        self.assertEqual(user.first_name, "New")
-        self.assertEqual(user.last_name, "Owner")
-        self.assertEqual(user.mobile_number, "1234567890")
+        self.assertEqual(user.first_name, data["user"]["first_name"])
+        self.assertEqual(user.last_name, data["user"]["last_name"])
+        self.assertEqual(user.mobile_number, data["user"]["mobile_number"])
 
     def test_create_manager_by_owner(self):
         """Create manager."""
@@ -45,6 +47,7 @@ class UserManagementTests(BaseTestCase):
             "user": {
                 "username": "newmanager",
                 "password": "Password123!",
+                "email": "newmanager@example.com",
                 "mobile_number": "1234567891"
             },
             "employee_details": {"salary": 50000},
@@ -56,12 +59,12 @@ class UserManagementTests(BaseTestCase):
         self._verify_log(ActivityLog.Action.CREATE, ActivityLog.Module.USER)
 
         # Read
-        user = User.objects.get(username="newmanager")
+        user = User.objects.get(username=manager_data["user"]["username"])
         self.assertEqual(user.role_name, UserRole.MANAGER)
-        self.assertEqual(user.mobile_number, "1234567891")
-        self.assertEqual(user.salary, 50000)
-        self.assertEqual(user.branches.count(), 1)
-        self.assertEqual(user.branches.first().id, self.branch_a1.id)
+        self.assertEqual(user.mobile_number, manager_data["user"]["mobile_number"])
+        self.assertEqual(user.salary, manager_data["employee_details"]["salary"])
+        self.assertEqual(user.branches.count(), len(manager_data["assigned_branches"]))
+        self.assertEqual(user.branches.first().id, manager_data["assigned_branches"][0]["id"])
 
     def test_create_employee_by_manager(self):
         """Create employee."""
@@ -70,7 +73,12 @@ class UserManagementTests(BaseTestCase):
         
         # Create
         employee_data = {
-            "user": {"username": "newemp1", "password": "Password123!", "mobile_number": "1234567892"},
+            "user": {
+                "username": "newemp1", 
+                "password": "Password123!", 
+                "email": "newemp1@example.com",
+                "mobile_number": "1234567892"
+            },
             "employee_details": {"salary": 30000},
             "assigned_branches": [{"id": self.branch_a1.id}],
             "assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.INVENTORY}]
@@ -80,14 +88,14 @@ class UserManagementTests(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Read
-        user = User.objects.get(username="newemp1")
+        user = User.objects.get(username=employee_data["user"]["username"])
         self.assertEqual(user.role_name, UserRole.EMPLOYEE)
-        self.assertEqual(user.mobile_number, "1234567892")
-        self.assertEqual(user.salary, 30000)
-        self.assertEqual(user.branches.count(), 1)
-        self.assertEqual(user.branches.first().id, self.branch_a1.id)
-        self.assertEqual(user.assigned_works.count(), 1)
-        self.assertEqual(user.assigned_works.first().work_type, WorkType.INVENTORY)
+        self.assertEqual(user.mobile_number, employee_data["user"]["mobile_number"])
+        self.assertEqual(user.salary, employee_data["employee_details"]["salary"])
+        self.assertEqual(user.branches.count(), len(employee_data["assigned_branches"]))
+        self.assertEqual(user.branches.first().id, employee_data["assigned_branches"][0]["id"])
+        self.assertEqual(user.assigned_works.count(), len(employee_data["assigned_works"]))
+        self.assertEqual(user.assigned_works.first().work_type, employee_data["assigned_works"][0]["work_type"])
 
     def test_create_employee_by_owner(self):
         """Owner employee."""
@@ -96,7 +104,12 @@ class UserManagementTests(BaseTestCase):
         
         # Create
         employee_data = {
-            "user": {"username": "newemp2", "password": "Password123!", "mobile_number": "1234567893"},
+            "user": {
+                "username": "newemp2", 
+                "password": "Password123!", 
+                "email": "newemp2@example.com",
+                "mobile_number": "1234567893"
+            },
             "employee_details": {"salary": 30000},
             "assigned_branches": [{"id": self.branch_a1.id}],
             "assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.PRODUCT}]
@@ -106,14 +119,14 @@ class UserManagementTests(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Read
-        user = User.objects.get(username="newemp2")
+        user = User.objects.get(username=employee_data["user"]["username"])
         self.assertEqual(user.role_name, UserRole.EMPLOYEE)
-        self.assertEqual(user.mobile_number, "1234567893")
-        self.assertEqual(user.salary, 30000)
-        self.assertEqual(user.branches.count(), 1)
-        self.assertEqual(user.branches.first().id, self.branch_a1.id)
-        self.assertEqual(user.assigned_works.count(), 1)
-        self.assertEqual(user.assigned_works.first().work_type, WorkType.PRODUCT)
+        self.assertEqual(user.mobile_number, employee_data["user"]["mobile_number"])
+        self.assertEqual(user.salary, employee_data["employee_details"]["salary"])
+        self.assertEqual(user.branches.count(), len(employee_data["assigned_branches"]))
+        self.assertEqual(user.branches.first().id, employee_data["assigned_branches"][0]["id"])
+        self.assertEqual(user.assigned_works.count(), len(employee_data["assigned_works"]))
+        self.assertEqual(user.assigned_works.first().work_type, employee_data["assigned_works"][0]["work_type"])
 
     def test_owner_can_see_all_users(self):
         """Owner visibility."""
@@ -122,7 +135,9 @@ class UserManagementTests(BaseTestCase):
         # Read
         response = self.client.get(self.user_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 5)
+        from apps.user.models import User
+        expected_count = User.objects.filter(business_roles__business=self.owner_a.business).distinct().count()
+        self.assertEqual(len(response.data['results']), expected_count)
 
     def test_manager_can_see_employees_and_self(self):
         """Manager visibility."""
@@ -131,7 +146,8 @@ class UserManagementTests(BaseTestCase):
         # Read
         response = self.client.get(self.user_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 5)
+        expected_count = User.objects.filter(business_roles__business=self.manager_a1.business).distinct().count()
+        self.assertEqual(len(response.data['results']), expected_count)
         usernames = [u['username'] for u in response.data['results']]
         self.assertIn(self.manager_a1.username, usernames)
         self.assertIn(self.employee_a1.username, usernames)
@@ -144,7 +160,8 @@ class UserManagementTests(BaseTestCase):
         # Read
         response = self.client.get(self.user_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 5)
+        expected_count = User.objects.filter(business_roles__business=self.employee_a1.business).distinct().count()
+        self.assertEqual(len(response.data['results']), expected_count)
         usernames = [u['username'] for u in response.data['results']]
         self.assertIn(self.employee_a1.username, usernames)
 
@@ -236,12 +253,12 @@ class UserManagementTests(BaseTestCase):
         url_m = reverse('user-detail', args=[self.manager_a1.id])
         self.assertEqual(self.client.patch(url_m, {"employee_details": {"salary": 5000}}, format='json').status_code, status.HTTP_200_OK)
         
-        # Update
+        # Update manager by manager (Forbidden)
         self.client.force_authenticate(user=self.manager_a1)
         url_m2 = reverse('user-detail', args=[self.manager_a2.id])
-        self.assertEqual(self.client.patch(url_m2, {"employee_details": {"salary": 6000}}, format='json').status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.patch(url_m2, {"employee_details": {"salary": 6000}}, format='json').status_code, status.HTTP_403_FORBIDDEN)
         
-        # Update
+        # Update employee by manager (Allowed)
         url_e = reverse('user-detail', args=[self.employee_a1.id])
         self.assertEqual(self.client.patch(url_e, {"employee_details": {"salary": 3000}}, format='json').status_code, status.HTTP_200_OK)
         
@@ -292,6 +309,7 @@ class UserManagementTests(BaseTestCase):
             "user": {
                 "username": "cascademployee",
                 "password": "Password123!",
+                "email": "cascade@example.com",
                 "mobile_number": "1234567800",
             },
             "employee_details": {"salary": 30000},
@@ -422,7 +440,10 @@ class UserManagementTests(BaseTestCase):
         from apps.user.models import User
         from apps.employee.models import UserBusinessRole
         for i in range(2):
-            u = User.objects.create(username=f"paginated_user_{i}")
+            u = User.objects.create(
+                username=f"paginated_user_{i}", 
+                email=f"paginated_{i}@example.com"
+            )
             UserBusinessRole.objects.create(user=u, business=self.business_a)
         
         # 1. Page 1 again (7 total)

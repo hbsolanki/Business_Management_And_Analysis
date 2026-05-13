@@ -37,7 +37,7 @@ const VISUAL_SECTIONS = [
     },
 ];
 
-export default function AnalyticsCharts({ stockData, detailsData }) {
+export default function AnalyticsCharts({ stockData, detailsData, branchId = "" }) {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const activeSection = searchParams.get("section");
@@ -96,9 +96,9 @@ export default function AnalyticsCharts({ stockData, detailsData }) {
                 </button>
             </section>
 
-            {activeSection === "month-breakdown" && <MonthlyBreakdownChart />}
-            {activeSection === "net-profit" && <NetProfitChart />}
-            {activeSection === "product-performance" && <ProductPerformanceChart />}
+            {activeSection === "month-breakdown" && <MonthlyBreakdownChart branchId={branchId} />}
+            {activeSection === "net-profit" && <NetProfitChart branchId={branchId} />}
+            {activeSection === "product-performance" && <ProductPerformanceChart branchId={branchId} />}
             {activeSection === "cost-profit" && (
                 detailsData && detailsData.length > 0 ? (
                     <CostProfitSection detailsData={detailsData} navigate={navigate} />

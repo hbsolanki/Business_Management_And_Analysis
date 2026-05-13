@@ -5,7 +5,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://0.0.0.0
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
 });
 
 api.interceptors.request.use(
@@ -47,12 +47,32 @@ const refreshAccessToken = async () => {
   return nextAccessToken;
 };
 
+import { toast } from "react-hot-toast";
+
 api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
+
+    // Handle 429 Too Many Requests (Throttling)
+    if (status === 429) {
+      const now = Date.now();
+      const lastThrottled = window._lastThrottledAt || 0;
+      
+      // Only show one toast every 5 seconds to prevent "infinity" message spam
+      if (now - lastThrottled > 5000) {
+        window._lastThrottledAt = now;
+        toast.error("Speed limit reached. Please wait a moment before trying again.", {
+          id: "rate-limit-error",
+          duration: 4000,
+        });
+      }
+      
+      return Promise.reject(error);
+    }
+
     const isRefreshRequest = originalRequest?.url?.includes(
       "/api/token/refresh/",
     );

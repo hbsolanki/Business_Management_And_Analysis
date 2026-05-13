@@ -34,7 +34,7 @@ function Login() {
 
         try {
             const data = await authService.login(formData);
-            
+
             if (data.userProfile) {
                 dispatch(setUserProfile(data.userProfile));
             }
@@ -60,7 +60,7 @@ function Login() {
         setLoading(true);
         try {
             const data = await authService.googleLogin(codeResponse.code);
-            
+
             if (data.userProfile) {
                 dispatch(setUserProfile(data.userProfile));
             }
@@ -160,11 +160,10 @@ function Login() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className={`w-full group relative flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-black transition-all duration-300 shadow-xl shadow-slate-900/10 ${
-                                    loading 
-                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
-                                    : "bg-slate-900 text-white hover:bg-slate-800"
-                                }`}
+                                className={`w-full group relative flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-black transition-all duration-300 shadow-xl shadow-slate-900/10 ${loading
+                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                        : "bg-slate-900 text-white hover:bg-slate-800"
+                                    }`}
                             >
                                 {loading ? (
                                     <div className="h-5 w-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>

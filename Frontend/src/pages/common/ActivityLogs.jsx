@@ -119,25 +119,71 @@ const getTargetDisplay = (log) => {
 
     if (log.meta && typeof log.meta === 'object') {
         const data = log.meta;
+        // Priority fields for display
         const nameField = data.name || data.title || data.username || data.product_name || data.category_name || data.branch_name || data.invoice_number || data.order_number;
 
-        if (nameField && typeof nameField === 'string') {
-            return `${base}: ${nameField}`;
-        }
-
-        if (data.changes && typeof data.changes === 'object') {
-            const changes = data.changes;
-            const changeName = changes.name || changes.title || changes.username || changes.product_name || changes.category_name || changes.branch_name;
-            if (changeName) {
-                const val = Array.isArray(changeName) ? (changeName[1] || changeName[0]) : changeName;
-                if (val && typeof val === 'string') {
-                    return `${base}: ${val}`;
-                }
-            }
+        if (nameField) {
+            const val = typeof nameField === 'object' ? (nameField.new || nameField.old || JSON.stringify(nameField)) : nameField;
+            return `${base}: ${val}`;
         }
     }
 
     return base;
+};
+
+const LogMeta = ({ meta }) => {
+    if (!meta || typeof meta !== "object") return null;
+
+    const ignoreFields = ["id", "business", "branch", "created_at", "updated_at", "actor", "module", "target_id", "target_model", "business_id"];
+    const entries = Object.entries(meta).filter(([key, val]) => {
+        if (ignoreFields.includes(key)) return false;
+        if (val === null || val === undefined) return false;
+        return true;
+    });
+
+    if (entries.length === 0) return null;
+
+    return (
+        <div className="mt-3 pt-3 border-t border-slate-100/60 animate-fade-in font-mono">
+            <div className="flex items-center gap-1.5 mb-2 opacity-60">
+                <FaLayerGroup size={8} className="text-slate-400" />
+                <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500">Metadata Payload</span>
+            </div>
+            <div className="space-y-1">
+                {entries.map(([key, value]) => {
+                    const label = key.toLowerCase();
+
+                    if (value && typeof value === 'object' && ('old' in value || 'new' in value)) {
+                        return (
+                            <div key={key} className="grid grid-cols-[90px_1fr] md:grid-cols-[130px_1fr] gap-2 items-start py-0.5 px-2 rounded hover:bg-slate-50/80 transition-colors">
+                                <span className="text-[9px] font-semibold text-slate-400 truncate pt-0.5 uppercase tracking-tighter">"{label}"</span>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {value.old !== undefined && value.old !== null && (
+                                        <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 line-through decoration-slate-300 opacity-60">
+                                            {String(value.old)}
+                                        </span>
+                                    )}
+                                    <FaArrowRight size={8} className="text-slate-300 shrink-0" />
+                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50/50 px-1.5 py-0.5 rounded border border-emerald-100 shadow-sm">
+                                        {String(value.new ?? "null")}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div key={key} className="grid grid-cols-[90px_1fr] md:grid-cols-[130px_1fr] gap-2 items-start py-0.5 px-2 rounded hover:bg-slate-50/80 transition-colors">
+                            <span className="text-[9px] font-semibold text-slate-400 truncate pt-0.5 uppercase tracking-tighter">"{label}"</span>
+                            <span className="text-[10px] font-bold text-slate-600 break-all">
+                                {typeof value === 'string' ? `"${value}"` : String(value)}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 };
 
 const getTargetLink = (log) => {
@@ -155,6 +201,18 @@ const matchesFilters = (log, filters) => {
     return true;
 };
 
+const formatSafeDate = (dateStr) => {
+    if (!dateStr) return "-";
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return "-";
+        if (isYesterday(d)) return `Yesterday, ${format(d, 'h:mm a')}`;
+        return format(d, 'MMM d, yyyy • h:mm a');
+    } catch {
+        return "-";
+    }
+};
+
 // --- Component ---
 
 export default function ActivityLogs() {
@@ -165,6 +223,7 @@ export default function ActivityLogs() {
     const [showFilters, setShowFilters] = useState(false);
     const [draftFilters, setDraftFilters] = useState(DEFAULT_FILTERS);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
+    const [expandedLogs, setExpandedLogs] = useState({});
 
     // Search and Actor Selection
     const [actorSearch, setActorSearch] = useState("");
@@ -272,6 +331,13 @@ export default function ActivityLogs() {
         setDraftFilters(prev => ({ ...prev, actor: "" }));
     };
 
+    const toggleMeta = (logId) => {
+        setExpandedLogs(prev => ({
+            ...prev,
+            [logId]: !prev[logId]
+        }));
+    };
+
     // --- Render Logic ---
 
     const renderEmpty = () => (
@@ -296,11 +362,11 @@ export default function ActivityLogs() {
         <div className="min-h-screen bg-[#F8FAFC]">
             <ProtectedHeader />
 
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
                     <div className="space-y-1">
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                             Activity Logs
                             <span className="flex h-3 w-3 relative">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -326,7 +392,7 @@ export default function ActivityLogs() {
 
                 {/* Filter Panel */}
                 {showFilters && (
-                    <div className="mb-8 glass-panel rounded-3xl p-6 border border-white/60 bg-white/50 shadow-xl animate-fade-in-down">
+                    <div className="mb-8 glass-panel rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/60 bg-white/50 shadow-xl animate-fade-in-down">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {/* Actor Search */}
                             <div className="space-y-2 lg:col-span-2">
@@ -429,7 +495,7 @@ export default function ActivityLogs() {
                 {/* Timeline Content */}
                 <div className="relative">
                     {/* Vertical Line */}
-                    <div className="absolute left-6 md:left-8 top-4 bottom-4 w-1 bg-gradient-to-b from-slate-200 via-slate-200 to-transparent rounded-full hidden sm:block"></div>
+                    <div className="absolute left-5 md:left-8 top-4 bottom-4 w-0.5 md:w-1 bg-gradient-to-b from-slate-200 via-slate-200 to-transparent rounded-full"></div>
 
                     <div className="space-y-8">
                         {loading && logs.length === 0 ? (
@@ -453,10 +519,10 @@ export default function ActivityLogs() {
                                 const isNew = liveLogs.some(l => l.id === log.id);
 
                                 return (
-                                    <div key={log.id} className={`relative flex flex-col sm:flex-row gap-4 md:gap-8 group transition-all duration-500 ${isNew ? 'animate-fade-in-up' : ''}`}>
+                                    <div key={log.id} className={`relative flex gap-3 md:gap-6 group transition-all duration-500 ${isNew ? 'animate-fade-in-up' : ''}`}>
                                         {/* Actor Avatar (Timeline Marker) */}
                                         <div className="relative z-10 flex flex-col items-center shrink-0">
-                                            <div className="h-12 w-12 md:h-16 md:w-16 rounded-full bg-white border-4 border-[#F8FAFC] shadow-lg flex items-center justify-center font-black text-slate-700 md:text-xl relative group-hover:scale-110 transition-transform duration-300 ring-2 ring-slate-100">
+                                            <div className="h-8 w-8 md:h-12 md:w-12 rounded-full bg-white border-2 md:border-3 border-[#F8FAFC] shadow-md flex items-center justify-center font-black text-slate-700 text-[10px] md:text-sm relative group-hover:scale-110 transition-transform duration-300 ring-1 ring-slate-100">
                                                 {log.actor_details?.profile_picture ? (
                                                     <img
                                                         src={log.actor_details.profile_picture}
@@ -476,12 +542,12 @@ export default function ActivityLogs() {
 
                                         {/* Log Content Card */}
                                         <div className="flex-1 min-w-0 pt-2">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="text-xs font-black text-slate-900 tracking-tight">
+                                            <div className="flex items-center gap-2 md:gap-3 mb-1.5 md:mb-2">
+                                                <span className="text-[10px] md:text-xs font-black text-slate-900 tracking-tight truncate max-w-[120px] md:max-w-none">
                                                     {getActorName(log.actor_details)}
                                                 </span>
-                                                <span className="h-1 w-1 rounded-full bg-slate-300"></span>
-                                                <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                                <span className="h-1 w-1 rounded-full bg-slate-300 shrink-0"></span>
+                                                <span className="text-[10px] md:text-xs font-bold text-slate-400 flex items-center gap-1 md:gap-1.5 shrink-0">
                                                     <FaRegClock size={10} />
                                                     {isToday(new Date(log.created_at))
                                                         ? format(new Date(log.created_at), 'h:mm a')
@@ -490,47 +556,56 @@ export default function ActivityLogs() {
                                                 </span>
                                             </div>
 
-                                            <div className={`glass-panel rounded-[2rem] p-6 border transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 ${isNew ? 'bg-emerald-50/50 border-emerald-100 ring-2 ring-emerald-500/20' : 'bg-white/70 border-white shadow-soft'}`}>
+                                            <div className={`glass-panel rounded-xl md:rounded-3xl p-3 md:p-4 border transition-all duration-500 hover:shadow-xl hover:-translate-y-1 ${isNew ? 'bg-emerald-50/40 border-emerald-100 ring-2 ring-emerald-500/10' : 'bg-white/60 border-white/80 shadow-soft'}`}>
                                                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                                                     <div className="space-y-3 flex-1">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border ${module.bg} ${module.color} ${module.border} text-[10px] font-black uppercase tracking-widest`}>
-                                                                <module.icon size={10} />
+                                                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-2">
+                                                            <div className={`flex items-center gap-1 md:gap-1.5 px-2 py-0.5 rounded-md border ${module.bg} ${module.color} ${module.border} text-[8px] md:text-[9px] font-black uppercase tracking-widest`}>
+                                                                <module.icon size={7} className="md:size-[9px]" />
                                                                 {module.label}
                                                             </div>
-                                                            <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${actionColor} shadow-sm`}>
+                                                            <div className={`px-2 py-0.5 rounded-md text-[8px] md:text-[9px] font-black uppercase tracking-widest ${actionColor} shadow-sm`}>
                                                                 {safeText(log.action, "Action")}
                                                             </div>
                                                         </div>
 
-                                                        <h3 className="text-base md:text-lg font-bold text-slate-900 leading-snug">
+                                                        <h3 className="text-sm md:text-base font-bold text-slate-900 leading-snug">
                                                             {log.message}
                                                         </h3>
 
                                                         {targetDisplay && (
-                                                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 bg-slate-50/50 px-3 py-2 rounded-xl w-fit border border-slate-100">
-                                                                <FaBolt size={10} className="text-brand-500" />
+                                                            <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-semibold text-slate-500 bg-slate-50/30 px-2 py-1 rounded-lg w-fit border border-slate-100/50 mt-2">
+                                                                <FaBolt size={7} className="text-brand-500 md:size-[9px]" />
                                                                 {targetLink ? (
                                                                     <Link to={targetLink} className="text-brand-600 hover:underline flex items-center gap-1">
-                                                                        {targetDisplay}
-                                                                        <FaArrowRight size={8} />
+                                                                        <span className="truncate max-w-[120px] md:max-w-none">{targetDisplay}</span>
+                                                                        <FaArrowRight size={7} />
                                                                     </Link>
                                                                 ) : (
-                                                                    <span>{targetDisplay}</span>
+                                                                    <span className="truncate max-w-[120px] md:max-w-none">{targetDisplay}</span>
                                                                 )}
                                                             </div>
                                                         )}
                                                     </div>
 
-                                                    <div className="flex md:flex-col items-center md:items-end gap-2 shrink-0">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                            Branch #{log.branch || log.branch_id || "Global"}
+                                                    <div className="flex items-center md:items-end justify-between md:justify-start md:flex-col gap-2 shrink-0 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0 mt-1 md:mt-0">
+                                                        <span className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md whitespace-nowrap">
+                                                            {log.branch_details?.name || `Branch #${log.branch || log.branch_id || "Global"}`}
                                                         </span>
-                                                        <div className="h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
-                                                            <FaInfoCircle size={14} />
-                                                        </div>
+                                                        <button
+                                                            onClick={() => toggleMeta(log.id)}
+                                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${expandedLogs[log.id] ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'}`}
+                                                        >
+                                                            <FaInfoCircle size={10} />
+                                                            {expandedLogs[log.id] ? 'Hide Meta Data' : 'Show Meta Data'}
+                                                        </button>
                                                     </div>
                                                 </div>
+
+                                                {/* Detailed Meta Changes (Expandable) */}
+                                                {expandedLogs[log.id] && (
+                                                    <LogMeta meta={log.meta} />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -565,7 +640,8 @@ export default function ActivityLogs() {
             </main>
 
             {/* Custom Styles for Glassmorphism and Animations */}
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .glass-panel {
                     backdrop-filter: blur(12px);
                     -webkit-backdrop-filter: blur(12px);

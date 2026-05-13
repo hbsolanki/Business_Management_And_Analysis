@@ -159,7 +159,7 @@ export default function ManagerList() {
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all appearance-none cursor-pointer shadow-sm"
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all appearance-none cursor-pointer shadow-sm"
                 disabled={fetchingBranches}
               >
                 <option value="">All Branches</option>
@@ -187,15 +187,15 @@ export default function ManagerList() {
         {loading ? (
           <div className="h-64 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
-              <p className="text-slate-500 text-sm font-medium">Loading managers...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-slate-900"></div>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Loading managers...</p>
             </div>
           </div>
         ) : (
           <Suspense
             fallback={
               <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-slate-900"></div>
               </div>
             }
           >

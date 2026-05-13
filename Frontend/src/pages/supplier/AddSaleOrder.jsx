@@ -8,7 +8,6 @@ import {
     FaCodeBranch,
     FaMoneyBillWave,
     FaSave,
-    FaSearch,
     FaShoppingCart,
     FaSpinner,
     FaTrash,
@@ -29,6 +28,7 @@ import {
     normalizeListPayload,
     parsePositiveInt,
 } from "@/features/supplier/utils/supplierHelpers";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 const INITIAL_FORM = {
     branch_id: "",
@@ -41,89 +41,7 @@ const INITIAL_FORM = {
 function getErrorText(value) {
     if (!value) return null;
     if (typeof value === "string") return value;
-    // Use recursive extraction for objects/arrays to avoid React child crashes
     return extractFirstError({ data: value }, "Invalid input");
-}
-
-function resolveBranchId(branch) {
-    if (!branch && branch !== 0) return null;
-    if (typeof branch === "object") {
-        return branch.id ?? branch.branch_id ?? null;
-    }
-    return branch;
-}
-
-function resolveAssignedBranches(profile, requiredWorkType = null) {
-    if (!profile) return [];
-
-    const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
-    const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
-
-    const toBranchObject = (value, workType = null) => {
-        if (!value && value !== 0) return null;
-
-        const id = typeof value === "object" ? (value.id ?? value.branch_id) : value;
-        if (!id && id !== 0) return null;
-
-        // Filter by work type if restricted
-        if (requiredWorkType && isRestricted) {
-            const normalizedRequired = requiredWorkType.toUpperCase();
-            const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
-            if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
-                return null;
-            }
-        }
-
-        const source = typeof value === "object" ? value : null;
-        return {
-            id: String(id),
-            name: source?.name || source?.branch_name || source?.branch_details?.name || `Branch #${id}`,
-            is_default: Boolean(source?.is_default),
-        };
-    };
-
-    const collected = [];
-
-    // 1. Primary: assigned_branches (new API structure)
-    if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
-        const allowedBranchIds = requiredWorkType && isRestricted
-            ? new Set(
-                (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
-            )
-            : null;
-
-        profile.assigned_branches.forEach(b => {
-            if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
-            const obj = toBranchObject(b);
-            if (obj) collected.push(obj);
-        });
-    } else if (Array.isArray(profile.assigned_works)) {
-        profile.assigned_works.forEach(w => {
-            const b = toBranchObject(w.branch_id || w, w.work_type);
-            if (b) collected.push(b);
-        });
-    }
-
-    // 2. Legacy fallback
-    if (collected.length === 0) {
-        const legacyRaw = [
-            ...(Array.isArray(profile.branches) ? profile.branches : []),
-            ...(Array.isArray(profile.branch_ids) ? profile.branch_ids : []),
-            ...(profile.branch ? [profile.branch] : []),
-            ...(profile.branch_id ? [profile.branch_id] : [])
-        ];
-        legacyRaw.forEach(b => {
-            const obj = toBranchObject(b);
-            if (obj) collected.push(obj);
-        });
-    }
-
-    const seen = new Set();
-    return collected.filter((branch) => {
-        if (seen.has(branch.id)) return false;
-        seen.add(branch.id);
-        return true;
-    });
 }
 
 export default function AddSaleOrder() {
@@ -133,7 +51,11 @@ export default function AddSaleOrder() {
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
     const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
-    const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "SUPPLIER"), [profile]);
+    
+    const assignedBranches = useMemo(
+        () => getAssignedBranchesForWork(profile, 'SUPPLIER'),
+        [profile]
+    );
 
     const [branches, setBranches] = useState([]);
 
@@ -221,13 +143,10 @@ export default function AddSaleOrder() {
 
                 if (!isMounted) return;
 
-                const branchList = normalizeListPayload(branchRes.data);
+                const branchData = normalizeListPayload(branchRes.data);
                 const accessibleBranches = (() => {
-                    if (!isRestrictedRole) return branchList;
-                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
-                    const filtered = assignedIds.size > 0
-                        ? branchList.filter((branch) => assignedIds.has(String(branch.id)))
-                        : branchList;
+                    if (!isRestrictedRole) return branchData;
+                    const filtered = filterBranchesForRole(branchData, assignedBranches);
                     return filtered.length > 0 ? filtered : assignedBranches;
                 })();
 
@@ -244,7 +163,6 @@ export default function AddSaleOrder() {
                     defaultBranch = finalB ? String(finalB.id) : "";
                 }
 
-                // Handle pre-selected customer from redirection (e.g. from ProfileView)
                 const preSelectedCustomerId = location.state?.selectedCustomer;
                 let initialCustomer = null;
                 if (preSelectedCustomerId) {

@@ -94,118 +94,112 @@ export default function AddSale() {
     }
   };
 
-  return (
-    <>
+    return (
+    <div className="min-h-screen bg-slate-50/30 pb-12">
       <ProtectedHeader />
       {productData.length > 0 ? (
-        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-transparent">
-          <div className="form-card w-full max-w-lg overflow-hidden">
-            <div className="p-4">
-              <BackButton />
-            </div>
+        <main className="max-w-xl mx-auto px-4 pt-6">
+          <div className="mb-4 flex items-center justify-between">
+            <BackButton label="Back" />
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">Transaction Hub</p>
+          </div>
 
-            <div className="form-header">
-              <div className="form-header-icon">S</div>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <header className="px-5 py-4 bg-white border-b border-slate-100 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-md">
+                <span className="text-sm font-black">S</span>
+              </div>
               <div>
-                <h2 className="form-title">New Sale Entry</h2>
-                <p className="form-subtitle">Record a new sale transaction.</p>
+                <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">New Sale Entry</h1>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Revenue & Stock Audit</p>
               </div>
-            </div>
+            </header>
 
-            <form className="form-section space-y-6" onSubmit={handleSubmit} method="post">
-              {productData.map((product, idx) => {
-                const stockQuantity = getStockForProduct(product.name);
-                return (
-                  <div key={idx}>
-                    <div className="flex justify-between items-center mb-2">
-                      <label
-                        htmlFor={product.name}
-                        className="text-sm font-bold text-gray-800"
-                      >
-                        {product.name}
-                      </label>
-                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
-                      Stock: {stockQuantity}
-                    </span>
-                  </div>
+            <form className="p-5 space-y-6" onSubmit={handleSubmit} method="post">
+              <div className="space-y-4">
+                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-2">Product Allotment</h3>
+                <div className="space-y-3">
+                  {productData.map((product, idx) => {
+                    const stockQuantity = getStockForProduct(product.name);
+                    return (
+                      <div key={idx} className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 group">
+                        <div className="flex justify-between items-center mb-2">
+                          <label htmlFor={product.name} className="text-[11px] font-black text-slate-700 uppercase tracking-tight">
+                            {product.name}
+                          </label>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${stockQuantity > 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"}`}>
+                            Stock: {stockQuantity}
+                          </span>
+                        </div>
 
-                  <div className="relative">
+                        <div className="relative">
+                          <input
+                            id={product.name} name={product.name} type="number" onChange={handleChange} required
+                            placeholder="0"
+                            className="block w-full rounded-lg border border-slate-100 bg-white px-3 py-1.5 text-sm font-black text-slate-900 placeholder-slate-200 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition"
+                          />
+                        </div>
+                        {validationErrors[product.name] && (
+                          <p className="text-[9px] text-rose-500 mt-1.5 font-bold uppercase">
+                            {validationErrors[product.name]}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-2">Overhead Adjustments</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label htmlFor="marketing" className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                      Marketing Allocation
+                    </label>
                     <input
-                        id={product.name}
-                        name={product.name}
-                        type="number"
-                        onChange={handleChange}
-                        required
-                        placeholder="0"
-                        className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
-                      />
-                    </div>
-                    {validationErrors[product.name] && (
-                      <p className="text-sm text-rose-600 mt-2 font-medium flex items-center gap-1">
-                        {validationErrors[product.name]}
-                      </p>
-                    )}
+                      id="marketing" name="marketing" type="number" onChange={handleChange}
+                      placeholder="0.00"
+                      className="block w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-bold text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition"
+                    />
                   </div>
-                );
-              })}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="marketing" className="block text-sm font-semibold text-slate-700 mb-2">
-                    Marketing Cost
-                  </label>
-                  <input
-                    id="marketing"
-                    name="marketing"
-                    type="number"
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="othercost" className="block text-sm font-semibold text-slate-700 mb-2">
-                    Other Cost
-                  </label>
-                  <input
-                    id="othercost"
-                    name="othercost"
-                    type="number"
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition"
-                  />
+                  <div className="space-y-1">
+                    <label htmlFor="othercost" className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                      Ancillary Costs
+                    </label>
+                    <input
+                      id="othercost" name="othercost" type="number" onChange={handleChange}
+                      placeholder="0.00"
+                      className="block w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-sm font-bold text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="form-actions">
+              <div className="pt-4 border-t border-slate-50">
                 <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`btn-primary w-full ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
+                  type="submit" disabled={isSubmitting}
+                  className="w-full bg-slate-800 text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 active:scale-95"
                 >
-                  {isSubmitting ? (
-                    <>
-                      Processing...
-                    </>
-                  ) : (
-                    "Submit Sale"
-                  )}
+                  {isSubmitting ? "Finalizing Entry..." : "Confirm & Commit Sale"}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </main>
       ) : (
-        <div className="flex flex-col min-h-screen justify-center items-center bg-transparent">
-          <div className="form-card text-center p-8 rounded-2xl">
-            <p className="text-xl font-bold text-slate-900 mb-2">No Products Available</p>
-            <p className="text-slate-500">Please add products to the inventory first.</p>
-            <button onClick={() => navigate(-1)} className="mt-6 text-slate-700 font-semibold hover:underline">Go Back</button>
+        <div className="flex flex-col min-h-[60vh] justify-center items-center px-4">
+          <div className="bg-white border border-slate-200 p-8 rounded-2xl text-center shadow-sm max-w-sm">
+            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+               <span className="text-xl font-black">!</span>
+            </div>
+            <p className="text-base font-black text-slate-900 mb-1">Catalog Depleted</p>
+            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">Please update inventory levels before recording new transactions.</p>
+            <button onClick={() => navigate(-1)} className="mt-6 text-[10px] font-black text-slate-800 uppercase tracking-widest hover:underline">Return to Terminal</button>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

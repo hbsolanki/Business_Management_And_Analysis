@@ -14,6 +14,8 @@ import {
   FaTrash,
   FaSpinner,
   FaLocationArrow,
+  FaCheck,
+  FaTimes
 } from "react-icons/fa";
 
 export default function EditBranch() {
@@ -61,7 +63,7 @@ export default function EditBranch() {
           name: data.name || "",
           address_line_1: addr.address_line_1 || "",
           address_line_2: addr.address_line_2 || "",
-          city: addr.city || "",
+          city: addr.city_name || "",
           state: addr.state_name || "",
           country: addr.country_name || "",
           pin_code: addr.pin_code || "",
@@ -92,7 +94,6 @@ export default function EditBranch() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Check if anything changed
     const orig = originalDataRef.current;
     const hasChanges = !orig || Object.keys(orig).some((key) => {
       const curr = typeof formData[key] === "string" ? formData[key].trim() : formData[key];
@@ -172,7 +173,6 @@ export default function EditBranch() {
           pin_code: s.postcode || "",
         }));
       } else {
-        // Fallback to display string if structured data is absent
         setFormData((prev) => ({ ...prev, address_line_1: result.address }));
       }
 
@@ -189,231 +189,256 @@ export default function EditBranch() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50/50">
         <OwnerHeader />
         <div className="flex items-center justify-center py-24">
-          <div className="h-10 w-10 rounded-full border-2 border-slate-200 border-t-slate-700 animate-spin" />
+          <div className="h-12 w-12 rounded-full border-2 border-brand-200 border-t-brand-600 animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50/50 font-sans">
       <OwnerHeader />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <BackButton to="/business/branch" label="Back to Branches" />
-          {!formData.is_default ? (
+          {!formData.is_default && (
             <button
               type="button"
               onClick={() => setDeleteOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-semibold hover:bg-rose-100"
+              className="group flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-red-100 text-red-600 text-sm font-bold hover:bg-red-50 transition-all shadow-sm active:scale-95"
             >
-              <FaTrash size={12} />
-              Delete Branch
+              <FaTrash className="text-xs transition-transform group-hover:-rotate-12" />
+              Remove Branch
             </button>
-          ) : null}
+          )}
         </div>
 
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <header className="px-5 sm:px-6 lg:px-8 py-5 sm:py-6 border-b border-slate-200">
-            <div className="flex items-start gap-3">
-              <div className="h-11 w-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-                <FaCodeBranch size={18} />
+        {/* Professional White Header Section */}
+        <div className="relative overflow-hidden rounded-[2rem] bg-white p-6 md:p-10 shadow-sm border border-slate-200">
+          <div className="absolute inset-0 opacity-[0.03]">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)',
+              backgroundSize: '24px 24px'
+            }}></div>
+          </div>
+
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              <div className="h-14 w-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0 shadow-sm text-brand-600">
+                <FaCodeBranch className="text-2xl" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-slate-900">Edit Branch</h1>
-                <p className="text-sm text-slate-500 mt-1">Update branch details and primary branch settings.</p>
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">
+                  Edit Branch
+                </h1>
+                <p className="text-slate-500 text-sm md:text-base font-medium leading-relaxed max-w-xl">
+                  Update branch operational details and manage primary branch status.
+                </p>
               </div>
             </div>
-            {formError ? (
-              <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {formError}
-              </p>
-            ) : null}
-          </header>
+          </div>
 
-          <form onSubmit={handleSubmit} className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                Branch Name
-              </label>
-              <div className="relative">
-                <FaCodeBranch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none" />
+          {formError && (
+            <div className="mt-6 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium">
+              <FaSpinner className="animate-spin shrink-0" />
+              {formError}
+            </div>
+          )}
+        </div>
+
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+              {/* Branch Name */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 ml-2">
+                  Branch Name <span className="text-brand-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  placeholder="e.g. Downtown Branch"
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                  placeholder="e.g. Downtown Hub"
                 />
+                {errors.name && <p className="text-[11px] font-bold text-red-500 mt-1 ml-2">{errors.name[0]}</p>}
               </div>
-              {errors.name ? <p className="text-xs text-rose-600 mt-1">{errors.name[0]}</p> : null}
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                Contact Number
-              </label>
-              <div className="relative">
-                <FaPhoneAlt className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none" />
+              {/* Contact Number */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-400 ml-2">
+                  Contact Number
+                </label>
                 <input
                   type="text"
                   name="contact_number"
                   value={formData.contact_number}
                   onChange={handleChange}
-                  placeholder="e.g. +91 9876543210"
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                  placeholder="e.g. +91 98765 43210"
                 />
+                {errors.contact_number && <p className="text-[11px] font-bold text-red-500 mt-1 ml-2">{errors.contact_number[0]}</p>}
               </div>
-              {errors.contact_number ? <p className="text-xs text-rose-600 mt-1">{errors.contact_number[0]}</p> : null}
-            </div>
 
-            {/* Address Section */}
-            <div className="space-y-4">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Branch Address
-                </label>
+              {/* Address Header with GPS */}
+              <div className="md:col-span-2 pt-4 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-900 ml-2">
+                  Location Details
+                </h3>
                 <button
                   type="button"
                   onClick={handleUseCurrentLocation}
                   disabled={locatingAddress}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="group flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {locatingAddress ? <FaSpinner className="animate-spin" size={11} /> : <FaLocationArrow size={11} />}
-                  {locatingAddress ? "Fetching..." : "Use GPS"}
+                  {locatingAddress ? <FaSpinner className="animate-spin" /> : <FaLocationArrow className="transition-transform group-hover:rotate-12" />}
+                  {locatingAddress ? "Locating..." : "Use GPS"}
                 </button>
               </div>
 
               {/* Address Line 1 */}
-              <div>
-                <div className="relative">
-                  <FaMapMarkerAlt className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none" />
-                  <input
-                    type="text"
-                    name="address_line_1"
-                    value={formData.address_line_1}
-                    onChange={handleChange}
-                    placeholder="Address Line 1 (Street, Area)"
-                    className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
-                  />
-                </div>
-                {errors.address_line_1 ? <p className="text-xs text-rose-600 mt-1">{errors.address_line_1[0]}</p> : null}
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">
+                  Address Line 1
+                </label>
+                <input
+                  type="text"
+                  name="address_line_1"
+                  value={formData.address_line_1}
+                  onChange={handleChange}
+                  placeholder="Street, Area, Building"
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                />
+                {errors.address_line_1 && <p className="text-[11px] font-bold text-red-500 mt-1 ml-2">{errors.address_line_1[0]}</p>}
               </div>
 
               {/* Address Line 2 */}
-              <input
-                type="text"
-                name="address_line_2"
-                value={formData.address_line_2}
-                onChange={handleChange}
-                placeholder="Address Line 2 (Landmark, Optional)"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* City */}
-                <div>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    placeholder="City"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
-                  />
-                  {errors.city ? <p className="text-xs text-rose-600 mt-1">{errors.city[0]}</p> : null}
-                </div>
-                {/* State */}
-                <div>
-                  <input
-                    type="text"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleChange}
-                    placeholder="State"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
-                  />
-                  {errors.state ? <p className="text-xs text-rose-600 mt-1">{errors.state[0]}</p> : null}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Pin Code */}
-                <div>
-                  <input
-                    type="text"
-                    name="pin_code"
-                    value={formData.pin_code}
-                    onChange={handleChange}
-                    placeholder="Pin Code"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
-                  />
-                  {errors.pin_code ? <p className="text-xs text-rose-600 mt-1">{errors.pin_code[0]}</p> : null}
-                </div>
-                {/* Country */}
-                <div>
-                  <input
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    placeholder="Country"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
-                  />
-                  {errors.country ? <p className="text-xs text-rose-600 mt-1">{errors.country[0]}</p> : null}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                  Main Branch
-                  <FaCheckCircle className={formData.is_default ? "text-emerald-600" : "text-slate-300"} />
-                </p>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {formData.is_default
-                    ? "This branch is currently the main location."
-                    : "Enable this to make it your main branch."}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={formData.is_default}
-                onClick={() => setFormData((prev) => ({ ...prev, is_default: !prev.is_default }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_default ? "bg-slate-900" : "bg-slate-300"}`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${formData.is_default ? "translate-x-5" : "translate-x-0.5"}`}
+              <div className="space-y-2 md:col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">
+                  Address Line 2 (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="address_line_2"
+                  value={formData.address_line_2}
+                  onChange={handleChange}
+                  placeholder="Landmark, Locality"
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
                 />
-              </button>
+              </div>
+
+              {/* City & State */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">City</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                  placeholder="City"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">State</label>
+                <input
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                  placeholder="State"
+                />
+              </div>
+
+              {/* Pin Code & Country */}
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">Pin Code</label>
+                <input
+                  type="text"
+                  name="pin_code"
+                  value={formData.pin_code}
+                  onChange={handleChange}
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                  placeholder="Pin Code"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">Country</label>
+                <input
+                  type="text"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleChange}
+                  className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                  placeholder="Country"
+                />
+              </div>
             </div>
 
-            <div className="pt-5 border-t border-slate-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            {/* Set as Main Branch Switch */}
+            <div className="mt-10 p-5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={`p-2.5 rounded-xl transition-colors ${formData.is_default ? "bg-emerald-100 text-emerald-600" : "bg-slate-200 text-slate-400"}`}>
+                  <FaCheckCircle size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Main Branch Status</h4>
+                  <p className="text-[11px] text-slate-500 font-medium uppercase tracking-tight">
+                    {formData.is_default ? "This location is currently set as your primary branch." : "Enable to make this your primary system branch."}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => navigate(-1)}
-                className="w-full sm:w-auto sm:min-w-[150px] px-5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
+                onClick={() => setFormData((prev) => ({ ...prev, is_default: !prev.is_default }))}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-300 ${formData.is_default ? "bg-brand-600" : "bg-slate-300"}`}
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className={`w-full sm:w-auto sm:min-w-[170px] px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition ${saving ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
-              >
-                {saving ? "Saving..." : "Save Changes"}
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${formData.is_default ? "translate-x-6" : "translate-x-1"}`} />
               </button>
             </div>
-          </form>
-        </section>
+          </section>
+
+          {/* Action Buttons */}
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="group flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-bold text-base text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all duration-300 shadow-sm"
+            >
+              <FaTimes className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className={`group relative flex items-center justify-center gap-3 px-10 py-4 rounded-xl font-bold text-base text-white transition-all duration-300 shadow-lg ${
+                saving
+                  ? "bg-brand-400 cursor-not-allowed"
+                  : "bg-brand-600 hover:bg-brand-700 hover:shadow-brand-200 hover:-translate-y-1 active:scale-95"
+              }`}
+            >
+              {saving ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="tracking-tight">Updating...</span>
+                </>
+              ) : (
+                <>
+                  <FaCheck className="text-lg transition-transform duration-500 group-hover:scale-125" />
+                  <span className="tracking-tight">Save Branch Updates</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </main>
 
       <Modal

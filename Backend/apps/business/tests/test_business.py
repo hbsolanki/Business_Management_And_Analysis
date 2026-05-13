@@ -27,7 +27,7 @@ class BusinessTestCase(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.user.refresh_from_db()
         self.assertIsNotNone(self.user.business)
-        self.assertEqual(self.user.business.name, "Test Business")
+        self.assertEqual(self.user.business.name, data["name"])
 
     def test_create_business_by_owner(self):
         data = {
@@ -55,10 +55,11 @@ class BusinessTestCase(BaseTestCase):
         UserBusinessRole.objects.get_or_create(user=self.user, business=business, role=UserRole.OWNER)
         
         detail_url = reverse('business-detail', kwargs={'pk': business.id})
-        response = self.client.patch(detail_url, {"name": "Updated Name"})
+        detail_data = {"name": "Updated Name"}
+        response = self.client.patch(detail_url, detail_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         business.refresh_from_db()
-        self.assertEqual(business.name, "Updated Name")
+        self.assertEqual(business.name, detail_data["name"])
 
     def test_cannot_update_business_by_manager(self):
         business = Business.objects.create(name="Test Biz")
@@ -120,7 +121,9 @@ class BusinessTestCase(BaseTestCase):
         
         # List should only show Business A
         response = self.client.get(self.business_list_url)
-        self.assertEqual(len(response.data['results']), 1)
+        from apps.employee.models import UserRole
+        expected_count = Business.objects.filter(user_roles__user=user_a, user_roles__role=UserRole.OWNER).count()
+        self.assertEqual(len(response.data['results']), expected_count)
 
     def test_business_filtering(self):
         """Test business filters."""
@@ -133,13 +136,19 @@ class BusinessTestCase(BaseTestCase):
         self.client.force_authenticate(user=self.user)
         
         # 1. Name contains (match)
-        response = self.client.get(f"{self.business_list_url}?name=Filtering")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_name = "Filtering"
+        response = self.client.get(f"{self.business_list_url}?name={search_name}")
+        from apps.employee.models import UserRole
+        expected_count = Business.objects.filter(user_roles__user=self.user, user_roles__role=UserRole.OWNER, name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["name"], "Filtering Biz")
         
         # 2. Name contains (no match)
-        response = self.client.get(f"{self.business_list_url}?name=NonExistent")
-        self.assertEqual(len(response.data["results"]), 0)
+        search_name = "NonExistent"
+        response = self.client.get(f"{self.business_list_url}?name={search_name}")
+        from apps.employee.models import UserRole
+        expected_count = Business.objects.filter(user_roles__user=self.user, user_roles__role=UserRole.OWNER, name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         
     def test_create_manager(self):
         # Setup using helpers
@@ -151,6 +160,7 @@ class BusinessTestCase(BaseTestCase):
             "user": {
                 "username": "unique_manager_name",
                 "password": "Password123!",
+                "email": "manager_unique@example.com",
                 "mobile_number": "9000000005",
             },
             "employee_details": {"salary": 10000},
@@ -170,6 +180,7 @@ class BusinessTestCase(BaseTestCase):
             "user": {
                 "username": "unique_employee_name",
                 "password": "Password123!",
+                "email": "emp_unique@example.com",
                 "mobile_number": "9000000006",
             },
             "employee_details": {"salary": 5000},
@@ -187,6 +198,7 @@ class BusinessTestCase(BaseTestCase):
             "user": {
                 "username": "another_manager",
                 "password": "Password123!",
+                "email": "mgr_another@example.com",
                 "mobile_number": "9000000007",
             },
             "employee_details": {"salary": 15000},
@@ -203,6 +215,7 @@ class BusinessTestCase(BaseTestCase):
             "user": {
                 "username": "manager_fail",
                 "password": "Password123!",
+                "email": "mgr_fail@example.com",
                 "mobile_number": "9000000008",
             },
             "employee_details": {"salary": 1000},
@@ -219,6 +232,7 @@ class BusinessTestCase(BaseTestCase):
             "user": {
                 "username": "new_employee",
                 "password": "Password123!",
+                "email": "new_emp_ok@example.com",
                 "mobile_number": "9000000009",
             },
             "employee_details": {"salary": 4500},
@@ -236,6 +250,7 @@ class BusinessTestCase(BaseTestCase):
             "user": {
                 "username": "employee_fail_2",
                 "password": "Password123!",
+                "email": "emp_fail_2@example.com",
                 "mobile_number": "9000000100",
             },
             "employee_details": {"salary": 3000},

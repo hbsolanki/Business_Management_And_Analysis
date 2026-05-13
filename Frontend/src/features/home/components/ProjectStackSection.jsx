@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     FaUsers,
     FaBoxOpen,
     FaTruck,
     FaShoppingCart,
-    FaChartLine,
     FaProjectDiagram,
     FaDatabase,
     FaTasks,
@@ -131,33 +130,6 @@ const STACK_LAYERS = [
     },
 ];
 
-const TONE_STYLES = {
-    slate: {
-        icon: "bg-slate-900 text-white",
-        text: "text-slate-900",
-        border: "border-slate-200",
-        bg: "bg-slate-50",
-    },
-    brand: {
-        icon: "bg-indigo-600 text-white",
-        text: "text-indigo-900",
-        border: "border-indigo-100",
-        bg: "bg-indigo-50/30",
-    },
-    sky: {
-        icon: "bg-emerald-500 text-white",
-        text: "text-emerald-900",
-        border: "border-emerald-100",
-        bg: "bg-emerald-50/30",
-    },
-    purple: {
-        icon: "bg-purple-600 text-white",
-        text: "text-purple-900",
-        border: "border-purple-100",
-        bg: "bg-purple-50/30",
-    },
-};
-
 function getActiveLayer(stepIndex) {
     if (stepIndex === 0) return 0;
     if (stepIndex <= 2) return 1;
@@ -199,7 +171,6 @@ export default function ProjectStackSection() {
     return (
         <section className="relative py-24 md:py-32 bg-white border-t border-slate-100 overflow-clip">
             {/* Background elements */}
-            <div className="absolute inset-0 -z-10 bg-[url('/noise.png')] opacity-[0.02]" />
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl overflow-hidden opacity-10 blur-3xl pointer-events-none">
                 <div className="absolute top-1/4 left-0 w-96 h-96 bg-indigo-500 rounded-full" />
                 <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-brand-500 rounded-full" />
@@ -304,7 +275,6 @@ export default function ProjectStackSection() {
                         <div className="space-y-32">
                             {STACK_STEPS.map((item, index) => {
                                 const isActive = index === activeStep;
-                                const style = TONE_STYLES[item.tone];
                                 
                                 return (
                                     <div

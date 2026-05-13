@@ -13,16 +13,24 @@ from apps.employee.utils.permission_utils import sync_user_role_permissions
 class ManagerSerializer(serializers.Serializer):
     user = UserSerializer(source='*')
     employee_details = EmployeeDetailsSerializer()
-    assigned_branches = UserBranchSerializer(many=True)
+    assigned_branches = UserBranchSerializer(many=True, required=False)
     role = serializers.CharField(source="role_name", read_only=True)
     business=BusinessBasicDetailsSerializer(read_only=True)
-    assigned_works = serializers.ListField(child=serializers.CharField(), read_only=True, source="assigned_works_list")
 
     def validate(self, attrs):
         request = self.context.get("request")
-        if self.instance is None:
-            if request and not request.user.has_perm('employee.can_create_manager'):
-                raise PermissionDenied("You do not have permission to create a manager.")
+        if not request:
+            return attrs
+
+        # Only users with 'can_create_manager' (Owners) can modify sensitive fields
+        sensitive_fields = ["employee_details", "assigned_branches"]
+        is_updating_sensitive = any(field in attrs for field in sensitive_fields)
+        
+        if is_updating_sensitive:
+            if not request.user.has_perm('employee.can_create_manager'):
+                # print(f"DEBUG: Denying update to {request.user.username} - perms: {request.user.get_all_permissions()}")
+                raise PermissionDenied("You do not have permission to modify manager salary or branch assignments.")
+        
         return attrs
 
     def create(self, validated_data):
@@ -33,8 +41,8 @@ class ManagerSerializer(serializers.Serializer):
         if not user_data:
              raise serializers.ValidationError({"user": "This field is required."})
              
-        details_data = validated_data.pop("employee_details")
-        branches_data = validated_data.pop("assigned_branches")
+        details_data = validated_data.pop("employee_details", {})
+        branches_data = validated_data.pop("assigned_branches", [])
 
         with transaction.atomic():
             # 1. Base User

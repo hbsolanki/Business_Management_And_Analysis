@@ -6,4 +6,9 @@ def get_tokens_for_user(user):
     return {
         "refresh": str(refresh),
         "access": str(refresh.access_token),
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role_name
+        }
     }

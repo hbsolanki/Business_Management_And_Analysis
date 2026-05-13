@@ -6,6 +6,7 @@ import {
     MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { FaUserTie, FaIdCard, FaEnvelope, FaPhone, FaCircle, FaComments, FaPowerOff, FaEllipsisV, FaTimes } from "react-icons/fa";
+import { getProfileImageUrl } from "@/utils/imageUtils";
 
 export default function UserList({
     users = [],
@@ -81,14 +82,13 @@ export default function UserList({
     const isManager = type === "MANAGER";
     const ThemeIcon = isManager ? FaUserTie : FaIdCard;
 
-    const avatarBg = isManager ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700";
-    const badgeBg = isManager ? "bg-slate-100 text-slate-700" : "bg-emerald-50 text-emerald-700";
+    const avatarBg = "bg-slate-100 text-slate-600";
+    const badgeBg = "bg-slate-100 text-slate-700";
 
     const getBaseUser = (user) => user?.user || user;
 
     const getImageUrl = (path) => {
-        if (!path) return null;
-        return path;
+        return getProfileImageUrl(path);
     };
 
     const getWorkAssignments = (user) => {
@@ -169,7 +169,7 @@ export default function UserList({
                     <input
                         type="text"
                         placeholder={`Search ${isManager ? "managers" : "employees"}...`}
-                        className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -242,7 +242,7 @@ export default function UserList({
                                                                 {getWorkAssignments(user).slice(0, 3).map((work, idx) => (
                                                                     <span
                                                                         key={idx}
-                                                                        className="px-1.5 py-0.5 rounded bg-brand-50 text-brand-600 text-[9px] font-bold uppercase tracking-wider"
+                                                                        className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[9px] font-bold uppercase tracking-wider border border-slate-200"
                                                                     >
                                                                         {work}
                                                                     </span>
@@ -293,7 +293,7 @@ export default function UserList({
                                                                         : { userId: user.id, user: user, anchorRect }
                                                                 ));
                                                             }}
-                                                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-brand-600 hover:border-brand-200 transition-all flex items-center justify-center p-0"
+                                                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all flex items-center justify-center p-0"
                                                         >
                                                             <FaEllipsisV size={12} />
                                                         </button>
@@ -347,7 +347,7 @@ export default function UserList({
                                                     {getWorkAssignments(user).slice(0, 2).map((work, idx) => (
                                                         <span
                                                             key={idx}
-                                                            className="px-1.5 py-0.5 rounded bg-brand-50 text-brand-600 text-[8px] font-bold uppercase tracking-wider"
+                                                            className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[8px] font-bold uppercase tracking-wider border border-slate-200"
                                                         >
                                                             {work}
                                                         </span>
@@ -382,7 +382,7 @@ export default function UserList({
                                                             : { userId: userId, user: user, anchorRect }
                                                     ));
                                                 }}
-                                                className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-brand-600 hover:border-brand-200 transition-all flex items-center justify-center -mr-1"
+                                                className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all flex items-center justify-center -mr-1"
                                             >
                                                 <FaEllipsisV size={12} />
                                             </button>
@@ -432,9 +432,9 @@ export default function UserList({
                                 onView(actionsMenu.userId);
                                 setActionsMenu(null);
                             }}
-                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600 font-medium transition-colors"
+                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-bold transition-colors"
                         >
-                            <ChevronRightIcon className="h-4 w-4 mr-3 text-slate-400" />
+                            <ChevronRightIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
                             View Profile
                         </button>
                     )}
@@ -444,9 +444,9 @@ export default function UserList({
                                 onEdit(actionsMenu.userId);
                                 setActionsMenu(null);
                             }}
-                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600 font-medium transition-colors"
+                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-bold transition-colors"
                         >
-                            <PencilSquareIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
+                            <PencilSquareIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
                             Edit {isManager ? "Manager" : "Employee"}
                         </button>
                     )}
@@ -456,9 +456,9 @@ export default function UserList({
                                 onChat(actionsMenu.userId);
                                 setActionsMenu(null);
                             }}
-                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600 font-medium transition-colors"
+                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-bold transition-colors"
                         >
-                            <FaComments className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
+                            <FaComments className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
                             Message
                         </button>
                     )}
@@ -468,9 +468,9 @@ export default function UserList({
                                 onToggleStatus(actionsMenu.user);
                                 setActionsMenu(null);
                             }}
-                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600 font-medium transition-colors"
+                            className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-bold transition-colors"
                         >
-                            <FaPowerOff className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
+                            <FaPowerOff className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
                             {actionsMenu.user?.is_active !== false ? "Mark Inactive" : "Mark Active"}
                         </button>
                     )}

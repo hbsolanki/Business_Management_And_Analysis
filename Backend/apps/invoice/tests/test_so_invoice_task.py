@@ -1,4 +1,3 @@
-from django.test import TestCase
 from apps.base.tests import BaseTestCase
 from apps.supplier.models import SalesOrder, SalesOrderItem
 from apps.invoice.models import Invoice
@@ -70,7 +69,7 @@ class SalesOrderToInvoiceTaskTests(BaseTestCase):
         
         # Run task
         result = create_invoice_from_sales_order_task(so.id)
-        
+            
         # Verify validation error
         self.assertIn("Validation Error", result)
         self.assertEqual(Invoice.objects.count(), initial_invoice_count)

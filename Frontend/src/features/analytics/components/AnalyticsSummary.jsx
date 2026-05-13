@@ -9,7 +9,7 @@ const formatCurrency = (val) =>
         maximumFractionDigits: 0,
     }).format(Number(val) || 0);
 
-export default function AnalyticsSummary({ stockData = [], detailsData = [] }) {
+export default function AnalyticsSummary({ stockData = [], detailsData = [], branchId = "" }) {
     const stats = useMemo(() => {
         let totalStockValue = 0;
         let totalPotentialProfit = 0;
@@ -56,7 +56,7 @@ export default function AnalyticsSummary({ stockData = [], detailsData = [] }) {
 
     return (
         <div className="space-y-8 animate-fade-up">
-            <MonthlyFinancialOverview />
+            <MonthlyFinancialOverview branchId={branchId} />
 
             <section className="space-y-4">
                 <div>

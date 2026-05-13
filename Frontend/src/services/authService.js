@@ -55,6 +55,21 @@ const normalizeWork = (input) => {
     return [...new Set([...assignedWorks, ...legacyWorks])].join(",");
 };
 
+const normalizeBranches = (data) => {
+    if (!data) return [];
+    let raw = [];
+    if (Array.isArray(data.assigned_branches)) raw = data.assigned_branches;
+    else if (Array.isArray(data.branches)) raw = data.branches;
+    else if (Array.isArray(data.branch_ids)) raw = data.branch_ids;
+    else if (data.branch) raw = [data.branch];
+    else if (data.branch_id) raw = [data.branch_id];
+
+    return raw.map((b, i) => {
+        if (typeof b === 'object') return { id: b.id || b.branch_id || i, name: b.name || `Branch ${i+1}`, isMain: !!b.is_default };
+        return { id: b, name: `Branch ${b}`, isMain: false };
+    }).filter(b => b.id !== undefined);
+};
+
 export const authService = {
     getMe: async () => {
         const response = await api.get("/user/me/");
@@ -84,6 +99,9 @@ export const authService = {
             tokenService.setDefaultBranchId(branchId);
         }
 
+        // Store all branches
+        tokenService.setBranches(normalizeBranches(data));
+
         return data;
     },
 
@@ -94,8 +112,9 @@ export const authService = {
         tokenService.setTokens({ access, refresh });
 
         const userProfile = await authService.getMe();
-        tokenService.setId(userProfile.id);
-        return { ...response.data, user: userProfile, userProfile };
+        // userProfile is the object returned by getMe, which contains {user, business, ...}
+        // tokenService.setId is already called inside getMe()
+        return { ...response.data, user: userProfile.user, userProfile };
     },
 
     googleLogin: async (code) => {
@@ -105,21 +124,18 @@ export const authService = {
         tokenService.setTokens({ access, refresh });
 
         const userProfile = await authService.getMe();
-        tokenService.setId(userProfile.id);
-        return { ...response.data, user: userProfile, userProfile };
+        // tokenService.setId is already called inside getMe()
+        return { ...response.data, user: userProfile.user, userProfile };
     },
 
     registerBusiness: async (data) => {
         const response = await api.post("/business/", data);
-        const { user, access, refresh } = response.data;
-
-        tokenService.setTokens({ access, refresh });
-        const roleStr = typeof user.role === 'object' ? user.role.role : user.role;
-        tokenService.setRole(roleStr);
-        tokenService.setId(user.id);
-        tokenService.setWork(normalizeWork(user));
-
-        return response.data;
+        
+        // Business creation returns the business object. 
+        // We refresh the user profile to get the new business_id and update localStorage.
+        const userProfile = await authService.getMe();
+        
+        return { ...response.data, user: userProfile.user, userProfile };
     },
 
     registerOwner: async (data) => {

@@ -20,97 +20,23 @@ import {
     FaWallet,
     FaCodeBranch
 } from "react-icons/fa";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 // Lazy Imports
 const InvoiceItems = lazy(() => import("@/features/invoice/components/InvoiceItems"));
 const PaymentModal = lazy(() => import("@/features/payment/components/PaymentModal"));
-
-const resolveBranchId = (branch) => {
-    if (!branch && branch !== 0) return null;
-    if (typeof branch === "object") {
-        return branch.id ?? branch.branch_id ?? null;
-    }
-    return branch;
-};
-
-const resolveAssignedBranches = (profile, requiredWorkType = null) => {
-    if (!profile) return [];
-
-    const collected = [];
-    const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
-    const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
-
-    const pushBranch = (value, workType = null) => {
-        const id = resolveBranchId(value);
-        if (!id && id !== 0) return;
-
-        // If a specific work type is required, check if this branch/assignment matches
-        if (requiredWorkType && isRestricted) {
-            const normalizedRequired = requiredWorkType.toUpperCase();
-            const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
-
-            // If we have a structured assignment, it MUST match the required work type
-            if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
-                return;
-            }
-        }
-
-        const source = typeof value === "object" ? value : null;
-        const addr = source?.address || {};
-        collected.push({
-            id: String(id),
-            name: source?.name || source?.branch_name || `Branch #${id}`,
-            address: [
-                addr.address_line_1,
-                addr.address_line_2,
-                addr.city,
-                addr.state_name,
-                addr.country_name,
-                addr.pin_code,
-            ].filter(Boolean).join(", "),
-            is_default: Boolean(source?.is_default),
-        });
-    };
-
-    // 1. Primary: assigned_branches (new API structure)
-    if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
-        const allowedBranchIds = requiredWorkType && isRestricted
-            ? new Set(
-                (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
-            )
-            : null;
-
-        profile.assigned_branches.forEach(b => {
-            if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
-            pushBranch(b);
-        });
-    } else if (Array.isArray(profile.assigned_works)) {
-        // Fallback: use assigned_works if no assigned_branches
-        profile.assigned_works.forEach(w => pushBranch(w.branch_id || w, w.work_type));
-    }
-
-    // 2. Legacy fallbacks
-    if (collected.length === 0) {
-        if (Array.isArray(profile.branches)) profile.branches.forEach((branch) => pushBranch(branch));
-        if (Array.isArray(profile.branch)) profile.branch.forEach((branch) => pushBranch(branch));
-        if (profile.branch && typeof profile.branch !== 'object') pushBranch(profile.branch);
-        if (profile.branch_id || profile.branch_id === 0) pushBranch(profile.branch_id);
-    }
-
-    const seen = new Set();
-    return collected.filter((branch) => {
-        if (seen.has(branch.id)) return false;
-        seen.add(branch.id);
-        return true;
-    });
-};
 
 export default function AddInvoice() {
     const navigate = useNavigate();
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
     const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
-    const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "INVOICE"), [profile]);
+    
+    const assignedBranches = useMemo(
+        () => getAssignedBranchesForWork(profile, 'INVOICE'),
+        [profile]
+    );
+
     const [branches, setBranches] = useState([]);
     const [selectedBranch, setSelectedBranch] = useState("");
     const [fetchingBranches, setFetchingBranches] = useState(false);
@@ -143,14 +69,8 @@ export default function AddInvoice() {
                 const branchData = Array.isArray(res.data) ? res.data : (res.data?.results || []);
 
                 if (isRestrictedRole) {
-                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
-                    const visibleBranches = assignedIds.size > 0
-                        ? branchData.filter((branch) => assignedIds.has(String(branch.id)))
-                        : branchData;
-
-                    const resolvedBranches = visibleBranches.length > 0
-                        ? visibleBranches
-                        : assignedBranches;
+                    const visibleBranches = filterBranchesForRole(branchData, assignedBranches);
+                    const resolvedBranches = visibleBranches.length > 0 ? visibleBranches : assignedBranches;
 
                     if (resolvedBranches.length > 0) {
                         const defaultId = tokenService.getDefaultBranchId();
@@ -186,9 +106,7 @@ export default function AddInvoice() {
 
     /* ---------------- Side Effects ---------------- */
     useEffect(() => {
-        // Clear items when branch changes to avoid stock inconsistencies
         setItems([]);
-        // Re-check customer if branch changes and mobile is valid
         if (customer.mobile_number.length === 10) {
             fetchCustomerByMobileNumber(customer.mobile_number, selectedBranch);
         }
@@ -199,7 +117,6 @@ export default function AddInvoice() {
 
     const fetchCustomerByMobileNumber = async (mobile, branchId) => {
         if (mobile.length !== 10) {
-            // Optional: reset fields if number is being edited/cleared
             setCustomer(prev => ({
                 ...prev,
                 name: "",
@@ -222,7 +139,6 @@ export default function AddInvoice() {
                 });
                 toast.success("Customer found");
             } else {
-                // If 10 digits but NOT found, clear previous customer data
                 setCustomer(prev => ({
                     ...prev,
                     name: "",
@@ -233,7 +149,7 @@ export default function AddInvoice() {
                 }));
             }
         } catch {
-            // Silently fail or log, don't toast error for every digit etc.
+            // Silently fail
         }
     };
 
@@ -286,7 +202,9 @@ export default function AddInvoice() {
                 payment_mode: String(paymentMode || "CASH").toUpperCase(),
             };
 
+            console.log("DEBUG: Sending invoice payload:", payload);
             const res = await invoiceService.create(payload);
+            console.log("DEBUG: Invoice creation response:", res.data);
 
             if (paymentMode === "ONLINE") {
                 setCreatedInvoice(res.data);
@@ -378,7 +296,7 @@ export default function AddInvoice() {
                                                 >
                                                     <option value="">Select Branch</option>
                                                     {branches.map(b => (
-                                                        <option key={b.id} value={b.id}>{b.name} {b.is_default ? "(Main)" : ""}</option>
+                                                        <option key={b.id} value={b.id}>{b.name || b.branch_name} {b.is_default ? "(Main)" : ""}</option>
                                                     ))}
                                                 </select>
                                             </div>

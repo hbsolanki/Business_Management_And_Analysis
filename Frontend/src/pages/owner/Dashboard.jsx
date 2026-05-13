@@ -13,7 +13,6 @@ import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal
 import ChatUserModal from "@/components/shared/ChatUserModal";
 import AiAgentFeaturedCard from "@/components/shared/AiAgentFeaturedCard";
 import TaskQuickView from "@/features/task/components/TaskQuickView";
-import { getTimeBasedGreeting } from "@/utils/dashboardHelpers";
 import {
   FaUser,
   FaEdit,
@@ -37,6 +36,7 @@ import {
   FaTruck,
   FaFileExport,
   FaRobot,
+  FaFileInvoiceDollar,
 } from "react-icons/fa";
 import LowStockAlert from "@/features/inventory/components/LowStockAlert";
 
@@ -75,11 +75,15 @@ function OwnerDashboard() {
   );
   const baseSearchItems = useSelector(selectOwnerQuickSearchItems);
 
+  // Handle profile initialization
   useEffect(() => {
-    if (!owner && !profileLoading) {
+    if (!owner && !profileLoading && userId) {
       dispatch(fetchUserProfile());
     }
+  }, [owner, profileLoading, userId, dispatch]);
 
+  // Handle data fetching (subscription, etc.)
+  useEffect(() => {
     const fetchSubscriptionData = async () => {
       try {
         const planRes = await api.get("/subscription/plan/purchased/");
@@ -97,7 +101,7 @@ function OwnerDashboard() {
     } else {
       navigate("/login");
     }
-  }, [userId, navigate, owner, profileLoading, dispatch]);
+  }, [userId, navigate]);
 
   // Update businessData when owner profile changes
   useEffect(() => {
@@ -480,6 +484,13 @@ function OwnerDashboard() {
                       label="Analytics"
                       color="text-indigo-600"
                       bg="bg-indigo-50"
+                    />
+                    <AppCard
+                      to="/analytics/gst"
+                      icon={FaFileInvoiceDollar}
+                      label="GST Management"
+                      color="text-emerald-600"
+                      bg="bg-emerald-50"
                     />
                     <AppCard
                       to="/analytics/report"

@@ -123,3 +123,45 @@ class CostMonthViewSet(BaseViewSet, ListModelMixin):
 
     def get_queryset(self):
         return super().get_queryset()
+
+from apps.cost.models import Expense
+from apps.cost.serializers.expense import ExpenseSerializer
+
+class ExpenseViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
+    activity_module = ActivityLog.Module.COST
+    serializer_class = ExpenseSerializer
+    queryset = Expense.objects.all()
+
+    def get_queryset(self):
+        return super().get_queryset().order_by('-date', '-created_at')
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        self._update_gst_summary(instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self._update_gst_summary(instance)
+
+    def perform_destroy(self, instance):
+        business = instance.business
+        month = instance.date.month
+        year = instance.date.year
+        instance.delete()
+        
+        try:
+            from apps.gst_management.utils import aggregate_monthly_data
+            aggregate_monthly_data(business=business, month=month, year=year)
+        except Exception as e:
+            print(f"Error updating GST summary after expense deletion: {e}")
+
+    def _update_gst_summary(self, instance):
+        try:
+            from apps.gst_management.utils import aggregate_monthly_data
+            aggregate_monthly_data(
+                business=instance.business,
+                month=instance.date.month,
+                year=instance.date.year
+            )
+        except Exception as e:
+            print(f"Error updating GST summary from expense: {e}")

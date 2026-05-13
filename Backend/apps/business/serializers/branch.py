@@ -16,6 +16,27 @@ class BranchSerializer(BaseSerializer):
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields
 
+    def validate_name(self, value):
+        user = self.context["request"].user
+        qs = Branch.objects.filter(business=user.business, name__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        
+        if qs.exists():
+            raise serializers.ValidationError(f"A branch with the name '{value}' already exists in your business.")
+        return value
+
+    def validate_is_default(self, value):
+        if value:
+            user = self.context["request"].user
+            qs = Branch.objects.filter(business=user.business, is_default=True)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            if qs.exists():
+                raise serializers.ValidationError("Only one branch can be set as the main branch for a business.")
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         address_data = validated_data.pop("address_data", None)

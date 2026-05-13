@@ -12,7 +12,6 @@ from django.core.cache import cache
 
 
 class SubscriptionPlanViewSet(BaseViewSet):
-
     def get_queryset(self):
         return Plan.objects.all()
 
@@ -32,7 +31,7 @@ class SubscriptionPlanViewSet(BaseViewSet):
         return super().get_permissions()
 
     @extend_schema(summary="Plan Details")
-    @action(detail=False, methods=['get'], url_path="plan")
+    @action(detail=False, methods=['get'], url_path="plan", authentication_classes=[])
     def plans_details(self, request):
         cache_key = "subscription:plans:all"
         cached_data = cache.get(cache_key)

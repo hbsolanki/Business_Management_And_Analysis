@@ -2,15 +2,11 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 from apps.base.serializers.base import BaseSerializer
+from apps.base.serializers.gst import GSTSerializer
+from apps.base.models import GST
 from apps.business.models import Branch
 from apps.cost.models import MonthlyCostCategory, CostCategory, MonthlyFinancialSummary
 from apps.cost.serializers.cost_category import CostCategorySerializer
-
-
-class MonthlyCostCategorySummarySerializer(serializers.Serializer):
-    category_id = serializers.IntegerField()
-    category_name = serializers.CharField()
-    cost = serializers.DecimalField(max_digits=12, decimal_places=2)
 
 
 class MonthlyCostCategorySerializer(BaseSerializer):
@@ -20,14 +16,24 @@ class MonthlyCostCategorySerializer(BaseSerializer):
         write_only=True
     )
     cost_category = CostCategorySerializer(read_only=True)
+    gst_details = GSTSerializer(source="gst", read_only=True)
+    
+    # Flattened fields for frontend
+    gst_rate = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    gst_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    total_cost = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    
     month = serializers.IntegerField(source="monthly_summary.month", read_only=True)
     year = serializers.IntegerField(source="monthly_summary.year", read_only=True)
     branch = serializers.IntegerField(source="monthly_summary.branch.id", read_only=True)
 
     class Meta:
         model = MonthlyCostCategory
-        fields = ["id", "cost_category_id", "cost_category", "cost", "month", "year", "branch"]
-
+        fields = [
+            "id", "cost_category_id", "cost_category", "cost", 
+            "gst_rate", "gst_amount", "total_cost", "gst_details",
+            "month", "year", "branch"
+        ]
 
     def validate_cost_category_id(self, value):
         user = self.context["request"].user
@@ -35,10 +41,20 @@ class MonthlyCostCategorySerializer(BaseSerializer):
             raise serializers.ValidationError("Cost category must belong to your business.")
         return value
 
-    def validate_cost(self, value):
-        if value < 0:
-            raise serializers.ValidationError("Cost cannot be negative.")
-        return value
+    def validate(self, attrs):
+        from apps.base.utils.tax import TaxCalculator
+        cost = attrs.get("cost")
+        cost_category = attrs.get("cost_category")
+        
+        gst_rate = attrs.get("gst_rate")
+        if gst_rate is None and cost_category:
+            gst_rate = cost_category.gst_rate
+            attrs["gst_rate"] = gst_rate
+            
+        tax_data = TaxCalculator.calculate_gst(cost, gst_rate)
+        attrs["tax_data"] = tax_data
+        
+        return attrs
 
     def create(self, validated_data):
         user = self.context["request"].user
@@ -56,7 +72,18 @@ class MonthlyCostCategorySerializer(BaseSerializer):
         )
 
         cost_category = validated_data['cost_category']
-        
+        tax_data = validated_data.pop("tax_data")
+        gst_rate = validated_data.pop("gst_rate", 0)
+
+        gst_obj = GST.objects.create(
+            gst_rate=gst_rate,
+            gst_amount=tax_data["tax_amount"],
+            cgst_amount=tax_data["cgst_amount"],
+            sgst_amount=tax_data["sgst_amount"],
+            igst_amount=tax_data["igst_amount"],
+            total_amount=tax_data["total_amount"]
+        )
+
         existing_obj = MonthlyCostCategory.objects.filter(
             monthly_summary=summary,
             cost_category=cost_category,
@@ -64,24 +91,63 @@ class MonthlyCostCategorySerializer(BaseSerializer):
         ).first()
 
         if existing_obj:
-            return self.update(existing_obj, validated_data)
+            return self.update(existing_obj, {**validated_data, "gst": gst_obj})
 
         return MonthlyCostCategory.objects.create(
             monthly_summary=summary,
             created_by=user,
             updated_by=user,
+            gst=gst_obj,
             **validated_data
         )
 
     def update(self, instance, validated_data):
         user = self.context["request"].user
-        
-        if instance.cost != validated_data["cost"]:
+        tax_data = validated_data.pop("tax_data", None)
+        gst_rate = validated_data.pop("gst_rate", None)
+        gst_obj = validated_data.pop("gst", None)
+
+        if gst_obj:
+            instance.gst = gst_obj
+        elif tax_data and gst_rate is not None:
+            if instance.gst:
+                instance.gst.gst_rate = gst_rate
+                instance.gst.gst_amount = tax_data["tax_amount"]
+                instance.gst.cgst_amount = tax_data["cgst_amount"]
+                instance.gst.sgst_amount = tax_data["sgst_amount"]
+                instance.gst.igst_amount = tax_data["igst_amount"]
+                instance.gst.total_amount = tax_data["total_amount"]
+                instance.gst.save()
+            else:
+                instance.gst = GST.objects.create(
+                    gst_rate=gst_rate,
+                    gst_amount=tax_data["tax_amount"],
+                    cgst_amount=tax_data["cgst_amount"],
+                    sgst_amount=tax_data["sgst_amount"],
+                    igst_amount=tax_data["igst_amount"],
+                    total_amount=tax_data["total_amount"]
+                )
+
+        if "cost" in validated_data and instance.cost != validated_data["cost"]:
             instance.cost = validated_data["cost"]
             instance.updated_by = user
-            instance.save()
             
+        instance.save()
         return instance
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if instance.gst:
+            ret["gst_rate"] = instance.gst.gst_rate
+            ret["gst_amount"] = instance.gst.gst_amount
+            ret["total_cost"] = instance.gst.total_amount
+        return ret
+
+
+class MonthlyCostCategorySummarySerializer(serializers.Serializer):
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField()
+    cost = serializers.DecimalField(max_digits=12, decimal_places=2)
 
 
 class MonthlyCostCategoryBulkSerializer(BaseSerializer):
@@ -115,7 +181,6 @@ class MonthlyCostCategoryBulkSerializer(BaseSerializer):
         items_data = validated_data.pop('cost_category_items')
         today = timezone.now()
         
-        # Update shared context so child serializers can use it natively during creation
         self.context['month'] = validated_data.get('month', today.month)
         self.context['year'] = validated_data.get('year', today.year)
         self.context['branch'] = validated_data.get('branch_id')

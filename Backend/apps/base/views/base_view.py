@@ -3,11 +3,17 @@ from apps.base.permission.model_permissions import ModelPermissions
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.base.pagination import CursorPagination
 from apps.master.permission.custom_permissions import BranchWorkPermission
+from rest_framework.throttling import UserRateThrottle
 from apps.employee.models import UserRole
+
+
+class BaseUserThrottle(UserRateThrottle):
+    rate = '30/min'
 
 
 class BaseViewSet(GenericViewSet):
     permission_classes=[ModelPermissions, BranchWorkPermission]
+    throttle_classes = [BaseUserThrottle]
     filter_backends =[DjangoFilterBackend]
     pagination_class= CursorPagination
 

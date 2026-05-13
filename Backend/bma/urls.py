@@ -27,6 +27,7 @@ urlpatterns = [
     path('activity-log/', include('apps.activity_log.urls')),
     path('supplier/', include('apps.supplier.urls')),
     path('ai-agent/', include('apps.ai_agent.urls')),
+    path('gst-management/', include('apps.gst_management.urls')),
     path('stripe/webhook/', StripeWebhookViewSet.as_view({'post': 'webhook'}), name='stripe-webhook'),
 
     #urls

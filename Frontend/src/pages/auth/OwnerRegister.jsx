@@ -137,7 +137,7 @@ function OwnerRegister() {
         } catch (err) {
             const status = err.response?.status;
             const msg = err.response?.data?.error || "Failed to send OTP";
-            
+
             if (status === 403) {
                 toast.error(msg);
                 setErrors({ email: [msg] });
@@ -191,7 +191,7 @@ function OwnerRegister() {
 
         // Prepare data for backend
         const { otp, confirm_password, ...userFields } = formData;
-        const dataToSend = { 
+        const dataToSend = {
             user: { ...userFields },
             otp: otp
         };
@@ -230,7 +230,7 @@ function OwnerRegister() {
                     ? { ...responseData, ...responseData.user }
                     : responseData;
                 setErrors(flattenedErrors);
-                
+
                 if (responseData.error) {
                     toast.error(responseData.error);
                 }
@@ -326,11 +326,10 @@ function OwnerRegister() {
                                         type="button"
                                         onClick={handleSendOtp}
                                         disabled={otpLoading || otpTimer > 0}
-                                        className={`ml-2 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all h-[46px] min-w-[120px] ${
-                                            otpTimer > 0
-                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                            : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
-                                        }`}
+                                        className={`ml-2 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all h-[46px] min-w-[120px] ${otpTimer > 0
+                                                ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10"
+                                            }`}
                                     >
                                         {otpLoading ? (
                                             <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>

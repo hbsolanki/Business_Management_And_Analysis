@@ -2,7 +2,6 @@ from rest_framework import serializers
 from django.db import transaction
 
 from apps.business.serializers.business import BusinessSerializer
-from apps.business.serializers.business import BusinessSerializer
 from apps.user.serializers.user import UserSerializer
 from apps.employee.serializers.employee_details import EmployeeDetailsSerializer
 from apps.employee.serializers.user_business_role import UserBusinessRoleSerializer
@@ -29,6 +28,8 @@ class OwnerSerializer(serializers.Serializer):
 
             # 2. Owner Role
             UserBusinessRole.objects.create(user=user, role=UserRole.OWNER)
+            from apps.employee.utils.permission_utils import sync_user_role_permissions
+            sync_user_role_permissions(user)
 
             # 3. Employee Details (Address/Bio)
             if details_data:
@@ -43,14 +44,32 @@ class OwnerSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         user_data = self.initial_data.get("user")
+        if isinstance(user_data, str):
+            import json
+            try:
+                user_data = json.loads(user_data)
+            except json.JSONDecodeError:
+                pass
+
         details_data = validated_data.pop("employee_details", None)
 
         with transaction.atomic():
             # 1. Update Base User
-            if user_data:
+            if user_data or self.initial_data.get("profile_picture"):
+                if user_data is None:
+                    user_data = {}
+                
+                # Add profile picture to user_data if it's in initial_data
+                if "profile_picture" not in user_data and self.initial_data.get("profile_picture"):
+                    user_data["profile_picture"] = self.initial_data.get("profile_picture")
+
                 user_serializer = UserSerializer(instance, data=user_data, partial=True)
                 user_serializer.is_valid(raise_exception=True)
                 instance = user_serializer.save()
+                
+                # Sync permissions if critical fields changed
+                from apps.employee.utils.permission_utils import sync_user_role_permissions
+                sync_user_role_permissions(instance)
 
             # 2. Update Details
             if details_data is not None:

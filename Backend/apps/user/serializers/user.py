@@ -10,14 +10,17 @@ class UserSerializer(BaseSerializer):
 
     role = serializers.CharField(source="role_name", read_only=True)
     business_id = serializers.UUIDField(read_only=True)
-    assigned_works = serializers.ListField(child=serializers.CharField(), read_only=True, source="assigned_works_list")
+    bio = serializers.CharField(source="employee_details.bio", required=False, allow_blank=True)
+    
+    from apps.employee.serializers.user_branch_work import UserBranchWorkSerializer
+    assigned_works = UserBranchWorkSerializer(many=True, read_only=True, source="branch_works")
 
     class Meta:
         model = User
         fields = BaseSerializer.Meta.fields + [
             "first_name", "last_name", "email", "username",
             "password", "mobile_number", "profile_picture", "date_joined",
-            "role", "business_id", "assigned_works"
+            "role", "business_id", "assigned_works", "bio"
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields + ["date_joined", "role", "business_id", "assigned_works"]
 
@@ -54,8 +57,19 @@ class UserSerializer(BaseSerializer):
         return user
 
     def update(self, instance, validated_data):
+        bio = validated_data.pop("employee_details", {}).get("bio")
         password = validated_data.pop("password", None)
+        
+        # Update main user fields
         instance = super().update(instance, validated_data)
+
+        # Update bio in related EmployeeDetails
+        if bio is not None:
+            from apps.employee.models import EmployeeDetails
+            EmployeeDetails.objects.update_or_create(
+                user=instance,
+                defaults={'bio': bio}
+            )
 
         if password:
             instance.set_password(password)

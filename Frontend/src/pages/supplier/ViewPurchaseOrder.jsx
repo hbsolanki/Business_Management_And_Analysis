@@ -220,6 +220,7 @@ export default function ViewPurchaseOrder() {
                                             <th className="px-6 py-3">Product Description</th>
                                             <th className="px-6 py-3 text-center">Qty</th>
                                             <th className="px-6 py-3 text-right">Unit Price</th>
+                                            <th className="px-6 py-3 text-right">Tax (GST)</th>
                                             <th className="px-6 py-3 text-right">Subtotal</th>
                                         </tr>
                                     </thead>
@@ -236,14 +237,22 @@ export default function ViewPurchaseOrder() {
                                                         <span className="font-bold text-slate-700">{item.quantity}</span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right text-slate-600">{formatCurrency(item.unit_cost)}</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <p className="text-xs font-bold text-slate-900">{formatCurrency(item.tax_amount)}</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{item.tax_rate}% GST</p>
+                                                    </td>
                                                     <td className="px-6 py-4 text-right font-bold text-slate-900">{formatCurrency(item.subtotal)}</td>
                                                 </tr>
                                             );
                                         })}
                                     </tbody>
-                                    <tfoot className="bg-slate-900 text-white">
-                                        <tr>
-                                            <td colSpan="3" className="px-6 py-5 text-right font-bold text-[10px] uppercase tracking-widest text-slate-400">Grand Total</td>
+                                    <tfoot className="bg-slate-50 text-slate-900 border-t-2 border-slate-900">
+                                        <tr className="border-b border-slate-200">
+                                            <td colSpan="4" className="px-6 py-2 text-right font-bold text-[10px] uppercase tracking-widest text-slate-500">Tax Summary (CGST + SGST)</td>
+                                            <td className="px-6 py-2 text-right text-xs font-bold">{formatCurrency(order.total_tax)}</td>
+                                        </tr>
+                                        <tr className="bg-slate-900 text-white">
+                                            <td colSpan="4" className="px-6 py-5 text-right font-bold text-[10px] uppercase tracking-widest text-slate-400">Grand Total (Incl. Tax)</td>
                                             <td className="px-6 py-5 text-right text-lg font-bold">{formatCurrency(order.total_amount)}</td>
                                         </tr>
                                     </tfoot>

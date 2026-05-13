@@ -42,25 +42,32 @@ class ProductInvoiceSerializer(serializers.ModelSerializer):
             inventory=inventory, product=product
         ).first()
         
+        if not inventory_product:
+            raise ValidationError({"product_id": f"Product '{product.name}' is not registered in this branch's inventory."})
+        
         if quantity > inventory_product.stock_quantity:
             raise ValidationError({"quantity": f"Insufficient stock for '{product.name}'. Available: {inventory_product.stock_quantity}"})
 
         return attrs
 
     def create(self, validated_data):
+        from apps.base.utils.tax import TaxCalculator
+        from apps.base.models import GST
         invoice = self.context.get('invoice')
         product = validated_data.pop('product')
+        quantity = validated_data.get('quantity')
         
         # Price Calculations
         base_price = product.base_price
-        gst_rate = product.output_gst_rate
-        output_gst_amount = (base_price * gst_rate / Decimal("100"))
-        final_selling_price = base_price + output_gst_amount
-
+        total_tax_rate = product.output_gst_rate
+        
+        # Centralized calculation
+        tax_data = TaxCalculator.calculate_gst(base_price * quantity, total_tax_rate)
+        
         return ProductInvoice.objects.create(
             invoice=invoice,
             product=product,
             base_price=base_price,
-            selling_price=final_selling_price,
+            selling_price=tax_data["total_amount"] / quantity, # selling price per unit
             **validated_data
         )

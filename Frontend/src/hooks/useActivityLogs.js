@@ -27,12 +27,15 @@ const normalizePayload = (raw) => {
 
 const useActivityLogs = (onNewLog) => {
     const [isConnected, setIsConnected] = useState(false);
+    const [liveLogs, setLiveLogs] = useState([]);
     const socketRef = useRef(null);
     const onNewLogRef = useRef(onNewLog);
 
     useEffect(() => {
         onNewLogRef.current = onNewLog;
     }, [onNewLog]);
+
+    const clearLiveLogs = () => setLiveLogs([]);
 
     useEffect(() => {
         const token = tokenService.getAccessToken();
@@ -49,6 +52,10 @@ const useActivityLogs = (onNewLog) => {
                 const parsed = JSON.parse(event.data);
                 const normalizedLog = normalizePayload(parsed);
                 if (!normalizedLog || typeof normalizedLog !== "object") return;
+                
+                // Update local state
+                setLiveLogs(prev => [normalizedLog, ...prev]);
+
                 if (typeof onNewLogRef.current === "function") onNewLogRef.current(normalizedLog);
             } catch (error) {
                 console.error("Activity Log WebSocket Parse Error:", error);
@@ -69,7 +76,7 @@ const useActivityLogs = (onNewLog) => {
         };
     }, []);
 
-    return { isConnected };
+    return { isConnected, liveLogs, clearLiveLogs };
 };
 
 export default useActivityLogs;

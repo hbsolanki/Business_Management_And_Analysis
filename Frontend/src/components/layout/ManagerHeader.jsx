@@ -1,12 +1,14 @@
 import Logo from "@/assets/VISIONARY.png";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { tokenService } from "@/services/tokenService";
 import Modal from "@/components/ui/Modal";
 import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal";
 import { authService } from "@/services/authService";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleHeaderAction } from "@/redux/slices/quickActionsSlice";
 import { clearUserProfile } from "@/redux/slices/userSlice";
+import { getProfileImageUrl } from "@/utils/imageUtils";
 
 import { MANAGER_ACTIONS } from "@/config/quickActionsData";
 import {
@@ -19,7 +21,6 @@ import {
     FaUserEdit,
     FaSignOutAlt,
     FaHistory,
-    FaCodeBranch
 } from "react-icons/fa";
 
 import NotificationBell from "@/components/shared/NotificationBell";
@@ -61,12 +62,6 @@ function ManagerHeader() {
         dispatch(toggleHeaderAction(id));
     };
 
-    // Auto-navigate to home when logged out
-    useEffect(() => {
-        if (!user) {
-            navigate("/", { replace: true });
-        }
-    }, [user, navigate]);
 
     const handleLogout = async () => {
         try {
@@ -80,12 +75,14 @@ function ManagerHeader() {
 
     const getProfileImage = () => {
         const data = user?.user || user;
-        if (data?.profile_picture) {
-            return <img src={data.profile_picture} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-purple-100" />;
+        const imageUrl = getProfileImageUrl(data?.profile_picture);
+        
+        if (imageUrl) {
+            return <img src={imageUrl} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-purple-100 shadow-sm" />;
         }
         const initials = `${data?.first_name?.[0] || ""}${data?.last_name?.[0] || ""}`.trim() || "U";
         return (
-            <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-semibold">
+            <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-semibold shadow-sm border border-purple-200">
                 {initials.toUpperCase()}
             </div>
         );
@@ -173,7 +170,14 @@ function ManagerHeader() {
                                     >
                                         <div className="flex flex-col items-end leading-none px-2">
                                             <span className="text-sm font-bold text-gray-700">{(user?.user || user)?.first_name || "Manager"}</span>
-                                            <span className="text-[10px] uppercase font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md mt-0.5">Manager</span>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className="text-[9px] uppercase font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md">Manager</span>
+                                                {tokenService.getBranches().length > 0 && (
+                                                    <span className="text-[9px] uppercase font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md truncate max-w-[80px]">
+                                                        {tokenService.getBranches()[0].name}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         {getProfileImage()}
                                     </button>
@@ -182,10 +186,10 @@ function ManagerHeader() {
                                         <div className="glass-panel backdrop-blur-xl bg-white absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
                                             <div className="px-5 py-4 border-b border-slate-100 mb-2">
                                                 <p className="text-sm font-bold text-slate-900 truncate">
-                                                    {(user?.user || user)?.first_name && (user?.user || user)?.last_name ? `${(user.user || user).first_name} ${(user.user || user).last_name}` : "Hardik Solanki"}
+                                                    {(user?.user || user)?.first_name && (user?.user || user)?.last_name ? `${(user.user || user).first_name} ${(user.user || user).last_name}` : "User Profile"}
                                                 </p>
                                                 <p className="text-xs font-medium text-slate-500 truncate mt-0.5">
-                                                    {(user?.user || user)?.email || "hbsolanki0524@gmail.com"}
+                                                    {(user?.user || user)?.email || ""}
                                                 </p>
                                             </div>
 

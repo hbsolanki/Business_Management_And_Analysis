@@ -5,7 +5,7 @@ import { managerService } from "@/features/manager/services/managerService";
 import { branchService } from "@/features/business/services/branchService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import BackButton from "@/components/shared/BackButton";
-import { FaUser, FaPhone, FaLock, FaMoneyBillWave, FaAlignLeft, FaUserPlus, FaCodeBranch, FaSearch, FaTimes } from "react-icons/fa";
+import { FaUser, FaPhone, FaLock, FaMoneyBillWave, FaAlignLeft, FaUserPlus, FaSearch } from "react-icons/fa";
 import toast from "react-hot-toast";
 
 export default function AddManager() {
@@ -150,7 +150,7 @@ export default function AddManager() {
   const inputClass = (name) =>
     `w-full rounded-xl input-icon-left pr-4 py-3 text-sm bg-white text-slate-700 placeholder-slate-400 ${errors[name]
       ? "border-red-500 focus:ring-2 focus:ring-red-200 shadow-sm"
-      : "border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 transition-all outline-none"
+      : "border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 transition-all outline-none"
     }`;
 
   const Label = ({ children, required }) => (
@@ -189,43 +189,39 @@ export default function AddManager() {
         <div className="mb-4">
           <BackButton />
         </div>
-        <div className="form-card overflow-hidden">
-          <div className="form-header bg-slate-50">
-            <div className="form-header-icon bg-slate-900 text-white">
-              <FaUserPlus />
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden max-w-4xl mx-auto mt-10">
+          <div className="px-8 py-6 bg-slate-50 border-b border-slate-200 flex items-center gap-5">
+            <div className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg border border-slate-800">
+              <FaUserPlus size={20} />
             </div>
             <div>
-              <h2 className="form-title">Add New Manager</h2>
-              <p className="form-subtitle">Create a manager account with the right access level.</p>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Add New Manager</h2>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest opacity-80 mt-1">Create a manager account with specific branch access.</p>
             </div>
           </div>
 
           <div className="form-section p-8">
             <form className="space-y-8" onSubmit={handleSubmit}>
-              {(typeof profile?.role === 'object' ? profile.role.role : profile?.role) === "OWNER" && (
-                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Branch Access</p>
-                    <p className="text-xs text-slate-500">Select branches this manager can access.</p>
-                  </div>
-                  <div className="max-w-sm">
-                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                      Search Branches
-                    </label>
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Branch Access</p>
+                <p className="text-[11px] text-slate-500 font-medium">Select branches this manager will be authorized to manage.</p>
+              </div>
+                  <div className="max-w-xs">
                     <div className="relative">
-                      <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" size={12} />
+                      <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                       <input
                         type="text"
                         placeholder="Search branches..."
                         value={branchSearch}
                         onChange={(e) => setBranchSearch(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
-                        className="w-full pl-9 pr-12 py-2 text-xs rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all bg-white"
+                        className="w-full pl-9 pr-12 py-2 text-xs rounded-lg border border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 outline-none transition-all bg-slate-50 font-bold"
                       />
                       <button
                         type="button"
                         onClick={handleSearch}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-600 hover:text-brand-700 text-[10px] font-bold uppercase"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-900 hover:text-slate-700 text-[9px] font-bold uppercase tracking-tight"
                       >
                         Search
                       </button>
@@ -250,12 +246,12 @@ export default function AddManager() {
                             key={branch.id}
                             className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white cursor-pointer transition-colors group border border-transparent hover:border-slate-200"
                           >
-                            <input
-                              type="checkbox"
-                              checked={formData.branch_ids.includes(branch.id)}
-                              onChange={() => handleBranchChange(branch)}
-                              className="w-4 h-4 rounded text-brand-600 border-slate-300 focus:ring-brand-500 cursor-pointer"
-                            />
+                          <input
+                               type="checkbox"
+                               checked={formData.branch_ids.includes(branch.id)}
+                               onChange={() => handleBranchChange(branch)}
+                               className="w-4 h-4 rounded text-slate-900 border-slate-300 focus:ring-slate-900 cursor-pointer"
+                             />
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-slate-700 truncate">{branch.name}</p>
                               <div className="flex flex-wrap gap-1">
@@ -270,7 +266,7 @@ export default function AddManager() {
                       ) : (
                         <div className="col-span-full py-8 flex flex-col items-center justify-center text-slate-400">
                           <FaSearch size={24} className="mb-2 opacity-20" />
-                          <p className="text-sm font-medium">No branches found matching "{branchSearch}"</p>
+                          <p className="text-sm font-medium">No branches found matching &quot;{branchSearch}&quot;</p>
                         </div>
                       )
                     )}
@@ -280,15 +276,14 @@ export default function AddManager() {
                   )}
                   {errors.branch_id && <p className="text-red-500 text-xs mt-2 font-medium">{errors.branch_id[0]}</p>}
                 </section>
-              )}
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Manager Details</p>
+              <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Manager Details</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label required>First Name</Label>
                     <div className="relative group">
-                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input name="first_name" required onChange={handleChange} className={inputClass("first_name") + " pl-11"} placeholder="Full name" />
                     </div>
                     {errors.first_name && <p className="text-red-500 text-xs mt-2 font-medium">{errors.first_name[0]}</p>}
@@ -297,7 +292,7 @@ export default function AddManager() {
                   <div>
                     <Label required>Last Name</Label>
                     <div className="relative group">
-                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input name="last_name" required onChange={handleChange} className={inputClass("last_name") + " pl-11"} placeholder="Surname" />
                     </div>
                     {errors.last_name && <p className="text-red-500 text-xs mt-2 font-medium">{errors.last_name[0]}</p>}
@@ -306,7 +301,7 @@ export default function AddManager() {
                   <div>
                     <Label required>Email Address</Label>
                     <div className="relative group">
-                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input name="email" type="email" required onChange={handleChange} className={inputClass("email") + " pl-11"} placeholder="Email address" />
                     </div>
                     {getFieldError("email") && <p className="text-red-500 text-xs mt-2 font-medium">{getFieldError("email")}</p>}
@@ -315,7 +310,7 @@ export default function AddManager() {
                   <div>
                     <Label required>Username</Label>
                     <div className="relative group">
-                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input name="username" required onChange={handleChange} className={inputClass("username") + " pl-11"} placeholder="Login username" />
                     </div>
                     {getFieldError("username") && <p className="text-red-500 text-xs mt-2 font-medium">{getFieldError("username")}</p>}
@@ -324,7 +319,7 @@ export default function AddManager() {
                   <div>
                     <Label required>Mobile Number</Label>
                     <div className="relative group">
-                      <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input name="mobile_number" required onChange={handleChange} className={inputClass("mobile_number") + " pl-11"} placeholder="e.g. 9876543210" />
                     </div>
                     {errors.mobile_number && <p className="text-red-500 text-xs mt-2 font-medium">{errors.mobile_number[0]}</p>}
@@ -333,7 +328,7 @@ export default function AddManager() {
                   <div className="md:col-span-2">
                     <Label required>Password</Label>
                     <div className="relative group">
-                      <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input type="password" name="password" required onChange={handleChange} className={inputClass("password") + " pl-11"} placeholder="Secure password" />
                     </div>
                     {errors.password && <p className="text-red-500 text-xs mt-2 font-medium">{errors.password[0]}</p>}
@@ -342,7 +337,7 @@ export default function AddManager() {
                   <div>
                     <Label required>Monthly Salary</Label>
                     <div className="relative group">
-                      <FaMoneyBillWave className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaMoneyBillWave className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <input type="number" name="salary" required onChange={handleChange} className={inputClass("salary") + " pl-11"} placeholder="e.g. 25000" />
                     </div>
                     {salaryError && <p className="text-red-500 text-xs mt-2 font-medium">{salaryError[0]}</p>}
@@ -351,7 +346,7 @@ export default function AddManager() {
                   <div className="md:col-span-2">
                     <Label>Bio / Description</Label>
                     <div className="relative group">
-                      <FaAlignLeft className="absolute left-4 top-4 text-slate-400 group-focus-within:text-brand-600 transition" />
+                      <FaAlignLeft className="absolute left-4 top-4 text-slate-400 group-focus-within:text-slate-900 transition" size={14} />
                       <textarea
                         name="description"
                         onChange={handleChange}
@@ -363,7 +358,7 @@ export default function AddManager() {
                   </div>
 
                   <div className="md:col-span-2 space-y-4 pt-4 border-t border-slate-100">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Manager Address</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Manager Address</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label>Street Address</Label>
@@ -394,18 +389,18 @@ export default function AddManager() {
                 </div>
               </section>
 
-              <div className="form-actions">
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="btn-secondary"
+                  className="px-8 py-3 rounded-xl text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-100 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`btn-primary ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
+                  className={`px-12 py-3 rounded-xl bg-slate-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
                   {loading ? "Creating..." : "Create Manager"}
                 </button>

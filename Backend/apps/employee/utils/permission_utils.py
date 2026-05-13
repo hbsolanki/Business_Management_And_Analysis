@@ -10,7 +10,14 @@ WORK_TO_GROUP = {
 }
 
 ROLE_TO_PERMISSIONS = {
-    UserRole.OWNER: ["can_create_employee", "can_create_manager"],
+    UserRole.OWNER: [
+        "can_create_employee", 
+        "can_create_manager",
+        "add_business",
+        "change_business",
+        "view_business",
+        "delete_business"
+    ],
     UserRole.MANAGER: ["can_create_employee"],
     UserRole.EMPLOYEE: []
 }
@@ -62,7 +69,7 @@ def sync_user_role_permissions(user):
 
     if role in ROLE_TO_PERMISSIONS:
         codenames = ROLE_TO_PERMISSIONS[role]
-        permissions = get_permissions_by_codenames('employee', codenames)
+        permissions = Permission.objects.filter(codename__in=codenames)
         user.user_permissions.set(permissions)
 
     return user

@@ -1,1 +1,0 @@
-import{a as s}from"./index-CqedPjMg.js";const b={list:e=>s.get("/business/branch/",{params:e}),get:e=>s.get(`/business/branch/${e}/`),create:e=>s.post("/business/branch/",e),update:(e,a)=>s.patch(`/business/branch/${e}/`,a),delete:e=>s.delete(`/business/branch/${e}/`)};export{b};

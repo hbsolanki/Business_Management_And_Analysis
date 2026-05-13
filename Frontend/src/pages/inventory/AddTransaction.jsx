@@ -18,87 +18,19 @@ import {
   FaExclamationTriangle,
   FaCodeBranch,
 } from "react-icons/fa";
-
-const resolveAssignedBranches = (profile, requiredWorkType = null) => {
-  if (!profile) return [];
-
-  const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
-  const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
-
-  const toBranchObject = (value, workType = null) => {
-    if (!value && value !== 0) return null;
-
-    const id = typeof value === "object" ? (value.id ?? value.branch_id) : value;
-    if (!id && id !== 0) return null;
-
-    // Filter by work type if restricted
-    if (requiredWorkType && isRestricted) {
-      const normalizedRequired = requiredWorkType.toUpperCase();
-      const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
-      if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
-        return null;
-      }
-    }
-
-    const source = typeof value === "object" ? value : null;
-    return {
-      id,
-      name: source?.name || source?.branch_name || `Branch #${id}`,
-      isMain: Boolean(source?.is_default)
-    };
-  };
-
-  const collected = [];
-
-  // 1. Primary: assigned_branches (new API structure)
-  if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
-    const allowedBranchIds = requiredWorkType && isRestricted
-      ? new Set(
-        (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
-      )
-      : null;
-
-    profile.assigned_branches.forEach(b => {
-      if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
-      const obj = toBranchObject(b);
-      if (obj) collected.push(obj);
-    });
-  } else if (Array.isArray(profile.assigned_works)) {
-    profile.assigned_works.forEach(w => {
-      const b = toBranchObject(w.branch_id || w, w.work_type);
-      if (b) collected.push(b);
-    });
-  }
-
-  // 2. Legacy fallback
-  if (collected.length === 0) {
-    const legacyRaw = [
-      ...(Array.isArray(profile.branches) ? profile.branches : []),
-      ...(Array.isArray(profile.branch_ids) ? profile.branch_ids : []),
-      ...(profile.branch ? [profile.branch] : []),
-      ...(profile.branch_id ? [profile.branch_id] : [])
-    ];
-    legacyRaw.forEach(b => {
-      const obj = toBranchObject(b);
-      if (obj) collected.push(obj);
-    });
-  }
-
-  const seen = new Set();
-  return collected.filter((b) => {
-    const key = String(b.id);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 export default function AddTransaction() {
   const navigate = useNavigate();
   const { profile } = useSelector((state) => state.user);
   const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
   const isOwner = userRole === "OWNER";
-  const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "INVENTORY"), [profile]);
+  
+  const assignedBranches = useMemo(
+    () => getAssignedBranchesForWork(profile, "INVENTORY"),
+    [profile]
+  );
+  
   const [liveAssignedBranches, setLiveAssignedBranches] = useState([]);
   const effectiveAssignedBranches = liveAssignedBranches.length > 0 ? liveAssignedBranches : assignedBranches;
 
@@ -123,7 +55,7 @@ export default function AddTransaction() {
     employeeService.getById(userId)
       .then((res) => {
         if (!isMounted) return;
-        const resolved = resolveAssignedBranches(res.data, "INVENTORY");
+        const resolved = getAssignedBranchesForWork(res.data, "INVENTORY");
         if (resolved.length > 0) {
           setLiveAssignedBranches(resolved);
         }
@@ -159,7 +91,6 @@ export default function AddTransaction() {
               finalSelectedBranch = list.find(b => String(b.id) === String(defaultId));
             }
 
-            // If no defaultId or defaultId branch not found, fallback to is_default or first branch
             if (!finalSelectedBranch) {
               finalSelectedBranch = list.find(b => b.is_default) || list[0];
             }
@@ -171,17 +102,15 @@ export default function AddTransaction() {
           return;
         }
 
-        const assignedIdSet = new Set(effectiveAssignedBranches.map((branch) => String(branch.id)));
-        const visibleBranches = list.length > 0 && assignedIdSet.size > 0
-          ? list.filter((branch) => assignedIdSet.has(String(branch.id)))
-          : effectiveAssignedBranches;
+        const visibleBranches = filterBranchesForRole(list, effectiveAssignedBranches);
+        const resolvedBranches = visibleBranches.length > 0 ? visibleBranches : effectiveAssignedBranches;
 
-        setBranches(visibleBranches);
+        setBranches(resolvedBranches);
         setSelectedBranchId((prev) => {
-          if (prev && visibleBranches.some((branch) => String(branch.id) === String(prev))) {
+          if (prev && resolvedBranches.some((branch) => String(branch.id) === String(prev))) {
             return prev;
           }
-          const main = visibleBranches.find(b => b.isMain) || visibleBranches[0];
+          const main = resolvedBranches.find(b => b.is_default) || resolvedBranches[0];
           return main ? String(main.id) : "";
         });
       })
@@ -192,12 +121,6 @@ export default function AddTransaction() {
 
     return () => { isMounted = false; };
   }, [isOwner, effectiveAssignedBranches]);
-
-  useEffect(() => {
-    if (isOwner || selectedBranchId || branches.length > 0 || effectiveAssignedBranches.length === 0) return;
-    setBranches(effectiveAssignedBranches.map((branch) => ({ id: branch.id, name: branch.name })));
-    setSelectedBranchId(String(effectiveAssignedBranches[0].id));
-  }, [isOwner, selectedBranchId, branches, effectiveAssignedBranches]);
 
   const updateQty = (id, value) => {
     setSelected((prev) =>
@@ -228,9 +151,7 @@ export default function AddTransaction() {
       return;
     }
 
-    // Resolve branch_id
-    const selectedBranch = branches.find((branch) => String(branch.id) === String(selectedBranchId));
-    const branchId = Number(selectedBranch?.id ?? selectedBranchId);
+    const branchId = Number(selectedBranchId);
 
     if (!branchId) {
       setError("Branch is required");

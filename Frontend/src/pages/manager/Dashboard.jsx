@@ -12,7 +12,6 @@ import QuickActionsConfigModal from "@/components/shared/QuickActionsConfigModal
 import ChatUserModal from "@/components/shared/ChatUserModal";
 import AiAgentFeaturedCard from "@/components/shared/AiAgentFeaturedCard";
 import TaskQuickView from "@/features/task/components/TaskQuickView";
-import { getTimeBasedGreeting } from "@/utils/dashboardHelpers";
 import {
   FaUser,
   FaEdit,
@@ -33,6 +32,7 @@ import {
   FaTruck,
   FaFileExport,
   FaRobot,
+  FaThLarge,
 } from "react-icons/fa";
 import LowStockAlert from "@/features/inventory/components/LowStockAlert";
 
@@ -50,6 +50,7 @@ function ManagerDashboard() {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   const activeActionIds = useSelector(
     (state) => state.quickActions.dashboardActions,
@@ -59,17 +60,15 @@ function ManagerDashboard() {
   );
   const baseSearchItems = useSelector(selectManagerQuickSearchItems);
 
+  // Handle profile initialization
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      navigate("/login");
-      return;
-    }
-
-    if (!manager && !profileLoading) {
+    if (!manager && !profileLoading && userId) {
       dispatch(fetchUserProfile());
     }
+  }, [manager, profileLoading, userId, dispatch]);
 
+  // Handle data fetching (subscription, etc.)
+  useEffect(() => {
     const fetchSubscriptionData = async () => {
       try {
         const planRes = await api.get("/subscription/plan/purchased/");
@@ -87,7 +86,7 @@ function ManagerDashboard() {
     } else {
       navigate("/login");
     }
-  }, [userId, navigate, manager, profileLoading, dispatch]);
+  }, [userId, navigate]);
 
   const toggleAction = (actionId) => {
     dispatch(toggleDashboardAction(actionId));
@@ -96,6 +95,7 @@ function ManagerDashboard() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery.trim().toLowerCase());
+      setSelectedIndex(0);
     }, 200);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -144,13 +144,33 @@ function ManagerDashboard() {
   const handleSearchSelect = (item) => {
     navigate(item.path);
     setSearchQuery("");
+    setSelectedIndex(0);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!debouncedQuery || visibleItems.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % visibleItems.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex(
+        (prev) => (prev - 1 + visibleItems.length) % visibleItems.length,
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearchSelect(visibleItems[selectedIndex]);
+    } else if (e.key === "Escape") {
+      setSearchQuery("");
+    }
   };
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     if (!debouncedQuery) return;
-    if (filteredItems.length > 0) {
-      handleSearchSelect(filteredItems[0]);
+    if (visibleItems.length > 0) {
+      handleSearchSelect(visibleItems[selectedIndex]);
     }
   };
 
@@ -178,75 +198,116 @@ function ManagerDashboard() {
     <div className="min-h-screen bg-transparent">
       <ManagerHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Hero Section - Tightened */}
-        <div className="relative rounded-[2rem] bg-gradient-to-br from-indigo-700 via-purple-700 to-indigo-800 text-white shadow-xl p-6 md:p-7">
-          <div className="absolute inset-0 overflow-hidden rounded-[2rem]">
-            <div className="absolute -top-10 -right-10 p-4 opacity-5">
-              <FaCogs size={250} />
-            </div>
-          </div>
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] border border-white/10">Manager Portal</span>
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-                {manager.first_name}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Hero Section - Aligned with Owner Dashboard */}
+        <div className="relative mb-6 pt-2">
+          <div className="max-w-4xl mx-auto text-center space-y-4">
+            <div className="flex flex-col items-center gap-1">
+              <span className="px-3 py-1 rounded-full bg-slate-100 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 border border-slate-200">Manager Portal</span>
+              <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 animate-gradient-x">
+                  {manager.first_name}
+                </span>
               </h1>
             </div>
 
-            <div className="relative w-full max-w-xl">
-              <form onSubmit={handleSearchSubmit}>
-                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300" />
+            <div className="relative max-w-2xl mx-auto">
+              <form
+                onSubmit={handleSearchSubmit}
+                className="relative group transition-all duration-300 transform hover:-translate-y-0.5"
+              >
+                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                  <FaSearch className="text-slate-400 text-lg group-focus-within:text-brand-600 transition-colors duration-300" />
+                </div>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Search operations, tasks, inventory..."
-                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-4 focus:ring-white/10 focus:bg-white/20 transition-all shadow-inner text-sm font-medium backdrop-blur-md"
+                  className="w-full pl-14 pr-6 py-4 rounded-full bg-white border border-slate-200/60 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-brand-100 focus:border-brand-500 shadow-xl transition-all duration-300 text-lg"
                 />
               </form>
 
               {/* Search Results Dropdown */}
               {debouncedQuery && (
-                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl overflow-hidden py-2 z-50 animate-fade-in-up border border-slate-100">
-                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between">
+                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden py-3 z-50 animate-fade-in-up text-left">
+                  <div className="px-5 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center border-b border-slate-50 pb-2 mb-1">
                     <span>Search Results</span>
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="text-purple-600 hover:underline"
+                      className="text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded-md transition-colors"
                     >
                       Clear
                     </button>
                   </div>
                   {visibleItems.length === 0 ? (
-                    <div className="px-6 py-8 text-center text-gray-500">
-                      No matches found.
+                    <div className="px-6 py-10 text-center">
+                      <div className="text-4xl mb-3 opacity-20">🕵️‍♂️</div>
+                      <p className="text-slate-500 font-medium tracking-tight">
+                        No matches found for &quot;{searchQuery}&quot;
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-widest">
+                        Try searching for modules or keywords
+                      </p>
                     </div>
                   ) : (
-                    visibleItems.map((item) => (
+                    visibleItems.map((item, index) => (
                       <button
                         key={item.label}
                         onClick={() => handleSearchSelect(item)}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-4 transition-colors border-b border-gray-50 last:border-none"
+                        onMouseEnter={() => setSelectedIndex(index)}
+                        className={`w-full text-left px-5 py-3 flex items-center gap-4 transition-all group border-l-4 ${selectedIndex === index
+                          ? "bg-purple-50/50 border-purple-500"
+                          : "hover:bg-slate-50 border-transparent"
+                          }`}
                       >
                         <div
-                          className={`h-10 w-10 rounded-xl flex items-center justify-center ${item.bg} ${item.color}`}
+                          className={`h-10 w-10 rounded-xl flex items-center justify-center ${item.bg || "bg-slate-50"} ${item.color || "text-slate-600"} shadow-sm group-hover:scale-110 transition-transform duration-300`}
                         >
                           {(() => {
-                            const Icon = iconMap[item.icon] || FaCogs;
+                            const Icon = iconMap[item.icon] || FaThLarge;
                             return <Icon size={18} />;
                           })()}
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">
-                            {item.label}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p
+                              className={`font-semibold text-[15px] transition-colors ${selectedIndex === index ? "text-purple-600" : "text-slate-900"}`}
+                            >
+                              {(() => {
+                                const parts = item.label.split(
+                                  new RegExp(`(${debouncedQuery})`, "gi"),
+                                );
+                                return parts.map((part, i) =>
+                                  part.toLowerCase() ===
+                                    debouncedQuery.toLowerCase() ? (
+                                    <span
+                                      key={i}
+                                      className="bg-purple-100 text-purple-700 rounded-sm px-0.5"
+                                    >
+                                      {part}
+                                    </span>
+                                  ) : (
+                                    <span key={i}>{part}</span>
+                                  ),
+                                );
+                              })()}
+                            </p>
+                            {item.group && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">
+                                {item.group}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 truncate">
                             {item.desc}
                           </p>
                         </div>
-                        <FaArrowRight className="ml-auto text-gray-300" />
+                        <FaArrowRight
+                          className={`ml-auto transition-all transform ${selectedIndex === index ? "text-purple-500 translate-x-1" : "text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1"}`}
+                          size={14}
+                        />
                       </button>
                     ))
                   )}

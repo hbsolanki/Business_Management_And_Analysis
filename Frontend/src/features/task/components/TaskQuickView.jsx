@@ -4,7 +4,7 @@ import { FaTasks, FaChevronRight, FaEdit } from 'react-icons/fa';
 import taskService from '@/features/task/services/taskService';
 import { format } from 'date-fns';
 
-const TaskQuickView = ({ type = 'assigned_to', title = 'My Tasks' }) => {
+const TaskQuickView = ({ type = 'assigned_to', title = 'My Tasks', limit = 5 }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -18,11 +18,14 @@ const TaskQuickView = ({ type = 'assigned_to', title = 'My Tasks' }) => {
                     data = await taskService.getAssigneeTasks();
                 }
 
+                let fetchedTasks = [];
                 if (Array.isArray(data)) {
-                    setTasks(data);
+                    fetchedTasks = data;
                 } else if (data && Array.isArray(data.results)) {
-                    setTasks(data.results);
+                    fetchedTasks = data.results;
                 }
+                
+                setTasks(limit ? fetchedTasks.slice(0, limit) : fetchedTasks);
             } catch (error) {
                 console.error("Failed to fetch quick view tasks", error);
             } finally {
@@ -31,7 +34,7 @@ const TaskQuickView = ({ type = 'assigned_to', title = 'My Tasks' }) => {
         };
 
         fetchTasks();
-    }, [type]);
+    }, [type, limit]);
 
     return (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col h-full shadow-sm">

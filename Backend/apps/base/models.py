@@ -1,6 +1,7 @@
 from django.db import models
 from apps.base.utils.active_manager import ActiveManager
 from django.conf import settings
+from decimal import Decimal, ROUND_HALF_UP
 
 
 class BaseModel(models.Model):
@@ -22,8 +23,9 @@ class BaseModel(models.Model):
 
     def _as_dict(self):
         return {
-            f.attname: getattr(self, f.attname)
+            f.attname: self.__dict__.get(f.attname)
             for f in self._meta.concrete_fields
+            if f.attname in self.__dict__
         }
 
     def get_dirty_fields(self):
@@ -46,3 +48,28 @@ class BaseAddress(BaseModel):
 
     class Meta:
         abstract = True
+
+
+class GST(BaseModel):
+    gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    gst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    cgst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    sgst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    igst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+
+    class Meta:
+        db_table = "bma_gst"
+
+    def calculate_gst(self,is_inter_country=False):
+
+        gst_amount=self.gst_amount or Decimal("0.00")
+        if is_inter_country:
+            self.igst_amount = gst_amount
+        else:
+            self.cgst_amount = (gst_amount / Decimal("2")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            self.sgst_amount = gst_amount - self.cgst_amount
+
+    def save(self, *args, **kwargs):
+        self.calculate_gst()
+        super().save(*args, **kwargs)

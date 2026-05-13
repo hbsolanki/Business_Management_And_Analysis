@@ -41,11 +41,24 @@ const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wi
 const inputClass = (hasError, withIcon = true) =>
   `block w-full ${withIcon ? "input-icon-left" : ""} pr-4 py-2.5 rounded-xl text-sm bg-white text-slate-700 placeholder-slate-400 border outline-none transition-all ${hasError
     ? "border-rose-400 focus:ring-2 focus:ring-rose-200"
-    : "border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50"
+    : "border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-100"
   }`;
+
 const getErrorText = (error) => {
   if (!error) return null;
-  if (Array.isArray(error)) return error[0];
+  if (typeof error === 'string') return error;
+  if (Array.isArray(error) && error.length > 0) {
+    const res = getErrorText(error[0]);
+    if (typeof res === 'string') return res;
+  }
+  if (typeof error === 'object' && error !== null) {
+    const values = Object.values(error);
+    if (values.length > 0) {
+      const res = getErrorText(values[0]);
+      if (typeof res === 'string') return res;
+    }
+    try { return JSON.stringify(error); } catch (e) { return String(error); }
+  }
   return String(error);
 };
 
@@ -89,16 +102,13 @@ export default function EditEmployee() {
   const [roleConfirm, setRoleConfirm] = useState({ open: false, nextRole: "" });
   const detailErrors = errors.employee_details || {};
 
-  /* ---------------- FETCH EMPLOYEE (EDIT MODE) ---------------- */
+  /* ---------------- FETCH DATA ---------------- */
   const fetchBranches = useCallback(async (name = "") => {
     setFetchingBranches(true);
     try {
       const res = await branchService.list(name ? { name } : {});
-      if (Array.isArray(res.data)) {
-        setBranches(res.data);
-      } else if (res.data?.results) {
-        setBranches(res.data.results);
-      }
+      const list = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+      setBranches(list);
     } catch (err) {
       console.error("Failed to fetch branches", err);
     } finally {
@@ -115,50 +125,65 @@ export default function EditEmployee() {
       const details = data.employee_details || data.employee_detail || {};
       const addressSource = details.address || data.address || {};
 
+      // 1. Resolve Branches
+      const branchSource = data.assigned_branches || data.branches || data.branch || [];
+      const branchList = Array.isArray(branchSource) ? branchSource : [branchSource];
+      const branchIds = branchList.map(b => (typeof b === 'object' ? (b.id || b.branch_id) : b)).filter(Boolean);
+      const branchObjects = branchList.filter(b => typeof b === 'object').map(b => ({
+        id: b.id || b.branch_id,
+        name: b.name || b.branch_name || "Branch"
+      }));
+
+      // 2. Resolve Assigned Works
+      let assignedWorks = [];
+      if (Array.isArray(data.assigned_works)) {
+        assignedWorks = data.assigned_works.map(w => ({
+          branch_id: Number(w.branch_id),
+          work_type: String(w.work_type).toUpperCase()
+        }));
+      } else if (data.work) {
+        const legacyWorks = normalizeWorkList(data.work);
+        const defaultBranchId = branchIds[0];
+        if (defaultBranchId) {
+          assignedWorks = legacyWorks.map(w => ({
+            branch_id: Number(defaultBranchId),
+            work_type: w.toUpperCase()
+          }));
+        }
+      }
+
       const fetchedData = {
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         email: user.email || "",
         username: user.username || "",
         mobile_number: user.mobile_number || "",
-        salary: details.salary !== undefined && details.salary !== null
-          ? String(details.salary)
-          : (data.salary !== undefined && data.salary !== null ? String(data.salary) : ""),
-        role: (typeof data.role === 'object' ? data.role.role : data.role) || "EMPLOYEE",
+        salary: details.salary !== undefined && details.salary !== null ? String(details.salary) : "",
+        role: (typeof user.role === 'object' ? user.role.role : user.role) || "EMPLOYEE",
         description: details.bio || details.description || data.description || "",
-        assigned_works: Array.isArray(data.assigned_works)
-          ? data.assigned_works.map(w => ({
-            branch_id: w.branch_id,
-            branch_name: w.branch_name,
-            work_type: w.work_type
-          }))
-          : (data.work ? normalizeWorkList(data.work).map(w => ({ branch_id: data.branch_id || data.branch_ids?.[0], work_type: w })) : []),
-        branch_ids: Array.isArray(data.assigned_branches) && data.assigned_branches.length > 0
-          ? data.assigned_branches.map(b => b.id)
-          : (data.branch_ids || (Array.isArray(data.branches) ? (typeof data.branches[0] === 'object' ? data.branches.map(b => b.id) : data.branches) : (data.branch_id ? [data.branch_id] : (Array.isArray(data.branch) ? data.branch.map(b => typeof b === 'object' ? b.id : b) : [])))),
+        assigned_works: assignedWorks,
+        branch_ids: branchIds,
         address_data: {
           address_line_1: addressSource.address_line_1 || "",
           address_line_2: addressSource.address_line_2 || "",
-          city: addressSource.city_name || "",
+          city: addressSource.city_name || addressSource.city || "",
           state: addressSource.state_name || addressSource.state || "",
           country: addressSource.country_name || addressSource.country || "",
           pin_code: addressSource.pin_code || "",
         },
       };
 
-      originalData.current = { ...fetchedData };
+      originalData.current = JSON.parse(JSON.stringify(fetchedData)); // Deep copy for comparison
 
       setFormData({
         ...fetchedData,
         password: "",
         image: null,
-        imagePreview: data.profile_picture || data.image || "",
+        imagePreview: user.profile_picture || user.image || data.profile_picture || "",
       });
 
-      // Store branch objects for display (prefer assigned_branches)
-      const branchSource = data.assigned_branches || data.branches || data.branch;
-      if (Array.isArray(branchSource) && typeof branchSource[0] === 'object') {
-        setSelectedBranchesData(branchSource);
+      if (branchObjects.length > 0) {
+        setSelectedBranchesData(branchObjects);
       }
     } catch (err) {
       console.error("Failed to fetch employee", err);
@@ -178,49 +203,71 @@ export default function EditEmployee() {
     fetchBranches(branchSearch);
   };
 
-  /* ---------------- HANDLE CHANGE ---------------- */
+  /* ---------------- EVENT HANDLERS ---------------- */
   const handleChange = (e) => {
     let { name, value, files } = e.target;
-
     if (name === "mobile_number") {
       value = value.replace(/\D/g, "").slice(0, 10);
     }
-
     if (name === "image") {
       const file = files[0];
       if (file) {
         setFormData(prev => ({
           ...prev,
           image: file,
-          imagePreview: URL.createObjectURL(file), // Provide immediate feedback
+          imagePreview: URL.createObjectURL(file),
         }));
       }
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-      }));
-      if (errors[name]) {
-        setErrors(prev => ({ ...prev, [name]: null }));
-      }
+      setFormData(prev => ({ ...prev, [name]: value }));
+      if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
     }
-  };
-
-  const roleRank = { EMPLOYEE: 1, MANAGER: 2, OWNER: 3 };
-  const shouldConfirmRoleChange = (nextRole) => {
-    const currentRole = (typeof formData.role === 'object' ? formData.role.role : formData.role) || "EMPLOYEE";
-    return (roleRank[nextRole] || 0) > (roleRank[currentRole] || 0);
   };
 
   const handleRoleChange = (nextRole) => {
-    if (shouldConfirmRoleChange(nextRole)) {
+    const roleRank = { EMPLOYEE: 1, MANAGER: 2, OWNER: 3 };
+    const currentRole = (typeof formData.role === 'object' ? formData.role.role : formData.role) || "EMPLOYEE";
+    
+    if ((roleRank[nextRole] || 0) > (roleRank[currentRole] || 0)) {
       setRoleConfirm({ open: true, nextRole });
-      return;
+    } else {
+      setFormData((prev) => ({ ...prev, role: nextRole }));
     }
-    setFormData((prev) => ({ ...prev, role: nextRole }));
   };
 
-  /* ---------------- SUBMIT UPDATE (ONLY CHANGED FIELDS) ---------------- */
+  const toggleBranch = (branchId) => {
+    setFormData(prev => {
+      const isSelected = prev.branch_ids.includes(branchId);
+      const nextBranchIds = isSelected 
+        ? prev.branch_ids.filter(id => id !== branchId)
+        : [...prev.branch_ids, branchId];
+      
+      // Cleanup works if branch removed
+      const nextAssignedWorks = isSelected
+        ? prev.assigned_works.filter(w => w.branch_id !== branchId)
+        : prev.assigned_works;
+
+      return { ...prev, branch_ids: nextBranchIds, assigned_works: nextAssignedWorks };
+    });
+  };
+
+  const handleWorkTypeChange = (branchId, workType) => {
+    setFormData(prev => {
+      const assigned_works = [...prev.assigned_works];
+      const existingIdx = assigned_works.findIndex(
+        w => w.branch_id === branchId && w.work_type === workType
+      );
+
+      if (existingIdx > -1) {
+        assigned_works.splice(existingIdx, 1);
+      } else {
+        assigned_works.push({ branch_id: branchId, work_type: workType });
+      }
+      return { ...prev, assigned_works };
+    });
+  };
+
+  /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -228,7 +275,6 @@ export default function EditEmployee() {
 
     const normalize = (value) => {
       if (Array.isArray(value)) {
-        // Deep sort and stringify for comparison
         const sorted = [...value].sort((a, b) => {
           const keyA = typeof a === 'object' ? `${a.branch_id}-${a.work_type}` : String(a);
           const keyB = typeof b === 'object' ? `${b.branch_id}-${b.work_type}` : String(b);
@@ -236,42 +282,36 @@ export default function EditEmployee() {
         });
         return JSON.stringify(sorted);
       }
-      if (value && typeof value === "object") {
-        return JSON.stringify(value);
-      }
+      if (value && typeof value === "object") return JSON.stringify(value);
       return (value === null || value === undefined ? "" : String(value));
     };
 
-    const fieldsToCheck = ["first_name", "last_name", "email", "username", "mobile_number", "role"];
+    const updates = {};
+    
+    // User fields
     const userUpdates = {};
-
-    fieldsToCheck.forEach((field) => {
+    ["first_name", "last_name", "email", "username", "mobile_number", "role"].forEach(field => {
       if (normalize(formData[field]) !== normalize(originalData.current[field])) {
         userUpdates[field] = formData[field];
       }
     });
+    if (formData.password) userUpdates.password = formData.password;
+    if (Object.keys(userUpdates).length > 0) updates.user = userUpdates;
 
-    const updates = {};
-    if (Object.keys(userUpdates).length > 0) {
-      updates.user = userUpdates;
-    }
-
+    // Details fields
     const detailUpdates = {};
     if (normalize(formData.salary) !== normalize(originalData.current.salary)) {
-      const salaryValue = formData.salary !== "" ? Number(formData.salary) : null;
-      detailUpdates.salary = Number.isFinite(salaryValue) ? salaryValue : formData.salary;
+      detailUpdates.salary = formData.salary ? Number(formData.salary) : null;
     }
     if (normalize(formData.description) !== normalize(originalData.current.description)) {
-      detailUpdates.bio = formData.description || "";
+      detailUpdates.bio = formData.description;
     }
     if (normalize(formData.address_data) !== normalize(originalData.current.address_data)) {
       detailUpdates.address = formData.address_data;
     }
-    if (Object.keys(detailUpdates).length > 0) {
-      updates.employee_details = detailUpdates;
-    }
+    if (Object.keys(detailUpdates).length > 0) updates.employee_details = detailUpdates;
 
-    // assigned_branches and assigned_works are root keys
+    // Branches & Works (Full Sync)
     if (normalize(formData.branch_ids) !== normalize(originalData.current.branch_ids)) {
       updates.assigned_branches = formData.branch_ids.map(id => ({ id }));
     }
@@ -279,57 +319,42 @@ export default function EditEmployee() {
       updates.assigned_works = formData.assigned_works;
     }
 
-    // Password is only sent if provided
-    if (formData.password) {
-      if (!updates.user) updates.user = {};
-      updates.user.password = formData.password;
-    }
-
-    const hasFile = Boolean(formData.image);
-    const hasChanges = hasFile || Object.keys(updates).length > 0;
-
-    if (!hasChanges) {
-      toast("No changes to save", { icon: "ℹ️" });
+    const hasFile = formData.image instanceof File;
+    if (!hasFile && Object.keys(updates).length === 0) {
+      toast("No changes detected", { icon: "ℹ️" });
       setSaving(false);
       return;
     }
 
-    let payload = updates;
-    if (hasFile) {
-      payload = new FormData();
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === undefined) return;
-        if (Array.isArray(value) || (value && typeof value === "object")) {
-          payload.append(key, JSON.stringify(value));
-        } else {
-          payload.append(key, value);
-        }
-      });
-      if (formData.image) {
-        // profile_picture is part of user object according to nested structure, 
-        // but often flat in multipart/form-data. 
-        // If it MUST be nested, we might need a different approach, 
-        // but typically backend handles user.profile_picture if sent as file with that key or similar.
-        // Let's stick to sending it in user object if possible or as direct field.
-        payload.append("profile_picture", formData.image);
-      }
-    }
-
     try {
-      await employeeService.update(id, payload);
-      toast.success("Employee updated successfully");
+      let submitData = updates;
+      if (hasFile) {
+        submitData = new FormData();
+        // If there are JSON updates, we often need to send them as individual fields 
+        // or a nested structure depending on how the backend parses MultiPart
+        Object.entries(updates).forEach(([key, value]) => {
+          if (typeof value === 'object') {
+            submitData.append(key, JSON.stringify(value));
+          } else {
+            submitData.append(key, value);
+          }
+        });
+        submitData.append("profile_picture", formData.image);
+      }
+
+      await employeeService.update(id, submitData);
+      toast.success("Employee updated");
       navigate(-1);
     } catch (err) {
       console.error("Update failed", err);
-      if (err.response?.data && typeof err.response.data === 'object' && !Array.isArray(err.response.data)) {
-        setErrors(err.response.data);
+      const data = err.response?.data;
+      if (data && typeof data === 'object') {
+        setErrors(data);
       }
-      const errorMsg = err.response?.data?.non_field_errors?.[0]
-        || err.response?.data?.detail
-        || (err.response?.data?.branch_id?.[0])
-        || (err.response?.data?.branch_ids?.[0])
-        || "Failed to update employee";
-      toast.error(errorMsg);
+      
+      // Get a readable error message for the toast
+      const mainError = data?.detail || data?.non_field_errors?.[0] || getErrorText(data) || "Failed to update employee";
+      toast.error(mainError);
     } finally {
       setSaving(false);
     }
@@ -338,34 +363,40 @@ export default function EditEmployee() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-200 border-t-slate-900"></div>
       </div>
     );
   }
 
+  const allVisibleBranches = Array.from(new Map([
+    ...selectedBranchesData.map(b => [b.id, b]),
+    ...branches.map(b => [b.id, b])
+  ]).values());
+
   return (
-    <div className="min-h-screen pb-12 bg-transparent">
+    <div className="min-h-screen pb-12 bg-transparent font-sans">
       <OwnerHeader />
 
-      <main className="form-shell pt-8">
+      <main className="max-w-5xl mx-auto px-4 pt-8">
         <div className="mb-6">
-          <BackButton to="/employees/manage" label="Back to Employees" />
+          <BackButton label="Back to Employees" />
         </div>
 
-        <div className="form-card overflow-hidden">
-          <div className="form-header bg-slate-50">
-            <div className="form-header-icon">
-              <FaUser />
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <header className="px-8 py-6 bg-slate-50 border-b border-slate-200 flex items-center gap-5">
+            <div className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg border border-slate-800">
+              <FaUser size={20} />
             </div>
             <div>
-              <h1 className="form-title">Edit Employee</h1>
-              <p className="form-subtitle">Update employee details, permissions, and access.</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Edit Employee Profile</h1>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest opacity-80 mt-1">Update permissions & personal info</p>
             </div>
-          </div>
+          </header>
 
-          <div className="form-section p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-8 rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="relative h-20 w-20 rounded-2xl border border-slate-200 bg-slate-100 overflow-hidden">
+          <div className="p-8 space-y-8">
+            {/* Profile Picture Section */}
+            <section className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="relative h-24 w-24 rounded-2xl border-4 border-white shadow-md overflow-hidden bg-white">
                 <img
                   src={formData.imagePreview || "https://placehold.co/150"}
                   alt="Profile"
@@ -373,320 +404,205 @@ export default function EditEmployee() {
                 />
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-slate-900">Profile photo</p>
-                <label
-                  htmlFor="image-upload"
-                  className="btn-secondary inline-flex items-center gap-2 cursor-pointer"
-                >
-                  <FaCamera size={14} />
-                  Change photo
-                  <input
-                    id="image-upload"
-                    type="file"
-                    name="image"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleChange}
-                  />
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Profile Photo</h3>
+                <label htmlFor="image-upload" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-100 transition-all cursor-pointer shadow-sm">
+                  <FaCamera size={12} className="text-slate-900" />
+                  Change Image
+                  <input id="image-upload" type="file" name="image" accept="image/*" className="hidden" onChange={handleChange} />
                 </label>
               </div>
-            </div>
+            </section>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Employee Details</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputField
-                    label="First Name"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    icon={FaUser}
-                    error={errors.first_name}
-                  />
-                  <InputField
-                    label="Last Name"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    icon={FaUser}
-                    error={errors.last_name}
-                  />
-                  <InputField
-                    label="Username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    icon={FaIdCard}
-                    error={errors.username}
-                  />
-                  <InputField
-                    label="Email Address"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    icon={FaEnvelope}
-                    error={errors.email}
-                  />
-                  <InputField
-                    label="Mobile Number"
-                    name="mobile_number"
-                    value={formData.mobile_number}
-                    onChange={handleChange}
-                    icon={FaPhone}
-                    error={errors.mobile_number}
-                  />
-                  <InputField
-                    label="Salary"
-                    name="salary"
-                    type="number"
-                    value={formData.salary}
-                    onChange={handleChange}
-                    icon={FaMoneyBillWave}
-                    placeholder="Monthly salary"
-                    error={detailErrors.salary || errors.salary}
-                  />
-                  <div>
-                    <label className={labelClass}>Role</label>
-                    <div className="relative">
-                      <FaUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <select
-                        name="role"
-                        value={formData.role}
-                        onChange={(e) => handleRoleChange(e.target.value)}
-                        className={`${inputClass(Boolean(getErrorText(errors.role)))} appearance-none`}
-                      >
-                        <option value="OWNER">Owner</option>
-                        <option value="MANAGER">Manager</option>
-                        <option value="EMPLOYEE">Employee</option>
-                      </select>
-                      <svg
-                        className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    {getErrorText(errors.role) && (
-                      <p className="text-rose-600 text-xs mt-2 font-medium">{getErrorText(errors.role)}</p>
-                    )}
+            <form onSubmit={handleSubmit} className="space-y-10">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <InputField label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} icon={FaUser} error={errors.first_name} />
+                <InputField label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} icon={FaUser} error={errors.last_name} />
+                <InputField label="Username" name="username" value={formData.username} onChange={handleChange} icon={FaIdCard} error={errors.username} />
+                <InputField label="Email Address" name="email" type="email" value={formData.email} onChange={handleChange} icon={FaEnvelope} error={errors.email} />
+                <InputField label="Mobile Number" name="mobile_number" value={formData.mobile_number} onChange={handleChange} icon={FaPhone} error={errors.mobile_number} />
+                <InputField label="Salary" name="salary" type="number" value={formData.salary} onChange={handleChange} icon={FaMoneyBillWave} error={detailErrors.salary || errors.salary} />
+                
+                <div>
+                  <label className={labelClass}>User Role</label>
+                  <div className="relative group">
+                    <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                      className={`${inputClass(Boolean(errors.role))} pl-11 appearance-none font-bold`}
+                    >
+                      <option value="OWNER">Owner (Full Business Access)</option>
+                      <option value="MANAGER">Manager (Operational Controls)</option>
+                      <option value="EMPLOYEE">Employee (Restricted Access)</option>
+                    </select>
                   </div>
-                  <InputField
-                    label="New Password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Leave blank to keep current"
-                    icon={FaIdCard}
-                    error={errors.password}
-                  />
+                  {errors.role && <p className="text-rose-600 text-xs mt-2 font-bold">{getErrorText(errors.role)}</p>}
                 </div>
-              </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Branches</p>
-                    <p className="text-xs text-slate-500 mt-1">Manage branch access for this employee.</p>
-                  </div>
+                <InputField label="New Password" name="password" type="password" value={formData.password} onChange={handleChange} placeholder="Keep blank to remain unchanged" icon={FaIdCard} error={errors.password} />
+              </div>
+
+              {/* Branch Access Section */}
+              <section className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                  <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-slate-100 text-slate-700 border border-slate-200"><FaMapMarkerAlt size={14} /></div>
+                    Branch Assignments
+                  </h3>
                   <div className="relative w-full sm:w-64">
-                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" size={12} />
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                     <input
                       type="text"
                       placeholder="Search branches..."
                       value={branchSearch}
                       onChange={(e) => setBranchSearch(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
-                      className="w-full pl-9 pr-12 py-1.5 text-xs rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all bg-white"
+                      className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 focus:border-slate-900 focus:ring-4 focus:ring-slate-100 outline-none transition-all font-bold bg-slate-50"
                     />
-                    <button
-                      type="button"
-                      onClick={handleSearch}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-600 hover:text-brand-700 text-[10px] font-bold uppercase"
-                    >
-                      Search
-                    </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50 min-h-[120px]">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 min-h-[160px]">
                   {fetchingBranches ? (
-                    <div className="col-span-full py-8 flex flex-col items-center justify-center gap-2">
-                      <div className="animate-spin h-5 w-5 border-2 border-slate-300 border-t-slate-900 rounded-full"></div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Searching branches...</p>
-                    </div>
-                  ) : (branches.length > 0 || formData.branch_ids.length > 0) ? (
-                    Array.from(new Map([
-                      ...selectedBranchesData.filter(b => formData.branch_ids.includes(b.id)).map(b => [String(b.id), b]),
-                      ...branches.map(b => [String(b.id), b]),
-                    ].filter(x => x[1])).values()).map(b => (
-                      <label key={b.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white cursor-pointer transition-colors group border border-transparent hover:border-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={formData.branch_ids.includes(b.id)}
-                          onChange={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              branch_ids: prev.branch_ids.includes(b.id)
-                                ? prev.branch_ids.filter(id => id !== b.id)
-                                : [...prev.branch_ids, b.id]
-                            }));
-                          }}
-                          className="w-4 h-4 rounded text-brand-600 border-slate-300 focus:ring-brand-500 cursor-pointer"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-700 truncate">{b.name}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {b.is_default && <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tighter">Main Branch</span>}
-                            {formData.branch_ids.includes(b.id) && (
-                              <span className="text-[9px] font-bold text-brand-600 uppercase tracking-tighter">Employee Branch</span>
-                            )}
+                    <div className="col-span-full flex flex-col items-center justify-center py-10 opacity-50"><div className="animate-spin h-6 w-6 border-2 border-slate-400 border-t-slate-900 rounded-full mb-3"></div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Updating search...</p></div>
+                  ) : allVisibleBranches.length > 0 ? (
+                    allVisibleBranches.map(branch => {
+                      const isSelected = formData.branch_ids.includes(branch.id);
+                      return (
+                        <button
+                          key={branch.id}
+                          type="button"
+                          onClick={() => toggleBranch(branch.id)}
+                          className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all text-left group ${isSelected ? "bg-white border-slate-900 shadow-sm ring-4 ring-slate-100" : "bg-white border-slate-200 hover:border-slate-300"}`}
+                        >
+                          <div className={`h-4 w-4 rounded border flex items-center justify-center transition-all ${isSelected ? "bg-slate-900 border-slate-900 text-white" : "bg-slate-50 border-slate-200"}`}>
+                            {isSelected && <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z"/></svg>}
                           </div>
-                        </div>
-                      </label>
-                    ))
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-slate-900 truncate tracking-tight">{branch.name}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">{branch.contact_number || "No contact"}</p>
+                          </div>
+                        </button>
+                      );
+                    })
                   ) : (
-                    <div className="col-span-full py-8 flex flex-col items-center justify-center text-slate-400">
-                      <FaSearch size={24} className="mb-2 opacity-20" />
-                      <p className="text-sm font-medium">No branches found matching "{branchSearch}"</p>
+                    <div className="col-span-full flex flex-col items-center justify-center py-10 text-slate-400">
+                      <FaSearch className="mb-3 opacity-20" size={32} />
+                      <p className="text-sm font-bold opacity-60">No branches found matching search</p>
                     </div>
                   )}
                 </div>
-                {errors.branch_ids && <p className="text-rose-600 text-xs font-medium">{errors.branch_ids[0]}</p>}
-                {errors.branch_id && <p className="text-rose-600 text-xs font-medium">{errors.branch_id[0]}</p>}
+                {(errors.branch_ids || errors.branch_id) && <p className="text-rose-600 text-xs font-bold text-center">{getErrorText(errors.branch_ids || errors.branch_id)}</p>}
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <label className={labelClass}>Work Assignment (Per Branch)</label>
-                <div className="space-y-4">
-                  {formData.branch_ids.length === 0 ? (
-                    <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 text-center">
-                      <FaSearch className="mx-auto text-slate-300 mb-2" size={24} />
-                      <p className="text-sm text-slate-500 font-medium">Select branches above to assign work types</p>
-                    </div>
-                  ) : (
-                    formData.branch_ids.map(bid => {
-                      const branch = Array.from(new Map([
-                        ...selectedBranchesData.map(b => [b.id, b]),
-                        ...branches.map(b => [b.id, b]),
-                      ]).values()).find(b => b.id === bid);
-
-                      const handleWorkTypeChange = (wType) => {
-                        setFormData(prev => {
-                          const assigned_works = [...prev.assigned_works];
-                          const existingIdx = assigned_works.findIndex(
-                            w => w.branch_id === bid && w.work_type === wType
-                          );
-
-                          if (existingIdx > -1) {
-                            assigned_works.splice(existingIdx, 1);
-                          } else {
-                            assigned_works.push({ branch_id: bid, work_type: wType });
-                          }
-                          return { ...prev, assigned_works };
-                        });
-                      };
-
+              {/* Work Modules Section */}
+              <section className="space-y-6">
+                <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2 border-b border-slate-100 pb-4">
+                  <div className="p-2 rounded-lg bg-slate-100 text-slate-700 border border-slate-200"><FaIdCard size={14} /></div>
+                  Module Permissions
+                </h3>
+                
+                {formData.branch_ids.length === 0 ? (
+                  <div className="p-12 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 text-center">
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Select branches above to configure permissions</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6">
+                    {formData.branch_ids.map(bid => {
+                      const branch = allVisibleBranches.find(b => b.id === bid);
                       return (
-                        <div key={bid} className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-900"></span>
-                            {branch?.name || `Branch #${bid}`}
-                          </h4>
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            {["PRODUCT", "INVENTORY", "ANALYTICS", "INVOICE", "SUPPLIER"].map((workType) => (
-                              <label key={workType} className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.assigned_works.some(w => w.branch_id === bid && (w.work_type === workType || w.work === workType))}
-                                  onChange={() => handleWorkTypeChange(workType)}
-                                  className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 transition-all cursor-pointer"
-                                />
-                                <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-tight">
-                                  {workType}
-                                </span>
-                              </label>
-                            ))}
+                        <div key={bid} className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                          <header className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-900"></span>
+                              {branch?.name || `Branch #${bid}`}
+                            </h4>
+                          </header>
+                          <div className="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {["PRODUCT", "INVENTORY", "ANALYTICS", "INVOICE", "SUPPLIER"].map(workType => {
+                              const isChecked = formData.assigned_works.some(w => w.branch_id === bid && w.work_type === workType);
+                              return (
+                                <button
+                                  key={workType}
+                                  type="button"
+                                  onClick={() => handleWorkTypeChange(bid, workType)}
+                                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group ${isChecked ? "bg-slate-900 border-slate-900 shadow-sm" : "hover:bg-slate-50 border-slate-100"}`}
+                                >
+                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${isChecked ? "bg-white/10 text-white" : "bg-slate-100 text-slate-400"}`}>
+                                    <FaIdCard size={12} />
+                                  </div>
+                                  <span className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${isChecked ? "text-white" : "text-slate-500 group-hover:text-slate-900"}`}>
+                                    {workType}
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       );
-                    })
-                  )}
-                </div>
-                {errors.assigned_works && <p className="text-rose-600 text-xs mt-2 font-medium">{errors.assigned_works[0]}</p>}
-              </section>
-
-              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm space-y-5">
-                <div>
-                  <label className={labelClass}>Address</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2 relative">
-                      <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        name="address_line_1"
-                        value={formData.address_data.address_line_1}
-                        onChange={(e) => setFormData(p => ({ ...p, address_data: { ...p.address_data, address_line_1: e.target.value } }))}
-                        placeholder="Address Line 1"
-                        className={inputClass(false)}
-                      />
-                    </div>
-                    <div className="md:col-span-2 relative">
-                      <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        name="address_line_2"
-                        value={formData.address_data.address_line_2}
-                        onChange={(e) => setFormData(p => ({ ...p, address_data: { ...p.address_data, address_line_2: e.target.value } }))}
-                        placeholder="Address Line 2 (optional)"
-                        className={inputClass(false)}
-                      />
-                    </div>
-                    {[
-                      { key: "city", label: "City" },
-                      { key: "state", label: "State" },
-                      { key: "country", label: "Country" },
-                      { key: "pin_code", label: "Pin Code" },
-                    ].map(({ key, label }) => (
-                      <input
-                        key={key}
-                        name={key}
-                        value={formData.address_data[key]}
-                        onChange={(e) => setFormData(p => ({ ...p, address_data: { ...p.address_data, [key]: e.target.value } }))}
-                        placeholder={label}
-                        className={inputClass(false, false)}
-                      />
-                    ))}
+                    })}
                   </div>
-                </div>
+                )}
+                {errors.assigned_works && <p className="text-rose-600 text-xs font-bold text-center mt-4">{getErrorText(errors.assigned_works)}</p>}
+              </section>
 
-                <div>
-                  <label className={labelClass}>Description / Notes</label>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    value={formData.description}
-                    onChange={handleChange}
-                    className={`${inputClass(Boolean(getErrorText(detailErrors.bio || errors.description)), false)} resize-none`}
-                    placeholder="Additional details about this employee..."
-                  />
-                  {getErrorText(detailErrors.bio || errors.description) && (
-                    <p className="text-rose-600 text-xs mt-2 font-medium">{getErrorText(detailErrors.bio || errors.description)}</p>
-                  )}
+              {/* Address Section */}
+              <section className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Residential Address</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2 relative group">
+                    <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                      name="address_line_1"
+                      value={formData.address_data.address_line_1}
+                      onChange={(e) => setFormData(p => ({ ...p, address_data: { ...p.address_data, address_line_1: e.target.value } }))}
+                      placeholder="Address Line 1"
+                      className={`${inputClass(false)} pl-11 font-medium`}
+                    />
+                  </div>
+                  <div className="md:col-span-2 relative group">
+                    <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+                    <input
+                      name="address_line_2"
+                      value={formData.address_data.address_line_2}
+                      onChange={(e) => setFormData(p => ({ ...p, address_data: { ...p.address_data, address_line_2: e.target.value } }))}
+                      placeholder="Address Line 2 (Optional)"
+                      className={`${inputClass(false)} pl-11 font-medium`}
+                    />
+                  </div>
+                  {["city", "state", "country", "pin_code"].map(key => (
+                    <input
+                      key={key}
+                      name={key}
+                      value={formData.address_data[key]}
+                      onChange={(e) => setFormData(p => ({ ...p, address_data: { ...p.address_data, [key]: e.target.value } }))}
+                      placeholder={key.replace('_', ' ').toUpperCase()}
+                      className={`${inputClass(false, false)} font-medium`}
+                    />
+                  ))}
                 </div>
               </section>
 
-              <div className="form-actions">
-                <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="btn-primary">
-                  {saving ? "Saving..." : "Save Changes"}
+              {/* Description */}
+              <section className="space-y-4">
+                <label className={labelClass}>Bio / Notes</label>
+                <textarea
+                  name="description"
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleChange}
+                  className={`${inputClass(Boolean(errors.description), false)} resize-none font-medium leading-relaxed p-5`}
+                  placeholder="Additional background, skills, or operational notes..."
+                />
+              </section>
+
+              {/* Submit Actions */}
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-6 border-t border-slate-100">
+                <button type="button" onClick={() => navigate(-1)} className="w-full sm:w-auto px-8 py-3 rounded-xl text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-100 transition-all">Cancel</button>
+                <button type="submit" disabled={saving} className="w-full sm:w-auto px-12 py-3 rounded-xl bg-slate-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  {saving ? "Processing..." : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -694,33 +610,18 @@ export default function EditEmployee() {
         </div>
       </main>
 
+      {/* Role Confirmation Modal */}
       {roleConfirm.open && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900">Confirm Role Change</h3>
-              <p className="text-sm text-slate-500 mt-1">
-                You are about to set role to <span className="font-semibold text-slate-900">{roleConfirm.nextRole}</span>.
-              </p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div className="p-8 text-center space-y-4">
+              <div className="h-14 w-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100"><FaIdCard size={20} /></div>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Confirm Role Escalation</h3>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">You are about to promote this user to <span className="text-slate-900 font-bold">{roleConfirm.nextRole}</span>. This will grant them significantly higher system permissions. Are you sure?</p>
             </div>
-            <div className="p-6 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setRoleConfirm({ open: false, nextRole: "" })}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  setFormData((prev) => ({ ...prev, role: roleConfirm.nextRole }));
-                  setRoleConfirm({ open: false, nextRole: "" });
-                }}
-              >
-                Confirm
-              </button>
+            <div className="p-5 bg-slate-50 flex items-center gap-3">
+              <button onClick={() => setRoleConfirm({ open: false, nextRole: "" })} className="flex-1 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors">Cancel</button>
+              <button onClick={() => { setFormData(p => ({ ...p, role: roleConfirm.nextRole })); setRoleConfirm({ open: false, nextRole: "" }); }} className="flex-1 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all">Confirm Escalation</button>
             </div>
           </div>
         </div>
@@ -732,11 +633,11 @@ export default function EditEmployee() {
 function InputField({ label, name, type = "text", value, onChange, placeholder, icon: Icon, error }) {
   const errorText = getErrorText(error);
   return (
-    <div>
+    <div className="space-y-2">
       <label className={labelClass}>{label}</label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-          {Icon && <Icon size={16} />}
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900 transition-colors">
+          {Icon && <Icon size={14} />}
         </div>
         <input
           type={type}
@@ -744,10 +645,10 @@ function InputField({ label, name, type = "text", value, onChange, placeholder, 
           value={value || ""}
           onChange={onChange}
           placeholder={placeholder}
-          className={inputClass(Boolean(errorText))}
+          className={`${inputClass(Boolean(errorText))} pl-11 font-bold`}
         />
       </div>
-      {errorText && <p className="text-rose-600 text-xs mt-2 font-medium">{errorText}</p>}
+      {errorText && <p className="text-rose-600 text-[10px] font-black uppercase tracking-widest">{errorText}</p>}
     </div>
   );
 }

@@ -43,7 +43,7 @@ const COLORS = [
     "#64748b", // Slate 500
 ];
 
-export default function MonthlyBreakdownChart() {
+export default function MonthlyBreakdownChart({ branchId = "" }) {
     const currentDate = new Date();
     const defaultDate = new Date(currentDate);
     defaultDate.setMonth(defaultDate.getMonth() - 1);
@@ -57,7 +57,8 @@ export default function MonthlyBreakdownChart() {
         try {
             setLoading(true);
             setError(null);
-            const response = await api.get(`/analytics/month/breakdown/?month=${month}&year=${year}`);
+            const query = `month=${month}&year=${year}${branchId ? `&branch=${branchId}` : ""}`;
+            const response = await api.get(`/analytics/month/breakdown/?${query}`);
             setData(response.data);
         } catch (err) {
             console.error("Failed to fetch monthly breakdown:", err);

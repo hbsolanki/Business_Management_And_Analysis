@@ -41,10 +41,11 @@ class ProductTests(BaseTestCase):
 
         # Update name
         original_sku = self.product_a.sku
-        response = self.client.patch(self.url_a, {"name": "New Name Owner"})
+        update_data = {"name": "New Name Owner"}
+        response = self.client.patch(self.url_a, update_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.product_a.refresh_from_db()
-        self.assertEqual(self.product_a.name, "New Name Owner")
+        self.assertEqual(self.product_a.name, update_data["name"])
         self.assertEqual(self.product_a.sku, original_sku)
 
         # Soft delete
@@ -132,9 +133,10 @@ class ProductTests(BaseTestCase):
         }
         response = self.client.post(self.list_url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        product = Product.objects.get(sku="PF-REFACK")
+        product = Product.objects.get(sku=data["sku"])
         # Verify profit
-        self.assertEqual(float(product.net_profit), 50.00)
+        expected_profit = float(data["base_price"]) - float(data["cost_price"])
+        self.assertEqual(float(product.net_profit), expected_profit)
 
     # --- CATEGORY TESTS ---
 
@@ -146,12 +148,15 @@ class ProductTests(BaseTestCase):
 
         # Verify isolation
         response = self.client.get(self.category_list_url)
-        self.assertEqual(len(response.data["results"]), 2)
+        from apps.product.models import ProductCategory
+        expected_count = ProductCategory.objects.filter(business=self.owner_a.business).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
 
         # Update name
         detail_url = reverse("product-category-detail", args=[cat_id])
-        self.client.patch(detail_url, {"name": "Updated Cat"})
-        self.assertEqual(ProductCategory.objects.get(id=cat_id).name, "Updated Cat")
+        update_data = {"name": "Updated Cat"}
+        self.client.patch(detail_url, update_data)
+        self.assertEqual(ProductCategory.objects.get(id=cat_id).name, update_data["name"])
 
         # Soft delete
         self.client.delete(detail_url)
@@ -165,52 +170,63 @@ class ProductTests(BaseTestCase):
         # Seeded data reference
 
         # 1. Filter by Name (icontains)
-        response = self.client.get(f"{self.list_url}?name=Product")
-        self.assertEqual(len(response.data["results"]), 2)
+        search_name = "Product"
+        response = self.client.get(f"{self.list_url}?name={search_name}")
+        expected_count = Product.objects.filter(business=self.owner_a.business, name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         # Ordered by -created_at, A2 is newer
         self.assertEqual(response.data["results"][0]["name"], "Product A2")
         self.assertEqual(response.data["results"][1]["name"], "Product A1")
         
 
         # 2. Filter by Name Case-Insensitive (icontains)
-        response = self.client.get(f"{self.list_url}?name=product a1")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_name = "product a1"
+        response = self.client.get(f"{self.list_url}?name={search_name}")
+        expected_count = Product.objects.filter(business=self.owner_a.business, name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["id"], self.product_a1.id)
         self.assertEqual(response.data["results"][0]["name"], "Product A1")
 
         # 3. Filter by SKU (icontains)
-        response = self.client.get(f"{self.list_url}?sku=A2")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_sku = "A2"
+        response = self.client.get(f"{self.list_url}?sku={search_sku}")
+        expected_count = Product.objects.filter(business=self.owner_a.business, sku__icontains=search_sku).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["id"], self.product_a2.id)
         self.assertEqual(response.data["results"][0]["sku"], "PRD-A2")
 
         # 4. Filter by Category (exact)
         response = self.client.get(f"{self.list_url}?product_category={self.category_a.id}")
-        self.assertEqual(len(response.data["results"]), 2)
+        expected_count = Product.objects.filter(business=self.owner_a.business, product_category=self.category_a).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["product_category"]["id"], self.category_a.id)
         self.assertEqual(response.data["results"][1]["product_category"]["id"], self.category_a.id)
 
         # 5. Filter by Name AND Category
         response = self.client.get(f"{self.list_url}?name=A1&product_category={self.category_a.id}")
-        self.assertEqual(len(response.data["results"]), 1)
+        expected_count = Product.objects.filter(business=self.owner_a.business, name__icontains="A1", product_category=self.category_a).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["sku"], "PRD-A1")
         self.assertEqual(response.data["results"][0]["product_category"]["id"], self.category_a.id)
 
         # 6. Filter by SKU AND Category
         response = self.client.get(f"{self.list_url}?sku=PRD-A2&product_category={self.category_a.id}")
-        self.assertEqual(len(response.data["results"]), 1)
+        expected_count = Product.objects.filter(business=self.owner_a.business, sku__icontains="PRD-A2", product_category=self.category_a).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["name"], "Product A2")
         self.assertEqual(response.data["results"][0]["product_category"]["id"], self.category_a.id)
 
         # 7. Filter by Name AND SKU
         response = self.client.get(f"{self.list_url}?name=Product&sku=A1")
-        self.assertEqual(len(response.data["results"]), 1)
+        expected_count = Product.objects.filter(business=self.owner_a.business, name__icontains="Product", sku__icontains="A1").count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["id"], self.product_a1.id)
         self.assertEqual(response.data["results"][0]["product_category"]["id"], self.category_a.id)
 
         # 8. All Filters Combined (Success)
         response = self.client.get(f"{self.list_url}?name=Product&sku=PRD&product_category={self.category_a.id}")
-        self.assertEqual(len(response.data["results"]), 2)
+        expected_count = Product.objects.filter(business=self.owner_a.business, name__icontains="Product", sku__icontains="PRD", product_category=self.category_a).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["product_category"]["id"], self.category_a.id)
         self.assertEqual(response.data["results"][1]["product_category"]["id"], self.category_a.id)
         # Verify both products are present

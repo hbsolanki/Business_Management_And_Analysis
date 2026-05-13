@@ -1,10 +1,9 @@
 from django.db import models
-from apps.base.models import BaseModel
+from apps.base.models import BaseModel, GST
 from apps.business.models import Business, Branch
 from apps.product.models import Product
-
-
 from decimal import Decimal
+from django.utils import timezone
 
 class MonthlyFinancialSummary(BaseModel):
     business = models.ForeignKey(
@@ -88,16 +87,28 @@ class CostCategory(BaseModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
+    gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
 
     class Meta:
         db_table = "bma_cost_category"
         indexes = [models.Index(fields=["business"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["business", "name"],
+                condition=models.Q(is_deleted=False),
+                name="unique_cost_category_per_business"
+            )
+        ]
+
 
 
 class MonthlyCostCategory(BaseModel):
     cost_category = models.ForeignKey(CostCategory, on_delete=models.SET_NULL, null=True,blank=True)
     monthly_summary = models.ForeignKey(MonthlyFinancialSummary, on_delete=models.CASCADE, related_name="cost_category_items")
     cost=models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Linked GST details
+    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="monthly_costs")
 
     class Meta:
         db_table = "bma_monthly_cost_category"
@@ -113,9 +124,54 @@ class MonthlyCostCategory(BaseModel):
         ]
 
 
+class ITCType(models.TextChoices):
+    INPUTS = "INPUTS", "Inputs"
+    INPUT_SERVICES = "INPUT_SERVICES", "Input Services"
+    CAPITAL_GOODS = "CAPITAL_GOODS", "Capital Goods"
 
+class Expense(BaseModel):
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="expenses")
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="expenses", null=True, blank=True)
+    category = models.ForeignKey(CostCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name="expenses")
+    
+    title = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
+    
+    amount = models.DecimalField(max_digits=12, decimal_places=2) # Base amount
+    
+    # Linked GST details
+    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="expenses")
+    
+    itc_type = models.CharField(
+        max_length=20,
+        choices=ITCType.choices,
+        default=ITCType.INPUTS,
+        help_text="Type of Input Tax Credit claim"
+    )
+    
+    date = models.DateField(default=timezone.now)
+    receipt_image = models.ImageField(upload_to="expenses/receipts/", null=True, blank=True)
+    
+    class Meta:
+        db_table = "bma_expense"
+        ordering = ["-date", "-created_at"]
+        indexes = [
+            models.Index(fields=["business", "date"]),
+            models.Index(fields=["category"]),
+        ]
 
+    def __str__(self):
+        return f"{self.title} - ₹{self.total_amount}"
 
+    @property
+    def total_amount(self):
+        return self.gst.total_amount if self.gst else self.amount
 
-
-
+    @total_amount.setter
+    def total_amount(self, value):
+        from decimal import Decimal
+        if self.gst:
+            self.gst.total_amount = Decimal(str(value))
+            self.gst.save()
+        else:
+            self.amount = Decimal(str(value))

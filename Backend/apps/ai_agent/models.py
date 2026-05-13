@@ -49,10 +49,10 @@ class AiChatMessage(BaseModel):
 
 class AiChartRef(BaseModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    message = models.ForeignKey(
+    message = models.OneToOneField(
         AiChatMessage,
         on_delete=models.CASCADE,
-        related_name="chart_refs",
+        related_name="chart_ref",
         null=True,
         blank=True
     )

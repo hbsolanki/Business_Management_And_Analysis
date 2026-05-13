@@ -17,13 +17,20 @@ class UserBranchWorkSerializer(serializers.Serializer):
     def validate(self, attrs):
         request = self.context.get('request')
         user = self.context.get('user')
+        branch = attrs.get('branch_id')
+        work_type = attrs.get('work_type')
         
         if request and user:
             if user.role_name == UserRole.EMPLOYEE and not request.user.has_perm('employee.change_employee_work'):
                 raise PermissionDenied("You do not have permission to change work assignments for an employee.")
-            # For non-employees, the EmployeeSerializer already blocks work assignments, but we can add a safety check here too
+            
             if user.role_name != UserRole.EMPLOYEE and attrs:
                 raise serializers.ValidationError("Work assignments are only allowed for employees.")
+
+            # Check for existing assignment
+            if UserBranchWork.objects.filter(user=user, branch=branch, work_type=work_type).exists():
+                raise serializers.ValidationError(f"User is already assigned to {dict(WorkType.choices).get(work_type)} at branch '{branch.name}'.")
+
         return attrs
 
     def create(self, validated_data):

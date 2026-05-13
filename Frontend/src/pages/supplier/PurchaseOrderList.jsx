@@ -27,6 +27,7 @@ import {
     extractFirstError,
     normalizeListPayload,
 } from "@/features/supplier/utils/supplierHelpers";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 const INITIAL_PO_FILTERS = {
     order_date_after: "",
@@ -42,47 +43,6 @@ const FILTER_LABEL_CLASS = "block text-[11px] font-bold text-slate-500 uppercase
 const FILTER_INPUT_CLASS = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all";
 const FILTER_INPUT_ICON_CLASS = `${FILTER_INPUT_CLASS} pl-10`;
 const FILTER_SELECT_ICON_CLASS = `${FILTER_INPUT_CLASS} pl-10 pr-10 appearance-none`;
-
-function resolveBranchId(branch) {
-    if (!branch && branch !== 0) return null;
-    if (typeof branch === "object") {
-        return branch.id ?? branch.branch_id ?? null;
-    }
-    return branch;
-}
-
-function resolveAssignedBranches(profile) {
-    if (!profile) return [];
-    const collected = [];
-    const pushBranch = (value) => {
-        const id = resolveBranchId(value);
-        if (!id && id !== 0) return;
-        const source = typeof value === "object" ? value : null;
-        collected.push({
-            id: String(id),
-            name: source?.name || source?.branch_name || `Branch #${id}`,
-            is_default: Boolean(source?.is_default),
-        });
-    };
-
-    // Primary: assigned_branches (new API structure)
-    if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
-        profile.assigned_branches.forEach(pushBranch);
-    } else {
-        // Legacy fallbacks
-        if (Array.isArray(profile.branches)) profile.branches.forEach(pushBranch);
-        if (Array.isArray(profile.branch_ids)) profile.branch_ids.forEach(pushBranch);
-        if (profile.branch || profile.branch === 0) pushBranch(profile.branch);
-        if (profile.branch_id || profile.branch_id === 0) pushBranch(profile.branch_id);
-    }
-
-    const seen = new Set();
-    return collected.filter((branch) => {
-        if (seen.has(branch.id)) return false;
-        seen.add(branch.id);
-        return true;
-    });
-}
 
 function statusBadgeClass(status) {
     const normalized = String(status || "PENDING").toUpperCase();
@@ -159,7 +119,10 @@ export default function PurchaseOrderList() {
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
     const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
-    const assignedBranches = useMemo(() => resolveAssignedBranches(profile), [profile]);
+    const assignedBranches = useMemo(
+        () => getAssignedBranchesForWork(profile, 'SUPPLIER'),
+        [profile]
+    );
     const [searchParams, setSearchParams] = useSearchParams();
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     const [branches, setBranches] = useState([]);
@@ -190,11 +153,8 @@ export default function PurchaseOrderList() {
                 setBranches(allBranches);
                 return allBranches;
             }
-            const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
-            const filtered = assignedIds.size > 0
-                ? allBranches.filter((branch) => assignedIds.has(String(branch.id)))
-                : allBranches;
-            const accessible = filtered.length > 0 ? filtered : assignedBranches;
+            const visibleBranches = filterBranchesForRole(allBranches, assignedBranches);
+            const accessible = visibleBranches.length > 0 ? visibleBranches : assignedBranches;
             setBranches(accessible);
             return accessible;
         } catch (error) {
@@ -220,9 +180,6 @@ export default function PurchaseOrderList() {
                 effectiveFilters.branch = restrictedBranch;
             }
 
-            // Client-side search for ID or Supplier Name if search is present
-            // In a real scenario, this might be handled by the backend, 
-            // but we'll implement it here for immediate UX.
             const query = toQueryString(effectiveFilters);
             const res = await supplierService.getPurchaseOrders(query);
             const data = normalizeListPayload(res.data);

@@ -19,8 +19,14 @@ class SalesOrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SalesOrderItem
-        fields = ["id", "sku", "product", "quantity", "unit_price"]
-        read_only_fields = ["id", "product"]
+        fields = [
+            "id", "sku", "product", "quantity", "unit_price", 
+            "subtotal", "tax_rate", "tax_amount", "cgst_amount", "sgst_amount", "igst_amount"
+        ]
+        read_only_fields = [
+            "id", "product", "subtotal", "tax_rate", 
+            "tax_amount", "cgst_amount", "sgst_amount", "igst_amount"
+        ]
 
     def validate(self, attrs):
         sku = attrs.get("sku")
@@ -46,17 +52,69 @@ class SalesOrderItemSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        from apps.base.utils.tax import TaxCalculator
         validated_data.pop('sku', None)
         sales_order = self.context.get('sales_order')
-        return SalesOrderItem.objects.create(sales_order=sales_order, **validated_data)
+        product = validated_data["product"]
+        quantity = validated_data["quantity"]
+        unit_price = validated_data["unit_price"]
+        
+        tax_rate = product.output_gst_rate
+        base_amount = unit_price * quantity
+        
+        # Centralized calculation
+        tax_data = TaxCalculator.calculate_gst(base_amount, tax_rate)
+
+        # Create GST object
+        gst_obj = GST.objects.create(
+            gst_rate=tax_rate,
+            gst_amount=tax_data["tax_amount"],
+            cgst_amount=tax_data["cgst_amount"],
+            sgst_amount=tax_data["sgst_amount"],
+            igst_amount=tax_data["igst_amount"],
+            total_amount=tax_data["total_amount"]
+        )
+
+        return SalesOrderItem.objects.create(
+            sales_order=sales_order,
+            product=product,
+            quantity=quantity,
+            unit_price=unit_price,
+            gst=gst_obj
+        )
 
     def update(self, instance, validated_data):
+        from apps.base.utils.tax import TaxCalculator
         validated_data.pop('sku', None)
         
         instance.quantity = validated_data.get('quantity', instance.quantity)
         instance.unit_price = validated_data.get('unit_price', instance.unit_price)
         if "product" in validated_data:
             instance.product = validated_data["product"]
+        
+        tax_rate = instance.product.output_gst_rate
+        base_amount = instance.unit_price * instance.quantity
+        
+        # Centralized calculation
+        tax_data = TaxCalculator.calculate_gst(base_amount, tax_rate)
+        
+        if instance.gst:
+            instance.gst.gst_rate = tax_rate
+            instance.gst.gst_amount = tax_data["tax_amount"]
+            instance.gst.cgst_amount = tax_data["cgst_amount"]
+            instance.gst.sgst_amount = tax_data["sgst_amount"]
+            instance.gst.igst_amount = tax_data["igst_amount"]
+            instance.gst.total_amount = tax_data["total_amount"]
+            instance.gst.save()
+        else:
+            instance.gst = GST.objects.create(
+                gst_rate=tax_rate,
+                gst_amount=tax_data["tax_amount"],
+                cgst_amount=tax_data["cgst_amount"],
+                sgst_amount=tax_data["sgst_amount"],
+                igst_amount=tax_data["igst_amount"],
+                total_amount=tax_data["total_amount"]
+            )
         
         instance.save()
         return instance
@@ -83,10 +141,18 @@ class SalesOrderSerializer(BaseSerializer):
             "purchase_order",
             "order_date",
             "total_amount",
+            "total_tax",
+            "cgst_total",
+            "sgst_total",
+            "igst_total",
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields + [
             "order_date",
             "total_amount",
+            "total_tax",
+            "cgst_total",
+            "sgst_total",
+            "igst_total",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -105,6 +171,12 @@ class SalesOrderSerializer(BaseSerializer):
     def validate_items(self, value):
         if not value:
             raise serializers.ValidationError("Order must have at least one item.")
+        
+        # Check for duplicate SKUs in the request
+        skus = [item.get("sku") for item in value if item.get("sku")]
+        if len(skus) != len(set(skus)):
+            raise serializers.ValidationError("Each product (SKU) can only be added once per order. Please update the quantity for duplicate items.")
+            
         return value
 
     def validate_branch_id(self, value):
@@ -162,8 +234,33 @@ class SalesOrderSerializer(BaseSerializer):
             item_serializer.save()
 
         # Recalculate total
-        sales_order.total_amount = sum(item.subtotal for item in sales_order.items.all())
-        sales_order.save(update_fields=["total_amount"])
+        total_tax_val = sum(item.tax_amount for item in sales_order.items.all())
+        cgst_total_val = sum(item.cgst_amount for item in sales_order.items.all())
+        sgst_total_val = sum(item.sgst_amount for item in sales_order.items.all())
+        igst_total_val = sum(item.igst_amount for item in sales_order.items.all())
+        total_amount_val = sum(item.quantity * item.unit_price for item in sales_order.items.all()) + total_tax_val
+        
+        # Create/Update GST for the entire order
+        if sales_order.gst:
+            sales_order.gst.gst_rate = 0
+            sales_order.gst.gst_amount = total_tax_val
+            sales_order.gst.cgst_amount = cgst_total_val
+            sales_order.gst.sgst_amount = sgst_total_val
+            sales_order.gst.igst_amount = igst_total_val
+            sales_order.gst.total_amount = total_amount_val
+            sales_order.gst.save()
+        else:
+            sales_order.gst = GST.objects.create(
+                gst_rate=0,
+                gst_amount=total_tax_val,
+                cgst_amount=cgst_total_val,
+                sgst_amount=sgst_total_val,
+                igst_amount=igst_total_val,
+                total_amount=total_amount_val
+            )
+
+        sales_order.total_amount = total_amount_val
+        sales_order.save(update_fields=["total_amount", "gst"])
 
         # Trigger synchronization
         from apps.supplier.tasks.sales_order_tasks import synchronize_sales_order_to_customer_task
@@ -218,8 +315,31 @@ class SalesOrderSerializer(BaseSerializer):
                     item_serializer.save()
 
             # 4. Final steps
-            instance.total_amount = sum(item.subtotal for item in instance.items.all())
-            instance.save(update_fields=["total_amount"])
+            total_tax_val = sum(item.tax_amount for item in instance.items.all())
+            cgst_total_val = sum(item.cgst_amount for item in instance.items.all())
+            sgst_total_val = sum(item.sgst_amount for item in instance.items.all())
+            igst_total_val = sum(item.igst_amount for item in instance.items.all())
+            total_amount_val = sum(item.quantity * item.unit_price for item in instance.items.all()) + total_tax_val
+            
+            if instance.gst:
+                instance.gst.gst_amount = total_tax_val
+                instance.gst.cgst_amount = cgst_total_val
+                instance.gst.sgst_amount = sgst_total_val
+                instance.gst.igst_amount = igst_total_val
+                instance.gst.total_amount = total_amount_val
+                instance.gst.save()
+            else:
+                instance.gst = GST.objects.create(
+                    gst_rate=0,
+                    gst_amount=total_tax_val,
+                    cgst_amount=cgst_total_val,
+                    sgst_amount=sgst_total_val,
+                    igst_amount=igst_total_val,
+                    total_amount=total_amount_val
+                )
+
+            instance.total_amount = total_amount_val
+            instance.save(update_fields=["total_amount", "gst"])
 
             if was_delivered:
                 instance.status = OrderStatus.PENDING

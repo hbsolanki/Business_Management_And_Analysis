@@ -57,4 +57,21 @@ export const tokenService = {
 
     getEmail: () => localStorage.getItem("email"),
     setEmail: (email) => localStorage.setItem("email", email || ""),
+
+    getBranches: () => {
+        const raw = localStorage.getItem("branches");
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return [];
+        }
+    },
+    setBranches: (branches) => {
+        if (Array.isArray(branches)) {
+            localStorage.setItem("branches", JSON.stringify(branches));
+        } else {
+            localStorage.removeItem("branches");
+        }
+    },
 };

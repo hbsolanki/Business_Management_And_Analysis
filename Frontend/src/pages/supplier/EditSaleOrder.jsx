@@ -8,7 +8,6 @@ import {
     FaCodeBranch,
     FaMoneyBillWave,
     FaSave,
-    FaSearch,
     FaShoppingCart,
     FaSpinner,
     FaTrash,
@@ -28,6 +27,7 @@ import {
     normalizeListPayload,
     parsePositiveInt,
 } from "@/features/supplier/utils/supplierHelpers";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 const INITIAL_FORM = {
     branch_id: "",
@@ -44,52 +44,6 @@ function getErrorText(value) {
     return String(value);
 }
 
-function resolveBranchId(branch) {
-    if (!branch && branch !== 0) return null;
-    if (typeof branch === "object") {
-        return branch.id ?? branch.branch_id ?? null;
-    }
-    return branch;
-}
-
-function resolveAssignedBranches(profile) {
-    if (!profile) return [];
-
-    const collected = [];
-
-    const pushBranch = (value) => {
-        const id = resolveBranchId(value);
-        if (!id && id !== 0) return;
-
-        const source = typeof value === "object" ? value : null;
-        collected.push({
-            id: String(id),
-            name: source?.name || source?.branch_name || `Branch #${id}`,
-            is_default: Boolean(source?.is_default),
-        });
-    };
-
-    if (Array.isArray(profile.branches)) {
-        profile.branches.forEach((branch) => pushBranch(branch));
-    }
-    if (Array.isArray(profile.branch_ids)) {
-        profile.branch_ids.forEach((branchId) => pushBranch(branchId));
-    }
-    if (profile.branch || profile.branch === 0) {
-        pushBranch(profile.branch);
-    }
-    if (profile.branch_id || profile.branch_id === 0) {
-        pushBranch(profile.branch_id);
-    }
-
-    const seen = new Set();
-    return collected.filter((branch) => {
-        if (seen.has(branch.id)) return false;
-        seen.add(branch.id);
-        return true;
-    });
-}
-
 export default function EditSaleOrder() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -97,7 +51,11 @@ export default function EditSaleOrder() {
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
     const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
-    const assignedBranches = useMemo(() => resolveAssignedBranches(profile), [profile]);
+    
+    const assignedBranches = useMemo(
+        () => getAssignedBranchesForWork(profile, 'SUPPLIER'),
+        [profile]
+    );
 
     const [branches, setBranches] = useState([]);
 
@@ -193,12 +151,10 @@ export default function EditSaleOrder() {
 
                 const branchList = normalizeListPayload(branchRes.data);
                 const order = orderRes?.data || {};
+
                 const accessibleBranches = (() => {
                     if (!isRestrictedRole) return branchList;
-                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
-                    const filtered = assignedIds.size > 0
-                        ? branchList.filter((branch) => assignedIds.has(String(branch.id)))
-                        : branchList;
+                    const filtered = filterBranchesForRole(branchList, assignedBranches);
                     return filtered.length > 0 ? filtered : assignedBranches;
                 })();
 

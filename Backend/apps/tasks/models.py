@@ -27,6 +27,6 @@ class Task(BaseModel):
         db_table = "bma_task"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["assignee"]),
-            models.Index(fields=["assigned_by"]),
+            models.Index(fields=["business", "-created_at"]),
+            models.Index(fields=["assignee", "status"]),
         ]

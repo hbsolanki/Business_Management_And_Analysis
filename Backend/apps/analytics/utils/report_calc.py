@@ -1,11 +1,12 @@
 from django.db.models import Sum, F, DecimalField, Value, Q
 from django.db.models.functions import Coalesce
 from apps.business.models import Branch
-from apps.invoice.models import ProductInvoice
+from apps.invoice.models import ProductInvoice, Invoice
 from apps.inventory.models import InventoryProduct
 from apps.supplier.models import PurchaseOrder
-from apps.cost.models import MonthlyFinancialSummary, MonthlyCostCategory
+from apps.cost.models import MonthlyFinancialSummary, MonthlyCostCategory, Expense
 from apps.employee.models import UserRole
+from apps.gst_management.models import MonthlyGSTSummary
 
 def calculate_report_data(user, filters):
     """
@@ -40,6 +41,17 @@ def calculate_report_data(user, filters):
         "cost_of_goods_sold": 0,
         "total_expenses": 0,
         "net_profit_before_tax": 0
+    }
+    global_gst_summary = {
+        "output_gst": 0,
+        "input_gst": 0,
+        "cgst_output": 0,
+        "sgst_output": 0,
+        "igst_output": 0,
+        "cgst_input": 0,
+        "sgst_input": 0,
+        "igst_input": 0,
+        "net_payable": 0
     }
 
     for branch in branches:
@@ -197,6 +209,65 @@ def calculate_report_data(user, filters):
             }
             global_po_summary["total_po_amount"] += po_summary["total_po_amount"]
             global_po_summary["total_orders"] += po_summary["total_orders"]
+
+        # --- 5. GST COMPLIANCE ---
+        if "gst" in report_types:
+            # Output GST from Invoices
+            inv_gst_summary = Invoice.objects.filter(
+                branch=branch,
+                created_at__date__range=[start_date, end_date]
+            ).aggregate(
+                output_gst=Coalesce(Sum("gst__gst_amount"), Value(0, output_field=DecimalField())),
+                cgst_output=Coalesce(Sum("gst__cgst_amount"), Value(0, output_field=DecimalField())),
+                sgst_output=Coalesce(Sum("gst__sgst_amount"), Value(0, output_field=DecimalField())),
+                igst_output=Coalesce(Sum("gst__igst_amount"), Value(0, output_field=DecimalField())),
+            )
+
+            # Input GST from Purchase Orders
+            po_gst_summary = PurchaseOrder.objects.filter(
+                branch=branch,
+                created_at__date__range=[start_date, end_date]
+            ).aggregate(
+                input_gst=Coalesce(Sum("gst__gst_amount"), Value(0, output_field=DecimalField())),
+                cgst_input=Coalesce(Sum("gst__cgst_amount"), Value(0, output_field=DecimalField())),
+                sgst_input=Coalesce(Sum("gst__sgst_amount"), Value(0, output_field=DecimalField())),
+                igst_input=Coalesce(Sum("gst__igst_amount"), Value(0, output_field=DecimalField())),
+            )
+
+            # Input GST from Expenses
+            exp_gst_summary = Expense.objects.filter(
+                branch=branch,
+                date__range=[start_date, end_date]
+            ).aggregate(
+                input_gst=Coalesce(Sum("gst__gst_amount"), Value(0, output_field=DecimalField())),
+                cgst_input=Coalesce(Sum("gst__cgst_amount"), Value(0, output_field=DecimalField())),
+                sgst_input=Coalesce(Sum("gst__sgst_amount"), Value(0, output_field=DecimalField())),
+                igst_input=Coalesce(Sum("gst__igst_amount"), Value(0, output_field=DecimalField())),
+            )
+
+            branch_gst_report = {
+                "output_gst": inv_gst_summary["output_gst"],
+                "cgst_output": inv_gst_summary["cgst_output"],
+                "sgst_output": inv_gst_summary["sgst_output"],
+                "igst_output": inv_gst_summary["igst_output"],
+                "input_gst": po_gst_summary["input_gst"] + exp_gst_summary["input_gst"],
+                "cgst_input": po_gst_summary["cgst_input"] + exp_gst_summary["cgst_input"],
+                "sgst_input": po_gst_summary["sgst_input"] + exp_gst_summary["sgst_input"],
+                "igst_input": po_gst_summary["igst_input"] + exp_gst_summary["igst_input"],
+            }
+            branch_gst_report["net_payable"] = branch_gst_report["output_gst"] - branch_gst_report["input_gst"]
+            
+            branch_report["gst"] = branch_gst_report
+            
+            global_gst_summary["output_gst"] += branch_gst_report["output_gst"]
+            global_gst_summary["input_gst"] += branch_gst_report["input_gst"]
+            global_gst_summary["cgst_output"] += branch_gst_report["cgst_output"]
+            global_gst_summary["sgst_output"] += branch_gst_report["sgst_output"]
+            global_gst_summary["igst_output"] += branch_gst_report["igst_output"]
+            global_gst_summary["cgst_input"] += branch_gst_report["cgst_input"]
+            global_gst_summary["sgst_input"] += branch_gst_report["sgst_input"]
+            global_gst_summary["igst_input"] += branch_gst_report["igst_input"]
+            global_gst_summary["net_payable"] += branch_gst_report["net_payable"]
             
         branch_data_list.append(branch_report)
 
@@ -210,6 +281,8 @@ def calculate_report_data(user, filters):
         general_summary["cost"] = global_cost_summary
     if "purchase_order" in report_types:
         general_summary["purchase_order"] = global_po_summary
+    if "gst" in report_types:
+        general_summary["gst"] = global_gst_summary
 
     data = {
         "filters_applied": filters,

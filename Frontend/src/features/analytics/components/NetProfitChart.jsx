@@ -26,7 +26,7 @@ const MONTHS = [
     { value: 12, label: "December" },
 ];
 
-export default function NetProfitChart() {
+export default function NetProfitChart({ branchId = "" }) {
     const currentDate = new Date();
     const defaultDate = new Date(currentDate);
     defaultDate.setMonth(defaultDate.getMonth() - 1);
@@ -43,8 +43,9 @@ export default function NetProfitChart() {
         try {
             setLoading(true);
             setError(null);
+            const query = `month=${month}&year=${year}${branchId ? `&branch=${branchId}` : ""}`;
             const response = await api.get(
-                `/analytics/month/netprofit/?month=${month}&year=${year}`
+                `/analytics/month/netprofit/?${query}`
             );
             const responseData = response.data;
             if (Array.isArray(responseData)) {
@@ -65,9 +66,7 @@ export default function NetProfitChart() {
 
     useEffect(() => {
         fetchNetProfit();
-        // Intentionally run once on mount; filter changes are applied manually.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [branchId]);
 
     const handleApplyFilter = () => {
         fetchNetProfit();

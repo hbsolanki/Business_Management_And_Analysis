@@ -1,4 +1,3 @@
-
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -7,9 +6,7 @@ import {
     FaChartPie,
     FaPen,
     FaTrash,
-    FaFilter
-} from "react-icons/fa";
-import {
+    FaFilter,
     FaBolt,
     FaWifi,
     FaTruck,
@@ -23,7 +20,10 @@ import {
     FaHome,
     FaBriefcase,
     FaCodeBranch,
-    FaCaretDown
+    FaCaretDown,
+    FaPercent,
+    FaCheckCircle,
+    FaInfoCircle
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
@@ -46,7 +46,7 @@ export default function CostDashboard() {
     const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
     const [branchContextReady, setBranchContextReady] = useState(false);
     const [categories, setCategories] = useState([]);
-    const [monthData, setMonthData] = useState([]); // Initialize as empty array
+    const [monthData, setMonthData] = useState([]); 
 
     // Category Management State
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -57,6 +57,7 @@ export default function CostDashboard() {
     // Monthly Cost Entry Management State
     const [costToEdit, setCostToEdit] = useState(null);
     const [editCostValue, setEditCostValue] = useState("");
+    const [editGstRateValue, setEditGstRateValue] = useState("");
     const [showEditCostModal, setShowEditCostModal] = useState(false);
     const [costToDelete, setCostToDelete] = useState(null);
     const [showDeleteCostModal, setShowDeleteCostModal] = useState(false);
@@ -70,7 +71,6 @@ export default function CostDashboard() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    // Tracking currently loaded data to prevent redundant calls
     const [loadedFilters, setLoadedFilters] = useState({ month: null, year: null });
 
     const months = [
@@ -96,7 +96,7 @@ export default function CostDashboard() {
             setSelectedBranch(String(branchId || ""));
             setBranchContextReady(true);
         }
-    }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps -- branch bootstrap is driven by profile updates.
+    }, [profile]);
 
     const fetchBranches = async () => {
         try {
@@ -106,9 +106,8 @@ export default function CostDashboard() {
             setBranches(branchList);
             if (!selectedBranch) {
                 const main = branchList.find(b => b.is_default) || branchList[0];
-                if (main) {
-                    setSelectedBranch(String(main.id));
-                } else {
+                if (main) setSelectedBranch(String(main.id));
+                else {
                     setLoading(false);
                     setHasLoadedOnce(true);
                 }
@@ -125,7 +124,6 @@ export default function CostDashboard() {
 
     useEffect(() => {
         if (!branchContextReady) return;
-
         const fetchCategories = async () => {
             try {
                 const res = await costCategoryService.getAll(selectedBranch || "");
@@ -136,29 +134,21 @@ export default function CostDashboard() {
                 toast.error("Failed to load cost categories");
             }
         };
-
         fetchCategories();
     }, [branchContextReady, selectedBranch]);
 
     useEffect(() => {
         if (!branchContextReady) return;
         fetchMonthlyData(selectedBranch || "", selectedMonth, selectedYear);
-    }, [branchContextReady, selectedBranch]); // eslint-disable-line react-hooks/exhaustive-deps -- month/year update via explicit Filter button.
+    }, [branchContextReady, selectedBranch]);
 
     const fetchMonthlyData = async (branchId, month, year) => {
         try {
-            // Full-page loader only for the first load.
-            if (!hasLoadedOnce) {
-                setLoading(true);
-            } else {
-                setIsRefreshing(true);
-            }
-
+            if (!hasLoadedOnce) setLoading(true);
+            else setIsRefreshing(true);
             const monthRes = await costService.getMonthlyCosts(branchId, month, year).catch(() => ({ data: { results: [] } }));
             const fetchedMonthlyData = monthRes.data?.results || (Array.isArray(monthRes.data) ? monthRes.data : []);
             setMonthData(fetchedMonthlyData);
-
-            // Record what was successfully loaded
             setLoadedFilters({ month, year });
         } catch (error) {
             console.error(error);
@@ -170,14 +160,11 @@ export default function CostDashboard() {
         }
     };
 
-    /* ---------- CATEGORY HANDLERS ---------- */
     const handleCategorySaved = (savedCategory) => {
         if (savedCategory?.id) {
             setCategories((prev) => {
                 const exists = prev.some((item) => item.id === savedCategory.id);
-                if (exists) {
-                    return prev.map((item) => (item.id === savedCategory.id ? savedCategory : item));
-                }
+                if (exists) return prev.map((item) => (item.id === savedCategory.id ? savedCategory : item));
                 return [...prev, savedCategory];
             });
         }
@@ -199,18 +186,23 @@ export default function CostDashboard() {
         }
     };
 
-    /* ---------- MONTHLY COST HANDLERS ---------- */
     const openEditCostModal = (item) => {
         setCostToEdit(item);
         setEditCostValue(item.cost);
+        setEditGstRateValue(item.gst_rate);
         setShowEditCostModal(true);
     };
 
     const handleUpdateCost = async () => {
         if (!costToEdit) return;
         try {
-            await costService.updateCost(costToEdit.id, { cost: Number(editCostValue) });
-            setMonthData((prev) => prev.map((c) => c.id === costToEdit.id ? { ...c, cost: editCostValue } : c));
+            const payload = { 
+                cost: Number(editCostValue),
+                gst_rate: Number(editGstRateValue)
+            };
+            const res = await costService.updateCost(costToEdit.id, payload);
+            const updatedItem = res.data;
+            setMonthData((prev) => prev.map((c) => c.id === costToEdit.id ? updatedItem : c));
             toast.success("Cost updated");
         } catch {
             toast.error("Failed to update cost");
@@ -234,15 +226,9 @@ export default function CostDashboard() {
         }
     };
 
-    // Selected Month Display
     const displayedPeriod = `${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`;
-
-    // Calculate total cost
-    const totalMonthlyCost = Array.isArray(monthData)
-        ? monthData.reduce((sum, item) => sum + Number(item.cost || 0), 0)
-        : 0;
+    const totalMonthlyCost = Array.isArray(monthData) ? monthData.reduce((sum, item) => sum + Number(item.cost || 0), 0) : 0;
     const totalMonthlyCostFormatted = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(totalMonthlyCost);
-
     const totalCategories = categories.length;
     const recordedCount = Array.isArray(monthData) ? monthData.length : 0;
     const remainingCount = Math.max(totalCategories - recordedCount, 0);
@@ -258,7 +244,6 @@ export default function CostDashboard() {
         );
     }
 
-    /* ---------- UTILS ---------- */
     const getCategoryIcon = (name = "") => {
         const key = name.toLowerCase();
         if (key.includes("rent") || key.includes("lease")) return FaHome;
@@ -278,13 +263,13 @@ export default function CostDashboard() {
         return FaLayerGroup;
     };
 
+    const editGstPrice = (Number(editCostValue || 0) * (Number(editGstRateValue || 0) / 100)).toFixed(2);
+
     return (
         <div className="min-h-screen pb-20 bg-slate-50">
             <ProtectedHeader />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-
-                {/* Stats & Header Section */}
                 <div className="space-y-5">
                     <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
                         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
@@ -300,7 +285,6 @@ export default function CostDashboard() {
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2.5">
-                                {/* Month Selector */}
                                 <div className="relative min-w-[140px]">
                                     <select
                                         value={selectedMonth}
@@ -320,7 +304,6 @@ export default function CostDashboard() {
                                     <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                 </div>
 
-                                {/* Year Selector */}
                                 <div className="relative min-w-[100px]">
                                     <select
                                         value={selectedYear}
@@ -354,6 +337,14 @@ export default function CostDashboard() {
                                     {isRefreshing ? "Filtering..." : "Filter"}
                                 </button>
 
+                                 <Link
+                                    to="/cost/expenses/add"
+                                    className="group inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-900 text-slate-900 font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all"
+                                >
+                                    <FaPlus size={12} className="group-hover:rotate-90 transition-transform text-slate-400 group-hover:text-slate-900" />
+                                    Add Expense
+                                </Link>
+
                                 <Link
                                     to={recordExpensePath}
                                     className="group inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all"
@@ -365,7 +356,6 @@ export default function CostDashboard() {
                         </div>
                     </div>
 
-                    {/* Branch Selector for Owners */}
                     {(typeof profile?.role === 'object' ? profile.role.role : profile?.role) === "OWNER" && (
                         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -401,7 +391,6 @@ export default function CostDashboard() {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* Total Monthly Cost */}
                         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
                             <div className="flex items-start justify-between">
                                 <div className="space-y-1">
@@ -414,7 +403,6 @@ export default function CostDashboard() {
                             </div>
                         </div>
 
-                        {/* Category Coverage */}
                         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
                             <div className="flex items-start justify-between">
                                 <div className="space-y-1 w-full">
@@ -430,7 +418,6 @@ export default function CostDashboard() {
                             </div>
                         </div>
 
-                        {/* Remaining Entries */}
                         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
                             <div className="flex items-start justify-between">
                                 <div className="space-y-1">
@@ -443,7 +430,6 @@ export default function CostDashboard() {
                             </div>
                         </div>
 
-                        {/* Quick Action Category */}
                         <button
                             onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
                             className="bg-slate-50 rounded-xl p-5 border border-dashed border-slate-300 group hover:bg-white hover:border-slate-900 transition-all flex items-center justify-center gap-3"
@@ -457,7 +443,6 @@ export default function CostDashboard() {
                 </div>
 
                 <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-opacity duration-300 ${isRefreshing ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-                    {/* Left: Monthly Breakdown (Main Content) */}
                     <div className="lg:col-span-2">
                         <section className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px] overflow-hidden">
                             <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 rounded-t-xl">
@@ -511,10 +496,17 @@ export default function CostDashboard() {
                                                                     })()}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="font-semibold text-slate-900 text-sm">{item.cost_category?.name || "Uncategorized"}</p>
-                                                                    {item.cost_category?.description ? (
-                                                                        <p className="text-[11px] text-slate-500 truncate">{item.cost_category.description}</p>
-                                                                    ) : null}
+                                                                    <p className="font-semibold text-slate-900 text-sm">{item.cost_category?.display_name || item.cost_category?.name || "Uncategorized"}</p>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        {Number(item.gst_amount) > 0 && (
+                                                                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">
+                                                                                GST ({item.gst_rate}%): ₹{Number(item.gst_amount).toFixed(2)}
+                                                                            </span>
+                                                                        )}
+                                                                        {item.cost_category?.description ? (
+                                                                            <p className="text-[11px] text-slate-500 truncate">{item.cost_category.description}</p>
+                                                                        ) : null}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -551,47 +543,46 @@ export default function CostDashboard() {
                         </section>
                     </div>
 
-                    {/* Right: Sidebar - Cost Categories */}
                     <div className="lg:col-span-1 space-y-6">
                         <section className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
-                            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/50 rounded-t-xl flex items-center justify-between">
-                                <h2 className="text-base font-bold text-slate-900">Cost Categories</h2>
+                            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 rounded-t-xl flex items-center justify-between">
+                                <h2 className="text-sm font-bold text-slate-900">Cost Categories</h2>
                                 <button
                                     onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
-                                    className="text-[10px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
+                                    className="text-[9px] font-bold uppercase tracking-widest text-slate-600 bg-white hover:bg-slate-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 shadow-sm"
                                 >
-                                    + Add New
+                                    + New
                                 </button>
                             </div>
-                            <div className="h-[320px] overflow-y-auto p-2 scrollbar-thin space-y-1">
+                            <div className="h-[340px] overflow-y-auto p-1.5 scrollbar-thin space-y-0.5">
                                 {!Array.isArray(categories) || categories.length === 0 ? (
                                     <div className="h-full flex items-center justify-center text-center px-4">
-                                        <p className="text-slate-400 text-xs italic">No categories defined.</p>
+                                        <p className="text-slate-400 text-[10px] italic">No categories defined.</p>
                                     </div>
                                 ) : (
                                     categories.map(category => (
-                                        <div key={category.id} className="group min-h-[60px] flex justify-between items-center px-3 py-2.5 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-all">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-slate-300 group-hover:bg-slate-700 transition-colors"></div>
+                                        <div key={category.id} className="group min-h-[48px] flex justify-between items-center px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 transition-all">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-slate-200 group-hover:bg-slate-900 transition-colors"></div>
                                                 <div className="min-w-0">
-                                                    <p className="font-semibold text-slate-700 text-xs group-hover:text-slate-900 transition-colors truncate">{category.name}</p>
+                                                    <p className="font-bold text-slate-700 text-[11px] group-hover:text-slate-900 transition-colors truncate">{category.display_name || category.name}</p>
                                                     {category.description ? (
-                                                        <p className="text-[11px] text-slate-500 truncate">{category.description}</p>
+                                                        <p className="text-[10px] text-slate-400 group-hover:text-slate-500 transition-colors truncate">{category.description}</p>
                                                     ) : null}
                                                 </div>
                                             </div>
-                                            <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                                 <button
                                                     onClick={() => { setSelectedCategory(category); setShowCategoryModal(true); }}
-                                                    className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-slate-900 rounded hover:bg-white border border-transparent hover:border-slate-100"
+                                                    className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-slate-900 rounded bg-white border border-slate-100 shadow-sm"
                                                 >
-                                                    <FaPen size={9} />
+                                                    <FaPen size={8} />
                                                 </button>
                                                 <button
                                                     onClick={() => { setCategoryToDelete(category); setShowDeleteModal(true); }}
-                                                    className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-rose-600 rounded hover:bg-white border border-transparent hover:border-slate-100"
+                                                    className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-rose-600 rounded bg-white border border-slate-100 shadow-sm"
                                                 >
-                                                    <FaTrash size={9} />
+                                                    <FaTrash size={8} />
                                                 </button>
                                             </div>
                                         </div>
@@ -603,7 +594,6 @@ export default function CostDashboard() {
                 </div>
             </main>
 
-            {/* Modals */}
             {showCategoryModal && (
                 <Suspense fallback={null}>
                     <CostCategoryModal
@@ -627,40 +617,85 @@ export default function CostDashboard() {
                 />
             </Suspense>
 
-            {/* Edit Cost Modal */}
             {showEditCostModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm mx-4 border border-slate-200">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Edit Cost</h3>
-                        <p className="text-sm text-slate-500 mb-4">
-                            Update the cost for <strong>{costToEdit?.cost_category?.name}</strong>
-                        </p>
-                        <input
-                            type="number"
-                            className="w-full rounded-xl px-4 py-3 mb-4 bg-white text-slate-900 font-semibold border border-slate-200 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={editCostValue}
-                            onChange={(e) => setEditCostValue(e.target.value)}
-                            min="0"
-                        />
-                        <div className="flex gap-3 justify-end">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-200 animate-in fade-in zoom-in duration-200 relative">
+                        <button 
+                            onClick={() => setShowEditCostModal(false)} 
+                            className="absolute top-5 right-5 p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:rotate-90"
+                        >
+                            <FaPlus className="rotate-45" size={12} />
+                        </button>
+
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-md">
+                                <FaPen size={14} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Edit Transaction</h3>
+                                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{costToEdit?.cost_category?.name}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-4 mb-6">
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="relative group">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Base Price</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
+                                        <input
+                                            type="number"
+                                            className="w-full rounded-xl pl-8 pr-4 py-2.5 bg-slate-50 text-slate-900 font-bold text-sm border border-slate-100 focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all"
+                                            value={editCostValue}
+                                            onChange={(e) => setEditCostValue(e.target.value)}
+                                            min="0"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="relative group">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">GST Rate</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="w-full rounded-xl px-4 py-2.5 bg-slate-50 text-slate-900 font-bold text-sm border border-slate-100 focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 outline-none transition-all"
+                                            value={editGstRateValue}
+                                            onChange={(e) => setEditGstRateValue(e.target.value)}
+                                            min="0"
+                                        />
+                                        <FaPercent className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]" />
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Calculated Tax</label>
+                                    <div className="h-12 flex items-center px-4 bg-slate-900 rounded-xl shadow-lg shadow-slate-200 border border-slate-800">
+                                        <span className="text-white/40 font-bold text-xs mr-2">₹</span>
+                                        <span className="text-white font-bold text-base tabular-nums">{editGstPrice}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
                             <button
                                 onClick={() => { setShowEditCostModal(false); setCostToEdit(null); }}
-                                className="px-4 py-2 text-slate-600 font-medium rounded-lg hover:bg-slate-100"
+                                className="flex-1 px-4 py-2.5 text-slate-500 font-bold rounded-xl hover:bg-slate-50 transition-all text-[10px] uppercase tracking-widest active:scale-95"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleUpdateCost}
-                                className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800"
+                                className="flex-[1.5] px-4 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 text-[10px] uppercase tracking-widest active:scale-95"
                             >
-                                Save
+                                Save Changes
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Delete Cost Modal */}
             <Suspense fallback={null}>
                 <Modal
                     isOpen={showDeleteCostModal}

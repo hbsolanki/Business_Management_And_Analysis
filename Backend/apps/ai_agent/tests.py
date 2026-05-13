@@ -64,7 +64,8 @@ class AiAgentTestCase(BaseTestCase):
         url1 = reverse('ai-chat-session-get-message-by-session-id', kwargs={'pk': session1.id})
         response = self.client.get(url1)
         self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['content'], "M1")
+        # Content is now a list of blocks: [{'type': 'text', 'value': 'M1'}]
+        self.assertEqual(response.data['results'][0]['content'][0]['value'], "M1")
 
     def test_ai_chat_session_isolation(self):
         session_b = AiChatSession.objects.create(user=self.owner_b, title="Private")

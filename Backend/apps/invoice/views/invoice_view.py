@@ -40,24 +40,33 @@ class InvoiceViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
         .select_related("customer")
         .order_by("-created_at"))
 
+    def perform_create(self, serializer):
+        print("DEBUG: InvoiceViewSet.perform_create starting")
+        super().perform_create(serializer)
+        print("DEBUG: InvoiceViewSet.perform_create finished")
+
     serializer_class = InvoiceSerializer
 
     @limit_required("max_invoices", usage_field="invoices_created")
     @transaction.atomic
     def create(self, request, *args, **kwargs):
+        print(f"DEBUG: InvoiceViewSet.create received POST request from user {request.user}")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         
         # usage update
-        from django.core.cache import cache
-        from apps.subscription.utils.entitlements import get_active_subscription
-        subscription = get_active_subscription(request.user.business)
-        if subscription:
-            usage, _ = Usage.objects.get_or_create(subscription=subscription)
-            usage.invoices_created += 1
-            usage.save(update_fields=["invoices_created"])
-            cache.delete(f"subscription:usage:{subscription.id}")
+        try:
+            from django.core.cache import cache
+            from apps.subscription.utils.entitlements import get_active_subscription
+            subscription = get_active_subscription(request.user.business)
+            if subscription:
+                usage, _ = Usage.objects.get_or_create(subscription=subscription)
+                usage.invoices_created += 1
+                usage.save(update_fields=["invoices_created"])
+                cache.delete(f"subscription:usage:{subscription.id}")
+        except Exception as e:
+            print(f"DEBUG: Error updating usage/cache: {e}")
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

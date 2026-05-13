@@ -5,6 +5,32 @@ from apps.activity_log.models import ActivityLog
 class ActivityLogMixin:
     activity_module = ActivityLog.Module.OTHER
 
+    def _get_activity_branch(self, serializer, instance):
+        """
+        Attempts to find the relevant branch for the activity log.
+        """
+        branch = None
+        if self.request.user.is_authenticated:
+            # 1. From User (if they are pinned to a branch)
+            branch = getattr(self.request.user, 'branch', None)
+        
+        if not branch and serializer:
+            # 2. From Serializer Validated Data
+            vd = getattr(serializer, 'validated_data', {})
+            branch = vd.get('branch') or vd.get('branch_id')
+
+        if not branch and instance:
+            # 3. From Instance directly
+            branch = getattr(instance, 'branch', None)
+            if not branch:
+                # 4. Nested relationships
+                if hasattr(instance, 'monthly_summary'):
+                    branch = getattr(instance.monthly_summary, 'branch', None)
+                elif hasattr(instance, 'inventory'):
+                    branch = getattr(instance.inventory, 'branch', None)
+        
+        return branch if hasattr(branch, 'id') else None
+
     # CREATE
     def perform_create(self, serializer):
         instance = serializer.save()
@@ -17,7 +43,6 @@ class ActivityLogMixin:
 
         business = getattr(self.request.user, 'business', None)
         if not business and has_id:
-            # Handle unauthenticated owner registration (User model has business property)
             business = getattr(instance, 'business', None)
 
         if not business:
@@ -25,7 +50,7 @@ class ActivityLogMixin:
 
         ActivityLog.objects.log(
             business=business,
-            branch=getattr(self.request.user, 'branch', getattr(instance, 'branch', None)) if self.request.user.is_authenticated else getattr(instance, 'branch', None),
+            branch=self._get_activity_branch(serializer, instance if has_id else None),
             actor=self.request.user if self.request.user.is_authenticated else instance,
             action=ActivityLog.Action.CREATE,
             module=self.activity_module,
@@ -47,12 +72,10 @@ class ActivityLogMixin:
         for field, old_value in old_state.items():
             new_value = getattr(instance, field)
             
-            # Special handling for potentially non-serializable objects (like ImageFieldFile)
             if isinstance(old_value, FieldFile) and isinstance(new_value, FieldFile):
                 if old_value.name != new_value.name:
                     changes[field] = {"old": old_value.name, "new": new_value.name}
             elif old_value != new_value:
-                # Basic check to ensure new_value is serializable or converted
                 changes[field] = {"old": old_value, "new": new_value}
 
         if changes:
@@ -63,7 +86,7 @@ class ActivityLogMixin:
 
             ActivityLog.objects.log(
                 business=business,
-                branch=getattr(self.request.user, 'branch', None),
+                branch=self._get_activity_branch(serializer, instance),
                 actor=self.request.user,
                 action=ActivityLog.Action.UPDATE,
                 module=self.activity_module,
@@ -79,7 +102,7 @@ class ActivityLogMixin:
     def perform_destroy(self, instance):
         ActivityLog.objects.log(
             business=self.request.user.business,
-            branch=getattr(self.request.user, 'branch', None),
+            branch=self._get_activity_branch(None, instance),
             actor=self.request.user,
             action=ActivityLog.Action.DELETE,
             module=self.activity_module,

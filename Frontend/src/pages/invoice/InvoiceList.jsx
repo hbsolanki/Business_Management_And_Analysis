@@ -25,6 +25,7 @@ import {
   FaBox,
   FaCodeBranch,
 } from "react-icons/fa";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 // Lazy Load the Card Component
 const InvoiceCard = lazy(() => import("./components/InvoiceCard"));
@@ -33,55 +34,6 @@ const PaymentModal = lazy(
 );
 
 const today = new Date().toISOString().split("T")[0];
-
-const resolveBranchId = (branch) => {
-  if (!branch && branch !== 0) return null;
-  if (typeof branch === "object") {
-    return branch.id ?? branch.branch_id ?? null;
-  }
-  return branch;
-};
-
-const resolveAssignedBranches = (profile) => {
-  if (!profile) return [];
-
-  const collected = [];
-
-  const pushBranch = (value) => {
-    const id = resolveBranchId(value);
-    if (!id && id !== 0) return;
-
-    const source = typeof value === "object" ? value : null;
-    collected.push({
-      id: String(id),
-      name: source?.name || source?.branch_name || `Branch #${id}`,
-      is_default: Boolean(source?.is_default),
-    });
-  };
-
-  // Primary: assigned_branches (new API structure)
-  if (
-    Array.isArray(profile.assigned_branches) &&
-    profile.assigned_branches.length > 0
-  ) {
-    profile.assigned_branches.forEach(pushBranch);
-  } else {
-    // Legacy fallbacks
-    if (Array.isArray(profile.branches)) profile.branches.forEach(pushBranch);
-    if (Array.isArray(profile.branch_ids))
-      profile.branch_ids.forEach(pushBranch);
-    if (profile.branch || profile.branch === 0) pushBranch(profile.branch);
-    if (profile.branch_id || profile.branch_id === 0)
-      pushBranch(profile.branch_id);
-  }
-
-  const seen = new Set();
-  return collected.filter((branch) => {
-    if (seen.has(branch.id)) return false;
-    seen.add(branch.id);
-    return true;
-  });
-};
 
 /* ---------------- Component ---------------- */
 
@@ -94,7 +46,7 @@ export default function InvoiceList() {
   ).toUpperCase();
   const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
   const assignedBranches = useMemo(
-    () => resolveAssignedBranches(profile),
+    () => getAssignedBranchesForWork(profile, 'INVOICE'),
     [profile],
   );
   const [invoices, setInvoices] = useState([]);
@@ -198,15 +150,7 @@ export default function InvoiceList() {
           : res.data?.results || [];
 
         if (isRestrictedRole) {
-          const assignedIds = new Set(
-            assignedBranches.map((branch) => String(branch.id)),
-          );
-          const visibleBranches =
-            assignedIds.size > 0
-              ? branchData.filter((branch) =>
-                  assignedIds.has(String(branch.id)),
-                )
-              : branchData;
+          const visibleBranches = filterBranchesForRole(branchData, assignedBranches);
 
           const resolvedBranches =
             visibleBranches.length > 0 ? visibleBranches : assignedBranches;
@@ -632,42 +576,85 @@ export default function InvoiceList() {
                     <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                       <FaBox className="text-slate-500" /> Items
                     </h4>
-                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                       {(viewModal.data.invoice_items || []).map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between text-sm border-b border-slate-100 pb-2"
+                          className="flex items-start justify-between text-sm border-b border-slate-100 pb-3"
                         >
                           <div>
                             <div className="font-semibold text-slate-900">
                               {item.product?.name || "Product"}
                             </div>
-                            <div className="text-xs text-slate-500">
-                              Qty: {item.quantity}
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                              <span>Qty: {item.quantity}</span>
+                              <span>•</span>
+                              <span>Base: ₹{item.base_price}</span>
+                            </div>
+                            <div className="text-[10px] font-medium text-slate-400 mt-0.5">
+                              Tax ({item.tax_rate}%): ₹{item.tax_amount}
                             </div>
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {item.total_price ? `₹${item.total_price}` : ""}
+                          <div className="text-right">
+                            <div className="font-semibold text-slate-800">
+                              ₹{(Number(item.selling_price) * Number(item.quantity)).toFixed(2)}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              ₹{item.selling_price} / unit
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="border border-slate-200 rounded-xl p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-slate-500">Payment Mode</div>
-                      <div className="font-semibold text-slate-900 flex items-center gap-2">
-                        <FaCreditCard className="text-slate-500" />
-                        {viewModal.data.payment_mode || "N/A"}
+                  <div className="border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
+                    <div className="p-4 space-y-2 text-sm border-b border-slate-200">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Subtotal</span>
+                        <span className="font-semibold text-slate-800">₹{viewModal.data.sub_total || "0.00"}</span>
+                      </div>
+                      
+                      {Number(viewModal.data.cgst_total) > 0 && (
+                        <div className="flex justify-between text-slate-500 text-xs">
+                          <span>CGST</span>
+                          <span>₹{viewModal.data.cgst_total}</span>
+                        </div>
+                      )}
+                      {Number(viewModal.data.sgst_total) > 0 && (
+                        <div className="flex justify-between text-slate-500 text-xs">
+                          <span>SGST</span>
+                          <span>₹{viewModal.data.sgst_total}</span>
+                        </div>
+                      )}
+                      {Number(viewModal.data.igst_total) > 0 && (
+                        <div className="flex justify-between text-slate-500 text-xs">
+                          <span>IGST</span>
+                          <span>₹{viewModal.data.igst_total}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-slate-600">
+                        <span>Total Tax</span>
+                        <span className="font-semibold text-slate-800">₹{viewModal.data.total_tax || "0.00"}</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-slate-500">Total Amount</div>
-                      <div className="text-lg font-bold text-slate-900">
-                        {viewModal.data.total_amount
-                          ? `₹${viewModal.data.total_amount}`
-                          : "N/A"}
+                    
+                    <div className="p-4 flex items-center justify-between bg-white">
+                      <div>
+                        <div className="text-xs text-slate-500">Payment Mode</div>
+                        <div className="font-semibold text-slate-900 flex items-center gap-2">
+                          <FaCreditCard className="text-slate-500" />
+                          {viewModal.data.payment_mode || "N/A"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Amount</div>
+                        <div className="text-xl font-black text-slate-900">
+                          {viewModal.data.total_amount
+                            ? `₹${viewModal.data.total_amount}`
+                            : "N/A"}
+                        </div>
                       </div>
                     </div>
                   </div>

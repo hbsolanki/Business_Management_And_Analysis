@@ -9,8 +9,9 @@ from apps.base.permission.model_permissions import ModelPermissions
 from apps.base.views.base_view import BaseViewSet
 from apps.user.models import User
 from apps.user.serializers.user import UserSerializer
-from apps.business.models import Business, Branch, BusinessCustomer
+from apps.business.models import Business, Branch, BusinessCustomer, BusinessGSTProfile
 from apps.business.serializers.business import BusinessSerializer, BusinessBasicDetailsSerializer
+from apps.business.serializers.gst_profile import BusinessGSTProfileSerializer
 from apps.business.serializers.branch import BranchSerializer
 from apps.business.serializers.customer import BusinessCustomerSerializer
 from apps.employee.serializers.manager import ManagerSerializer
@@ -98,6 +99,10 @@ class BusinessViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     @limit_required("max_staff", resource_model=User)
     @transaction.atomic
     def manager(self, request):
+        if not request.user.has_perm('employee.can_create_manager'):
+             from rest_framework.exceptions import PermissionDenied
+             raise PermissionDenied("You do not have permission to create a manager.")
+             
         self.activity_module = ActivityLog.Module.USER
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -111,6 +116,10 @@ class BusinessViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     @limit_required("max_staff", resource_model=User)
     @transaction.atomic
     def employee(self, request):
+        if not request.user.has_perm('employee.can_create_employee'):
+             from rest_framework.exceptions import PermissionDenied
+             raise PermissionDenied("You do not have permission to create an employee.")
+
         self.activity_module = ActivityLog.Module.USER
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -186,3 +195,22 @@ class BusinessCustomerViewSet(BaseViewSet, ModelViewSet):
 
     def get_queryset(self):
         return BusinessCustomer.objects.filter(business=self.request.user.business)
+
+class BusinessGSTProfileViewSet(BaseViewSet, ModelViewSet):
+    """
+    Dedicated API for Business GST Compliance and Profile Management.
+    """
+    queryset = BusinessGSTProfile.objects.all()
+    serializer_class = BusinessGSTProfileSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return BusinessGSTProfile.objects.filter(business=self.request.user.business)
+
+    def perform_create(self, serializer):
+        serializer.save(business=self.request.user.business)
+        cache.delete(f"user:{self.request.user.id}")
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        cache.delete(f"user:{self.request.user.id}")

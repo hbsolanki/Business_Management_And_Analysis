@@ -1444,12 +1444,12 @@ export default function AnalyticsEndpointView({ defaultApiId = "month-breakdown"
                             <FaArrowLeft /> Back
                         </button>
 
-                        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                             <button
                                 type="button"
                                 disabled={!previousEndpoint}
                                 onClick={() => previousEndpoint && navigate(`/analytics/view/${previousEndpoint.id}`)}
-                                className="px-3 py-1.5 text-xs font-semibold rounded-md disabled:opacity-40 text-slate-600 hover:bg-white"
+                                className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg disabled:opacity-40 text-slate-500 hover:text-slate-900 hover:bg-white transition-all"
                             >
                                 Previous Module
                             </button>
@@ -1457,7 +1457,7 @@ export default function AnalyticsEndpointView({ defaultApiId = "month-breakdown"
                                 type="button"
                                 disabled={!nextEndpoint}
                                 onClick={() => nextEndpoint && navigate(`/analytics/view/${nextEndpoint.id}`)}
-                                className="px-3 py-1.5 text-xs font-semibold rounded-md disabled:opacity-40 text-slate-600 hover:bg-white"
+                                className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg disabled:opacity-40 text-slate-500 hover:text-slate-900 hover:bg-white transition-all"
                             >
                                 Next Module
                             </button>
@@ -1465,11 +1465,11 @@ export default function AnalyticsEndpointView({ defaultApiId = "month-breakdown"
                     </div>
 
                     <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-[0.16em] font-semibold text-slate-500">
+                        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400">
                             {endpoint.group} Analytics
                         </p>
-                        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">{endpoint.title}</h1>
-                        <p className="text-sm text-slate-600 max-w-3xl">{endpoint.description}</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{endpoint.title}</h1>
+                        <p className="text-sm text-slate-500 font-medium max-w-3xl leading-relaxed">{endpoint.description}</p>
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 flex items-center gap-3 text-sm text-slate-600">
@@ -1531,16 +1531,16 @@ export default function AnalyticsEndpointView({ defaultApiId = "month-breakdown"
                         <button
                             type="button"
                             onClick={handleApply}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
+                            className="inline-flex items-center gap-2.5 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 shadow-sm active:scale-95 transition-all"
                         >
-                            <FaPlay size={11} /> Apply
+                            <FaPlay size={10} /> Apply Filters
                         </button>
                         <button
                             type="button"
                             onClick={handleReset}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                            className="inline-flex items-center gap-2.5 px-6 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 shadow-sm active:scale-95 transition-all"
                         >
-                            <FaRedoAlt size={11} /> Clear & Call Without Params
+                            <FaRedoAlt size={10} /> Reset Parameters
                         </button>
                     </div>
 
@@ -1565,9 +1565,9 @@ export default function AnalyticsEndpointView({ defaultApiId = "month-breakdown"
                     </div>
 
                     {loading ? (
-                        <div className="py-16 flex flex-col items-center gap-3 text-slate-500">
-                            <div className="w-9 h-9 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-sm font-medium">Loading analytics data...</p>
+                        <div className="py-24 flex flex-col items-center gap-4 text-slate-400">
+                            <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin"></div>
+                            <p className="text-xs font-bold uppercase tracking-widest">Compiling Analytics...</p>
                         </div>
                     ) : emptyMessage ? (
                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-6 py-10 text-center">

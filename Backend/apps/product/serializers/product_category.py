@@ -18,11 +18,16 @@ class ProductCategorySerializer(BaseSerializer):
 
     def validate_name(self, value):
         user = self.context['request'].user
-
-        if ProductCategory.objects.filter(
+        
+        qs = ProductCategory.objects.filter(
             business_id=user.business_id,
             name=value
-        ).exists():
+        )
+        
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
             raise serializers.ValidationError("Name already exists")
 
         return value

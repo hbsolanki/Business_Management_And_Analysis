@@ -14,6 +14,9 @@ class BusinessCustomerSerializer(BaseSerializer):
         read_only_fields = BaseSerializer.Meta.read_only_fields + ["customer_business"]
 
     def validate(self, attrs):
+        request = self.context.get("request")
+        business = request.user.business if request else None
+
         customer_business_id = attrs.get("customer_business_id")
         if customer_business_id:
             from apps.business.models import Business
@@ -22,19 +25,25 @@ class BusinessCustomerSerializer(BaseSerializer):
             except Business.DoesNotExist:
                 raise serializers.ValidationError({"customer_business_id": "Business does not exist."})
 
-        same_platform = attrs.get("same_platform")
-        customer_business = attrs.get("customer_business")
-
-        if self.instance:
-            if "same_platform" not in attrs:
-                same_platform = self.instance.same_platform
-            if "customer_business" not in attrs:
-                customer_business = self.instance.customer_business
+        same_platform = attrs.get("same_platform", self.instance.same_platform if self.instance else False)
+        customer_business = attrs.get("customer_business", self.instance.customer_business if self.instance else None)
 
         if same_platform and not customer_business:
             raise serializers.ValidationError({"customer_business_id": "Customer business is required when same_platform is True."})
         if not same_platform and customer_business:
             raise serializers.ValidationError({"customer_business_id": "Customer business must be None when same_platform is False."})
+
+        # Check for duplicate platform business link
+        if business and customer_business:
+            # Look for an existing customer with the same mobile number to treat as instance
+            existing_customer = BusinessCustomer.objects.filter(business=business, mobile_number=attrs.get("mobile_number")).first()
+            effective_instance = self.instance or existing_customer
+
+            qs = BusinessCustomer.objects.filter(business=business, customer_business=customer_business)
+            if effective_instance:
+                qs = qs.exclude(pk=effective_instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"customer_business_id": "This platform business is already added as a customer."})
 
         return attrs
 
@@ -43,6 +52,7 @@ class BusinessCustomerSerializer(BaseSerializer):
         return value.upper() if value else value
 
     def create(self, validated_data):
+        print("DEBUG: BusinessCustomerSerializer.create started")
         business = self.context.get('request').user.business
         mobile_number = validated_data.get('mobile_number')
         

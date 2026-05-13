@@ -6,6 +6,7 @@ import { authService } from "@/services/authService";
 import { tokenService } from "@/services/tokenService";
 import { useDispatch, useSelector } from "react-redux";
 import { clearUserProfile } from "@/redux/slices/userSlice";
+import { getProfileImageUrl } from "@/utils/imageUtils";
 
 import NotificationBell from "@/components/shared/NotificationBell";
 import {
@@ -100,12 +101,6 @@ function EmployeeHeader() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Auto-navigate to home when logged out
-    useEffect(() => {
-        if (!profile) {
-            navigate("/", { replace: true });
-        }
-    }, [profile, navigate]);
 
     const handleLogout = async () => {
         try {
@@ -119,12 +114,14 @@ function EmployeeHeader() {
 
     const getProfileImage = () => {
         const data = profile?.user || profile;
-        if (data?.profile_picture) {
-            return <img src={data.profile_picture} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-green-100" />;
+        const imageUrl = getProfileImageUrl(data?.profile_picture);
+        
+        if (imageUrl) {
+            return <img src={imageUrl} alt="Profile" className="h-9 w-9 rounded-full object-cover border-2 border-green-100 shadow-sm" />;
         }
         const initials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.trim() || "U";
         return (
-            <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-semibold">
+            <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-semibold shadow-sm border border-green-200">
                 {initials.toUpperCase()}
             </div>
         );
@@ -178,7 +175,14 @@ function EmployeeHeader() {
                                     >
                                         <div className="flex flex-col items-end leading-none px-2">
                                             <span className="text-sm font-bold text-gray-700">{firstName}</span>
-                                            <span className="text-[10px] uppercase font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md mt-0.5">Employee</span>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className="text-[9px] uppercase font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">Employee</span>
+                                                {tokenService.getBranches().length > 0 && (
+                                                    <span className="text-[9px] uppercase font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md truncate max-w-[80px]">
+                                                        {tokenService.getBranches()[0].name}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         {getProfileImage()}
                                     </button>
@@ -187,10 +191,10 @@ function EmployeeHeader() {
                                         <div className="glass-panel backdrop-blur-xl bg-white absolute top-full right-0 mt-3 w-64 rounded-2xl shadow-2xl py-3 z-50 animate-fade-in-down border border-white/20">
                                             <div className="px-5 py-4 border-b border-slate-100 mb-2">
                                                 <p className="text-sm font-bold text-slate-900 truncate">
-                                                    {firstName && lastName ? `${firstName} ${lastName}` : "Hardik Solanki"}
+                                                    {firstName && lastName ? `${firstName} ${lastName}` : "User Profile"}
                                                 </p>
                                                 <p className="text-xs font-medium text-slate-500 truncate mt-0.5">
-                                                    {email || "hbsolanki0524@gmail.com"}
+                                                    {email || ""}
                                                 </p>
                                             </div>
 

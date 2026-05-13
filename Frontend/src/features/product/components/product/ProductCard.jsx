@@ -58,15 +58,21 @@ export default function ProductCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col transition-all duration-300">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-bold text-slate-900 truncate">{product.name}</p>
-          <p className="text-[11px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">
-            SKU: {product.sku} <span className="mx-1 opacity-20">•</span> ID: {product.id}
-          </p>
+        <div className="min-w-0 flex-1 pr-2">
+          <h3 className="text-base font-black text-slate-900 leading-tight break-words">
+            {product.name}
+          </h3>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+            <span className="break-all">SKU: {product.sku}</span>
+            <span className="opacity-30">•</span>
+            <span className="shrink-0">ID: {product.id}</span>
+          </div>
           {product.product_category && (
-            <span className="inline-flex mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-              {product.product_category.name}
-            </span>
+            <div className="mt-2.5">
+              <span className="inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-[0.1em] bg-slate-100 text-slate-600 border border-slate-200 break-words max-w-full">
+                {product.product_category.name}
+              </span>
+            </div>
           )}
         </div>
         <div className="shrink-0 flex items-center justify-end gap-2 relative">

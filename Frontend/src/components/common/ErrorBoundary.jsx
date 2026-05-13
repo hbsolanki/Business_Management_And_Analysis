@@ -50,7 +50,7 @@ class ErrorBoundary extends React.Component {
                 Return to Home
               </button>
             </div>
-            {process.env.NODE_ENV === "development" && (
+            {import.meta.env.DEV && (
               <div className="mt-8 pt-6 border-t border-slate-100 text-left">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Debug Info</p>
                 <div className="bg-slate-900 text-pink-400 p-4 rounded-xl text-xs overflow-auto max-h-40 font-mono">

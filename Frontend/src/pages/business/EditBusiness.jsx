@@ -9,6 +9,8 @@ import {
   FaAlignLeft,
   FaTrash,
   FaExclamationTriangle,
+  FaCheck,
+  FaTimes
 } from "react-icons/fa";
 import { authService } from "@/services/authService";
 import { tokenService } from "@/services/tokenService";
@@ -111,140 +113,160 @@ export default function EditBusiness() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-12 bg-transparent">
-      <div className="form-shell max-w-3xl space-y-6">
-        <BackButton />
+    <div className="min-h-screen bg-slate-50/50 font-sans">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+        <div className="flex justify-start">
+          <BackButton />
+        </div>
 
-        <div className="form-card overflow-hidden">
-          <div className="form-header">
-            <div className="form-header-icon">
-              <FaBuilding />
-            </div>
-            <div>
-              <h2 className="form-title">Edit Business</h2>
-              <p className="form-subtitle mt-1">
-                Keep your business profile accurate and up to date.
-              </p>
-            </div>
+        {/* Professional White Header Section */}
+        <div className="relative overflow-hidden rounded-[2rem] bg-white p-6 md:p-10 shadow-sm border border-slate-200">
+          <div className="absolute inset-0 opacity-[0.03]">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)',
+              backgroundSize: '24px 24px'
+            }}></div>
           </div>
 
-          <form onSubmit={handleSubmit} className="form-section space-y-6">
-            <div className="space-y-6">
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              <div className="h-14 w-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0 shadow-sm text-brand-600">
+                <FaBuilding className="text-2xl" />
+              </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Business Name
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">
+                  Edit Business
+                </h1>
+                <p className="text-slate-500 text-sm md:text-base font-medium leading-relaxed max-w-xl">
+                  Keep your business profile accurate and up to date to ensure seamless operations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div className="space-y-8">
+              {/* Business Name */}
+              <div className="space-y-2">
+                <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-widest text-slate-400 ml-2">
+                  Business Name <span className="text-brand-500">*</span>
                 </label>
                 <div className="relative">
-                  <FaBuilding className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="text"
+                    id="name"
                     name="name"
+                    type="text"
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
-                    placeholder="Enter business name"
+                    className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
+                    placeholder="Enter your legal business name"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  GST Number
+              {/* Description */}
+              <div className="space-y-2">
+                <label htmlFor="description" className="block text-xs font-semibold uppercase tracking-widest text-slate-400 ml-2">
+                  Business Description
                 </label>
                 <div className="relative">
-                  <FaIdBadge className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    name="gst_number"
-                    value={formData.gst_number}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
-                    placeholder="Enter GST number"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Description
-                </label>
-                <div className="relative">
-                  <FaAlignLeft className="absolute left-4 top-4 text-slate-400" />
                   <textarea
+                    id="description"
                     name="description"
-                    rows={4}
                     value={formData.description}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all"
-                    placeholder="Describe your business..."
+                    rows={4}
+                    className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150 resize-none"
+                    placeholder="Briefly describe your business operations"
                   />
                 </div>
               </div>
             </div>
+          </section>
 
-            <div className="form-actions">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className={`btn-primary ${saving ? "opacity-70 cursor-not-allowed" : ""}`}
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Danger Zone */}
-        <div className="bg-red-50/50 rounded-3xl border border-red-100 p-8 space-y-6">
-          <div className="flex items-center gap-3 text-red-600">
-            <FaExclamationTriangle className="text-xl" />
-            <h3 className="text-lg font-bold uppercase tracking-tight">Danger Zone</h3>
+          {/* Action Buttons */}
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="group flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-bold text-base text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all duration-300 shadow-sm"
+            >
+              <FaTimes className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className={`group relative flex items-center justify-center gap-3 px-10 py-4 rounded-xl font-bold text-base text-white transition-all duration-300 shadow-lg ${
+                saving
+                  ? "bg-brand-400 cursor-not-allowed"
+                  : "bg-brand-600 hover:bg-brand-700 hover:shadow-brand-200 hover:-translate-y-1 active:scale-95"
+              }`}
+            >
+              {saving ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="tracking-tight">Saving Changes...</span>
+                </>
+              ) : (
+                <>
+                  <FaCheck className="text-lg transition-transform duration-500 group-hover:scale-125" />
+                  <span className="tracking-tight">Save Profile Updates</span>
+                </>
+              )}
+            </button>
           </div>
+        </form>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between">
+        {/* Danger Zone Section */}
+        <section className="bg-white rounded-2xl shadow-sm border border-red-100 p-6 md:p-8 space-y-6">
+          <h2 className="text-lg font-bold text-red-600 flex items-center gap-3 uppercase tracking-tight font-display">
+            <div className="p-2 rounded-xl bg-red-50 border border-red-100">
+              <FaExclamationTriangle size={18} />
+            </div>
+            Critical Operations Zone
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
               <div>
                 <h4 className="text-sm font-bold text-slate-800">Delete Business</h4>
-                <p className="text-xs text-slate-500 mt-1">Permanently remove this business. You can register a new one later.</p>
+                <p className="text-xs text-slate-500 mt-1">Permanently remove this business. All data will be lost.</p>
               </div>
               <button
                 onClick={handleDeleteBusiness}
-                className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+                className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-50 transition-colors"
               >
                 <FaTrash className="text-xs" /> Delete Business
               </button>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-red-200 shadow-sm flex flex-col justify-between">
+            <div className="p-5 rounded-2xl bg-red-50/30 border border-red-100 flex flex-col justify-between">
               <div>
-                <h4 className="text-sm font-bold text-red-600">Delete Account & Business</h4>
-                <p className="text-xs text-slate-500 mt-1">Permanently delete your entire owner account and the business associated with it.</p>
+                <h4 className="text-sm font-bold text-red-700">Delete Entire Identity</h4>
+                <p className="text-xs text-slate-500 mt-1">Erase your entire account and business permanently.</p>
               </div>
               <button
                 onClick={handleDeleteAccount}
-                className="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors"
+                className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors shadow-sm"
               >
                 <FaTrash className="text-xs" /> Delete Entire Account
               </button>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

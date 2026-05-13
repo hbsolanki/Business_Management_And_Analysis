@@ -2,14 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-    FaAddressCard,
     FaBuilding,
-    FaCheckCircle,
     FaEnvelope,
     FaIdCard,
     FaMapMarkerAlt,
     FaPhone,
-    FaSave,
     FaSearch,
     FaSpinner,
     FaTimes,
@@ -126,6 +123,12 @@ export default function AddVendor() {
                 if (!isMounted) return;
 
                 const vendor = res?.data || {};
+                const businessId =
+                    vendor.supplier_business_id ??
+                    vendor.supplier_business?.id ??
+                    vendor.supplier_business ??
+                    null;
+                const samePlatform = Boolean(vendor.same_platform);
                 const loadedData = {
                     name: vendor.name || "",
                     contact_person: vendor.contact_person || "",
@@ -133,12 +136,12 @@ export default function AddVendor() {
                     mobile_number: vendor.mobile_number || "",
                     gst_number: vendor.gst_number || "",
                     address: vendor.address || "",
-                    same_platform: Boolean(vendor.same_platform),
-                    supplier_business_id: vendor.same_platform && businessId ? String(businessId) : "",
+                    same_platform: samePlatform,
+                    supplier_business_id: samePlatform && businessId ? String(businessId) : "",
                 };
 
-                setFormData(nextForm);
-                initialDataRef.current = nextForm;
+                setFormData(loadedData);
+                initialDataRef.current = loadedData;
 
                 if (samePlatform && businessId) {
                     const list = await loadBusinesses();
@@ -170,7 +173,7 @@ export default function AddVendor() {
         return () => {
             isMounted = false;
         };
-    }, [id, isEditMode, navigate]);
+    }, [id, isEditMode, loadBusinesses, navigate]);
 
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
@@ -300,272 +303,245 @@ export default function AddVendor() {
         }
     };
 
-    const inputClass = (name) =>
-        `w-full rounded-xl input-icon-left pr-4 py-3 text-sm ${errors[name]
-            ? "border-red-500 focus:ring-2 focus:ring-red-200"
-            : "border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
-        }`;
-
-    const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2";
-
     return (
-        <div className="min-h-screen bg-transparent">
+        <div className="min-h-screen bg-slate-50/30">
             <ProtectedHeader />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-                <BackButton label="Back" />
+            <main className="max-w-3xl mx-auto px-4 pt-6 pb-12">
+                <div className="mb-4 flex items-center justify-between">
+                    <BackButton label="Back" />
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">Vendor Management</p>
+                </div>
 
-                <div className="max-w-3xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <header className="px-5 py-4 bg-white border-b border-slate-100 flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-md">
+                            <FaTruck size={14} />
+                        </div>
+                        <div>
+                            <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">
+                                {isEditMode ? "Modify Vendor" : "Create Vendor"}
+                            </h1>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Supply Chain & Procurement</p>
+                        </div>
+                    </header>
 
-                    <section className="form-card overflow-visible">
-                        <header className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-                                {isEditMode ? <FaAddressCard /> : <FaTruck />}
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900">
-                                    {isEditMode ? "Edit Vendor" : "Create Vendor"}
-                                </h1>
-                                <p className="text-sm text-slate-500">
-                                    Use clean labels and complete supplier details.
-                                </p>
-                            </div>
-                        </header>
-
-                        {loadingForm ? (
-                            <div className="p-10 flex items-center justify-center text-slate-500">
-                                <FaSpinner className="animate-spin mr-2" />
-                                Loading vendor details...
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="form-section p-8 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className={labelClass}>Vendor Name <span className="text-red-500">*</span></label>
-                                        <div className="relative group">
-                                            <FaBuilding className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                            <input
-                                                name="name"
-                                                required
-                                                value={formData.name}
-                                                onChange={handleChange}
-                                                className={`${inputClass("name")} pl-11`}
-                                                placeholder="Enter vendor name"
-                                            />
-                                        </div>
-                                        {getErrorText(errors.name) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.name)}</p>}
+                    {loadingForm ? (
+                        <div className="p-10 flex flex-col items-center justify-center text-slate-300 text-[10px] font-bold uppercase tracking-widest gap-3">
+                            <FaSpinner className="animate-spin text-lg" />
+                            Synchronizing...
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="p-5 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Vendor Entity <span className="text-red-500">*</span></label>
+                                    <div className="relative group">
+                                        <FaBuilding className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-800 transition" size={11} />
+                                        <input
+                                            name="name"
+                                            required
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-100 pl-9 pr-4 py-2 text-sm font-bold bg-slate-50 text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition-all"
+                                            placeholder="e.g. Acme Corp"
+                                        />
                                     </div>
+                                    {getErrorText(errors.name) && <p className="text-red-500 text-[8px] font-bold mt-1 ml-1 uppercase">{getErrorText(errors.name)}</p>}
+                                </div>
 
-                                    <div>
-                                        <label className={labelClass}>Contact Person</label>
-                                        <div className="relative group">
-                                            <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                            <input
-                                                name="contact_person"
-                                                value={formData.contact_person}
-                                                onChange={handleChange}
-                                                className={`${inputClass("contact_person")} pl-11`}
-                                                placeholder="Primary contact name"
-                                            />
-                                        </div>
-                                        {getErrorText(errors.contact_person) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.contact_person)}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Contact Person</label>
+                                    <div className="relative group">
+                                        <FaUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-800 transition" size={11} />
+                                        <input
+                                            name="contact_person"
+                                            value={formData.contact_person}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-100 pl-9 pr-4 py-2 text-sm font-bold bg-slate-50 text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition-all"
+                                            placeholder="Lead Contact"
+                                        />
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className={labelClass}>Email</label>
-                                        <div className="relative group">
-                                            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                value={formData.email}
-                                                onChange={handleChange}
-                                                className={`${inputClass("email")} pl-11`}
-                                                placeholder="vendor@example.com"
-                                            />
-                                        </div>
-                                        {getErrorText(errors.email) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.email)}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Business Email</label>
+                                    <div className="relative group">
+                                        <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-800 transition" size={11} />
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-100 pl-9 pr-4 py-2 text-sm font-bold bg-slate-50 text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition-all"
+                                            placeholder="vendor@domain.com"
+                                        />
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className={labelClass}>Mobile Number</label>
-                                        <div className="relative group">
-                                            <FaPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                            <input
-                                                name="mobile_number"
-                                                value={formData.mobile_number}
-                                                onChange={handleChange}
-                                                className={`${inputClass("mobile_number")} pl-11`}
-                                                placeholder="Enter mobile number"
-                                            />
-                                        </div>
-                                        {getErrorText(errors.mobile_number) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.mobile_number)}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mobile Access</label>
+                                    <div className="relative group">
+                                        <FaPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-800 transition" size={11} />
+                                        <input
+                                            name="mobile_number"
+                                            value={formData.mobile_number}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-100 pl-9 pr-4 py-2 text-sm font-bold bg-slate-50 text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition-all"
+                                            placeholder="Primary Phone"
+                                        />
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className={labelClass}>GST Number</label>
-                                        <div className="relative group">
-                                            <FaIdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                            <input
-                                                name="gst_number"
-                                                value={formData.gst_number}
-                                                onChange={handleChange}
-                                                className={`${inputClass("gst_number")} pl-11`}
-                                                placeholder="Enter GST number"
-                                            />
-                                        </div>
-                                        {getErrorText(errors.gst_number) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.gst_number)}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tax ID / GST</label>
+                                    <div className="relative group">
+                                        <FaIdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-800 transition" size={11} />
+                                        <input
+                                            name="gst_number"
+                                            value={formData.gst_number}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-100 pl-9 pr-4 py-2 text-sm font-bold bg-slate-50 text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition-all"
+                                            placeholder="Registration #"
+                                        />
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className={labelClass}>Address</label>
-                                        <div className="relative group">
-                                            <FaMapMarkerAlt className="absolute left-4 top-4 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                            <textarea
-                                                rows={3}
-                                                name="address"
-                                                value={formData.address}
-                                                onChange={handleChange}
-                                                className={`${inputClass("address")} pl-11`}
-                                                placeholder="Vendor address"
-                                            />
-                                        </div>
-                                        {getErrorText(errors.address) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.address)}</p>}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dispatch Address</label>
+                                    <div className="relative group">
+                                        <FaMapMarkerAlt className="absolute left-3.5 top-3 text-slate-300 group-focus-within:text-slate-800 transition" size={11} />
+                                        <textarea
+                                            rows={2}
+                                            name="address"
+                                            value={formData.address}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-slate-100 pl-9 pr-4 py-2 text-sm font-medium bg-slate-50 text-slate-900 placeholder-slate-300 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 outline-none transition-all resize-none"
+                                            placeholder="Street, City, Zip"
+                                        />
                                     </div>
+                                </div>
 
-
-
-                                    <div className="md:col-span-2">
-                                        <label className={labelClass}>Same Platform</label>
-                                        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                            <input
-                                                type="checkbox"
-                                                name="same_platform"
-                                                checked={formData.same_platform}
-                                                onChange={handleChange}
-                                                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                            />
-                                            <span className="text-sm text-slate-700 font-medium">
-                                                Vendor uses the same platform
-                                            </span>
-                                        </div>
-                                        {getErrorText(errors.same_platform) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.same_platform)}</p>}
+                                <div className="md:col-span-2">
+                                    <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5">
+                                        <input
+                                            type="checkbox"
+                                            name="same_platform"
+                                            id="same_platform"
+                                            checked={formData.same_platform}
+                                            onChange={handleChange}
+                                            className="h-3.5 w-3.5 rounded border-slate-200 text-slate-800 focus:ring-slate-800/5"
+                                        />
+                                        <label htmlFor="same_platform" className="text-[10px] text-slate-600 font-bold uppercase tracking-widest cursor-pointer">
+                                            Enable Platform Interconnect
+                                        </label>
                                     </div>
+                                </div>
 
-                                    {formData.same_platform && (
-                                        <div className="md:col-span-2 space-y-3">
-                                            <label className={labelClass}>Vendor Business</label>
-                                            <div className="relative" ref={businessWrapperRef}>
-                                                <div className="relative group">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        {fetchingBusinesses ? (
-                                                            <FaSpinner className="animate-spin text-slate-500" />
-                                                        ) : (
-                                                            <FaSearch className="text-slate-400 group-focus-within:text-brand-600 transition-colors" />
-                                                        )}
-                                                    </div>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search business by name..."
-                                                        value={businessSearch}
-                                                        onChange={(e) => {
-                                                            setBusinessSearch(e.target.value);
-                                                            if (e.target.value.length > 0) setBusinessOpen(true);
-                                                        }}
-                                                        onFocus={() => setBusinessOpen(true)}
-                                                        className="block w-full input-icon-left input-icon-right py-3 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-500 transition-all text-sm font-medium border border-slate-200 bg-white"
-                                                    />
-                                                    {businessSearch && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setBusinessSearch("");
-                                                                setBusinessOpen(true);
-                                                                loadBusinesses();
-                                                            }}
-                                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                                                        >
-                                                            <FaTimes />
-                                                        </button>
+                                {formData.same_platform && (
+                                    <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-50">
+                                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                            <FaLink size={9} /> Link Registered Entity
+                                        </label>
+                                        <div className="relative" ref={businessWrapperRef}>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                                    {fetchingBusinesses ? (
+                                                        <FaSpinner className="animate-spin text-slate-300" size={11} />
+                                                    ) : (
+                                                        <FaSearch className="text-slate-300 group-focus-within:text-slate-800 transition-colors" size={11} />
                                                     )}
                                                 </div>
-
-                                                {businessOpen && (businesses.length > 0 || fetchingBusinesses) && (
-                                                    <div className="bg-white border border-slate-200 absolute z-[90] mt-2 w-full rounded-xl shadow-lg max-h-80 overflow-y-auto custom-scrollbar animate-fade-in-up">
-                                                        {businesses.length === 0 && !fetchingBusinesses ? (
-                                                            <div className="p-4 text-center text-slate-500 text-sm">
-                                                                No business found{businessSearch ? ` matching "${businessSearch}"` : ""}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="py-2">
-                                                                <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-50">
-                                                                    {fetchingBusinesses ? "Loading..." : `Found ${businesses.length} businesses`}
-                                                                </div>
-                                                                {businesses.map((biz) => (
-                                                                    <button
-                                                                        key={biz.id}
-                                                                        type="button"
-                                                                        onClick={() => handleBusinessSelect(biz)}
-                                                                        className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between group border-b border-slate-100 last:border-0 ${String(formData.supplier_business_id) === String(biz.id) ? "bg-brand-50" : ""}`}
-                                                                    >
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-slate-700 transition-colors">
-                                                                                <FaBuilding />
-                                                                            </div>
-                                                                            <div>
-                                                                                <p className="font-semibold text-slate-900 text-sm">{biz.name}</p>
-                                                                                <p className="text-[10px] text-slate-500 font-mono">ID: {biz.id}</p>
-                                                                            </div>
-                                                                        </div>
-                                                                    </button>
-                                                                ))}
-                                                                {businessNext && (
-                                                                    <div className="px-4 py-3">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={loadMoreBusinesses}
-                                                                            disabled={loadingMoreBusinesses}
-                                                                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-60"
-                                                                        >
-                                                                            {loadingMoreBusinesses ? "Loading..." : "Load more businesses"}
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search database..."
+                                                    value={businessSearch}
+                                                    onChange={(e) => {
+                                                        setBusinessSearch(e.target.value);
+                                                        if (e.target.value.length > 0) setBusinessOpen(true);
+                                                    }}
+                                                    onFocus={() => setBusinessOpen(true)}
+                                                    className="block w-full pl-9 pr-9 py-2 rounded-lg text-sm font-bold border border-slate-100 bg-slate-50 text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-800/5 focus:border-slate-800 transition-all"
+                                                />
+                                                {businessSearch && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setBusinessSearch(""); setBusinessOpen(true); loadBusinesses(); }}
+                                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-slate-800 transition-colors"
+                                                    >
+                                                        <FaTimes size={10} />
+                                                    </button>
                                                 )}
                                             </div>
-                                            {selectedBusiness && (
-                                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                                                    Selected business: <span className="font-semibold text-slate-800">{selectedBusiness.name}</span> (ID: {selectedBusiness.id})
+
+                                            {businessOpen && (businesses.length > 0 || fetchingBusinesses) && (
+                                                <div className="bg-white border border-slate-200 absolute z-[90] mt-1 w-full rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                                    {businesses.length === 0 && !fetchingBusinesses ? (
+                                                        <div className="p-4 text-center text-slate-300 text-[9px] font-bold uppercase tracking-widest italic">
+                                                            No matches found
+                                                        </div>
+                                                    ) : (
+                                                        <div className="py-1">
+                                                            {businesses.map((biz) => (
+                                                                <button
+                                                                    key={biz.id}
+                                                                    type="button"
+                                                                    onClick={() => handleBusinessSelect(biz)}
+                                                                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors flex items-center gap-3 ${String(formData.supplier_business_id) === String(biz.id) ? "bg-slate-50" : ""}`}
+                                                                >
+                                                                    <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300">
+                                                                        <FaBuilding size={12} />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-bold text-slate-900 text-[11px] truncate">{biz.name}</p>
+                                                                        <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">ID: {biz.id}</p>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                            {businessNext && (
+                                                                <div className="px-3 pb-3 pt-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={loadMoreBusinesses}
+                                                                        disabled={loadingMoreBusinesses}
+                                                                        className="w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition hover:border-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                    >
+                                                                        {loadingMoreBusinesses ? "Loading..." : "Load more businesses"}
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
-                                            {getErrorText(errors.supplier_business_id) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.supplier_business_id)}</p>}
                                         </div>
-                                    )}
-                                </div>
+                                        {selectedBusiness && (
+                                            <p className="text-[10px] text-slate-500 font-medium">
+                                                Selected business: <span className="font-semibold text-slate-800">{selectedBusiness.name}</span> (ID: {selectedBusiness.id})
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
-                                <div className="form-actions">
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate(-1)}
-                                        className="btn-secondary"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className={`btn-primary inline-flex items-center gap-2 ${saving ? "opacity-70 cursor-not-allowed" : ""}`}
-                                    >
-                                        <FaSave />
-                                        {saving ? "Saving..." : isEditMode ? "Update Vendor" : "Create Vendor"}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </section>
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-50">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(-1)}
+                                    className="px-5 py-2 rounded-lg text-slate-400 font-bold uppercase tracking-widest text-[9px] hover:text-slate-900 hover:bg-slate-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="px-9 py-2.5 rounded-xl bg-slate-800 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-slate-200 hover:bg-slate-700 transition-all disabled:opacity-50 active:scale-95"
+                                >
+                                    {saving ? "Processing..." : isEditMode ? "Confirm Update" : "Establish Vendor"}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </main>
         </div>

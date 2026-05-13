@@ -4,6 +4,7 @@ import { tokenService } from "@/services/tokenService";
 import { businessService } from "@/features/business/services/businessService";
 import Modal from "@/components/ui/Modal";
 import api, { API_BASE_URL } from "@/services/api";
+import { getProfileImageUrl } from "@/utils/imageUtils";
 import { authService } from "@/services/authService";
 import toast from "react-hot-toast";
 import {
@@ -60,7 +61,7 @@ function ProfileViewer() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-transparent">
-                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-brand-600"></div>
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900"></div>
             </div>
         );
     }
@@ -91,9 +92,7 @@ function ProfileViewer() {
     const roleLabel = isOwner ? "Business Owner" : isManager ? "Manager" : isEmployee ? "Employee" : "User";
 
     const getImageUrl = (path) => {
-        if (!path) return null;
-        if (path.startsWith("http")) return path;
-        return `${API_BASE_URL}${path}`;
+        return getProfileImageUrl(path);
     };
 
     const getWorkAssignments = (data) => {
@@ -109,7 +108,7 @@ function ProfileViewer() {
                 const parsed = JSON.parse(source);
                 if (Array.isArray(parsed)) return parsed;
                 return [String(parsed)];
-            } catch (_error) {
+            } catch {
                 return [source];
             }
         }
@@ -185,7 +184,7 @@ function ProfileViewer() {
     const salaryText = Number.isFinite(salaryNumber)
         ? `₹${salaryNumber.toLocaleString("en-IN")}`
         : `₹${salaryValue || 0}`;
-    const bioText = employeeDetails.bio || user.description || "";
+    const bioText = user.bio || employeeDetails.bio || user.description || "";
     const address = employeeDetails.address || user.address || {};
 
     return (
@@ -203,9 +202,9 @@ function ProfileViewer() {
                     {isMyProfile && (
                         <Link
                             to={getEditRoute()}
-                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800"
                         >
-                            <FaEdit className="text-xs" />
+                            <FaEdit size={12} />
                             Edit Profile
                         </Link>
                     )}
@@ -236,21 +235,21 @@ function ProfileViewer() {
                             </div>
 
                             <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
-                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                                     {roleLabel}
                                 </span>
-                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold text-slate-400">
                                     @{userData.username}
                                 </span>
                             </div>
 
                             <div className="flex flex-wrap items-center justify-center gap-2 xl:justify-start">
-                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
-                                    <FaEnvelope className="text-slate-400" />
+                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
+                                    <FaEnvelope className="text-slate-400" size={10} />
                                     {userData.email || "Not set"}
                                 </span>
-                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
-                                    <FaPhone className="text-slate-400" />
+                                <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
+                                    <FaPhone className="text-slate-400" size={10} />
                                     {userData.mobile_number || "Not set"}
                                 </span>
                             </div>
@@ -306,7 +305,7 @@ function ProfileViewer() {
                                         day: "numeric"
                                     })}
                                 />
-                                <InfoItem icon={FaUser} label="User ID" value={`#${user.id}`} mono />
+                                <InfoItem icon={FaUser} label="Employee ID" value={`#${userData.id}`} mono />
                             </div>
                         </section>
 
@@ -345,17 +344,17 @@ function ProfileViewer() {
                                 </div>
 
                                 <div className="grid gap-6 lg:grid-cols-2">
-                                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
-                                        <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">
-                                            <FaMoneyBillWave />
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                            <FaMoneyBillWave size={12} />
                                             Monthly Salary
                                         </p>
-                                        <p className="text-2xl font-bold text-indigo-700">{salaryText}</p>
+                                        <p className="text-2xl font-bold text-slate-900 tracking-tight">{salaryText}</p>
                                     </div>
 
                                     <div>
-                                        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            <FaTools />
+                                        <p className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                            <FaTools size={12} />
                                             Work Assignments
                                         </p>
                                         <div className="space-y-4">
@@ -439,12 +438,41 @@ function ProfileViewer() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <InfoLine label="Company Name" value={user.role?.business?.name || user.business?.name} />
+                                    <div className="flex items-center justify-between gap-3">
+                                        <InfoLine label="Company Name" value={user.role?.business?.name || user.business?.name} />
+                                        {(isOwner || isManager) && isMyProfile && (
+                                            <Link
+                                                to="/business/compliance"
+                                                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 transition hover:bg-slate-100"
+                                            >
+                                                {(user.role?.business?.gst_profile || user.business?.gst_profile) ? "Edit GST" : "Manage GST"}
+                                            </Link>
+                                        )}
+                                    </div>
                                     <InfoLine label="Business ID" value={(user.role?.business?.id || user.business?.id) ? `#${user.role?.business?.id || user.business?.id}` : "N/A"} mono />
-                                    {(isOwner || isManager) && (
-                                        <InfoLine label="GST Number" value={user.role?.business?.gst_number || user.business?.gst_number || "Not set"} />
-                                    )}
-                                    <div>
+
+                                    {/* GST Profile Details */}
+                                    {(() => {
+                                        const gstProfile = user.role?.business?.gst_profile || user.business?.gst_profile;
+                                        if (!gstProfile) return null;
+
+                                        return (
+                                        <div className="mt-4 pt-4 border-t border-slate-100">
+                                            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                                <FaShieldAlt size={10} />
+                                                Compliance Profile
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InfoLine label="GSTIN" value={gstProfile.gstin} mono />
+                                                <InfoLine label="Reg. Type" value={gstProfile.registration_type_display} />
+                                                <InfoLine label="State Code" value={gstProfile.state_code} />
+                                                <InfoLine label="Status" value={gstProfile.is_active ? "Active" : "Inactive"} />
+                                            </div>
+                                        </div>
+                                        );
+                                    })()}
+
+                                    <div className="mt-4">
                                         <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Description</p>
                                         <p className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
                                             {user.role?.business?.description || user.business?.description || "No description provided."}

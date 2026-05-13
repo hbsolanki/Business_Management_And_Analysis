@@ -27,7 +27,7 @@ const formatCurrency = (val) =>
         maximumFractionDigits: 0,
     }).format(parseNumber(val));
 
-export default function CustomerAnalytics() {
+export default function CustomerAnalytics({ branchId = "" }) {
     const [loading, setLoading] = useState(true);
     const [trendLoading, setTrendLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -90,8 +90,9 @@ export default function CustomerAnalytics() {
         if (filters.endDate) commonParams.to_date = filters.endDate;
         if (isCustomerId) commonParams.customer_id = query;
         if (isMobile) commonParams.mobile_number = query;
+        if (branchId) commonParams.branch = branchId;
         return commonParams;
-    }, [filters.startDate, filters.endDate, filters.searchQuery]);
+    }, [filters.startDate, filters.endDate, filters.searchQuery, branchId]);
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
@@ -101,9 +102,7 @@ export default function CustomerAnalytics() {
         const commonParams = getCommonParams();
 
         // Retention takes specific params
-        const retentionParams = {};
-        if (filters.startDate) retentionParams.from_date = filters.startDate;
-        if (filters.endDate) retentionParams.to_date = filters.endDate;
+        const retentionParams = { ...commonParams };
 
         // Product params includes product_id
         const productParams = { ...commonParams };
@@ -183,6 +182,7 @@ export default function CustomerAnalytics() {
             const data = await customerAnalyticsService.getSpendTrend({
                 month: trendMonth,
                 year: trendYear,
+                branch: branchId,
                 signal
             });
             if (signal?.aborted) return;

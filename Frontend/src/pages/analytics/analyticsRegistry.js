@@ -269,6 +269,15 @@ export const ANALYTICS_ENDPOINTS = [
         ],
         tags: ["customer", "spend", "trend"],
     },
+    {
+        id: "gst-compliance-summary",
+        group: "Taxation",
+        title: "GST Compliance Summary",
+        description: "Official monthly GST aggregation: Sales, CGST, SGST, and IGST totals.",
+        endpoint: "/gst-management/summaries/",
+        filters: [],
+        tags: ["gst", "tax", "compliance", "audit"],
+    },
 ];
 
 export const SECTION_TO_ENDPOINT_ID = {
@@ -279,7 +288,7 @@ export const SECTION_TO_ENDPOINT_ID = {
     "inventory-category": "product-stock",
 };
 
-export const FILTER_GROUPS = ["All", "Monthly", "Product", "Customer"];
+export const FILTER_GROUPS = ["All", "Monthly", "Product", "Customer", "Taxation"];
 
 export const getAnalyticsEndpoint = (id) =>
     ANALYTICS_ENDPOINTS.find((item) => item.id === id) || null;

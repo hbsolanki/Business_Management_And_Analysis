@@ -1,8 +1,10 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import {
+    ArrowLeft,
     BookOpenText,
     CircleHelp,
     Compass,
+    Home,
     LayoutGrid,
     ShieldCheck,
     UserRound,
@@ -36,6 +38,17 @@ function isAllowedByRole(item, role) {
 
 export default function InfoLayout() {
     const role = (tokenService.getRole() || "").toUpperCase() || null;
+
+    const getDashboardPath = () => {
+        switch (role) {
+            case "OWNER": return "/owner";
+            case "MANAGER": return "/manager";
+            case "EMPLOYEE": return "/employee";
+            default: return "/";
+        }
+    };
+
+    const dashboardPath = getDashboardPath();
     const workSet = parseWork(tokenService.getWork());
 
     const navItems = NAV_ITEMS.filter((item) => isAllowedByRole(item, role));
@@ -62,7 +75,15 @@ export default function InfoLayout() {
             <div className="section-shell py-4 md:py-6">
                 <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
                     <aside className="hidden lg:block">
-                        <div className="sticky top-24 rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
+                        <div className="sticky top-24">
+                            <Link
+                                to={dashboardPath}
+                                className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors mb-4 group px-2"
+                            >
+                                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                                Back to Workspace
+                            </Link>
+                            <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
                                     <BookOpenText className="h-5 w-5" />
@@ -113,14 +134,24 @@ export default function InfoLayout() {
                                     </div>
                                 </div>
                             )}
+                            </div>
                         </div>
                     </aside>
 
                     <main className="min-w-0">
                         <div className="lg:hidden rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mb-4">
-                            <div className="flex items-center gap-2 text-slate-900 font-semibold mb-3">
-                                <BookOpenText className="h-4 w-4" />
-                                Info Center
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2 text-slate-900 font-semibold">
+                                    <BookOpenText className="h-4 w-4" />
+                                    Info Center
+                                </div>
+                                <Link
+                                    to={dashboardPath}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                                >
+                                    <Home className="h-3.5 w-3.5" />
+                                    Exit
+                                </Link>
                             </div>
                             <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
                                 {navItems.map((item) => (

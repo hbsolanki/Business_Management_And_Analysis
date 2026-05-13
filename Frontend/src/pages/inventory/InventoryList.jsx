@@ -7,56 +7,20 @@ import { inventoryService } from "@/features/inventory/services/inventoryService
 import { branchService } from "@/features/business/services/branchService";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import { FaCodeBranch } from "react-icons/fa";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 const StockSection = lazy(() => import("@/features/inventory/components/StockSection"));
 const TransactionSection = lazy(() => import("@/features/inventory/components/TransactionSection"));
-
-const getBranchId = (branch) => {
-  if (!branch && branch !== 0) return null;
-  if (typeof branch === "object") {
-    return branch.id ?? branch.branch_id ?? null;
-  }
-  return branch;
-};
-
-const getAssignedBranchIds = (profile) => {
-  if (!profile) return [];
-
-  const branchIds = [];
-
-  // Primary: assigned_branches (new API structure)
-  if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
-    profile.assigned_branches.forEach((branch) => {
-      const id = getBranchId(branch);
-      if (id || id === 0) branchIds.push(String(id));
-    });
-  } else {
-    // Legacy fallbacks
-    if (Array.isArray(profile.branches)) {
-      profile.branches.forEach((branch) => {
-        const branchId = getBranchId(branch);
-        if (branchId || branchId === 0) branchIds.push(String(branchId));
-      });
-    }
-    if (Array.isArray(profile.branch_ids)) {
-      profile.branch_ids.forEach((branchId) => {
-        if (branchId || branchId === 0) branchIds.push(String(branchId));
-      });
-    }
-    const directBranchId = getBranchId(profile.branch);
-    if (directBranchId || directBranchId === 0) branchIds.push(String(directBranchId));
-    const singleBranchId = profile.branch_id;
-    if (singleBranchId || singleBranchId === 0) branchIds.push(String(singleBranchId));
-  }
-
-  return [...new Set(branchIds)];
-};
 
 export default function InventoryList() {
   const { profile } = useSelector((state) => state.user);
   const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
   const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
-  const assignedBranchIds = useMemo(() => getAssignedBranchIds(profile), [profile]);
+  
+  const assignedBranches = useMemo(
+    () => getAssignedBranchesForWork(profile, 'INVENTORY'),
+    [profile]
+  );
 
   const [stocks, setStocks] = useState([]);
   const [stockNext, setStockNext] = useState(null);
@@ -76,41 +40,28 @@ export default function InventoryList() {
       setFetchingBranches(true);
       try {
         const res = await branchService.list();
-        const list = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+        const branchData = Array.isArray(res.data) ? res.data : (res.data?.results || []);
 
         if (isRestrictedRole) {
-          const allowedSet = new Set(assignedBranchIds);
-          const allowedBranches = allowedSet.size > 0
-            ? list.filter((branch) => allowedSet.has(String(branch.id)))
-            : list;
+          const visibleBranches = filterBranchesForRole(branchData, assignedBranches);
+          
+          const resolvedBranches = visibleBranches.length > 0 ? visibleBranches : assignedBranches;
 
-          setBranches(allowedBranches);
+          setBranches(resolvedBranches);
           setSelectedBranch((prev) => {
-            if (prev && allowedBranches.some((branch) => String(branch.id) === String(prev))) {
+            if (prev && resolvedBranches.some((branch) => String(branch.id) === String(prev))) {
               return prev;
             }
-            if (allowedBranches.length > 0) return String(allowedBranches[0].id);
+            if (resolvedBranches.length > 0) return String(resolvedBranches[0].id);
             return "";
           });
           return;
         }
 
-        if (Array.isArray(res.data)) {
-          setBranches(res.data);
-          const mainBranch = res.data.find(b => b.is_default);
-          if (mainBranch) {
-            setSelectedBranch(String(mainBranch.id));
-          } else if (res.data.length > 0) {
-            setSelectedBranch(String(res.data[0].id));
-          }
-        } else if (res.data?.results) {
-          setBranches(res.data.results);
-          const mainBranch = res.data.results.find(b => b.is_default);
-          if (mainBranch) {
-            setSelectedBranch(String(mainBranch.id));
-          } else if (res.data.results.length > 0) {
-            setSelectedBranch(String(res.data.results[0].id));
-          }
+        setBranches(branchData);
+        const mainBranch = branchData.find(b => b.is_default) || branchData[0];
+        if (mainBranch) {
+          setSelectedBranch(String(mainBranch.id));
         }
       } catch (err) {
         console.error("Failed to fetch branches", err);
@@ -119,14 +70,7 @@ export default function InventoryList() {
       }
     }
     fetchBranches();
-  }, [isRestrictedRole, assignedBranchIds]);
-
-  useEffect(() => {
-    if (!isRestrictedRole || selectedBranch) return;
-    if (assignedBranchIds.length > 0) {
-      setSelectedBranch(String(assignedBranchIds[0]));
-    }
-  }, [isRestrictedRole, assignedBranchIds, selectedBranch]);
+  }, [isRestrictedRole, assignedBranches]);
 
   useEffect(() => {
     const loadInitial = async () => {

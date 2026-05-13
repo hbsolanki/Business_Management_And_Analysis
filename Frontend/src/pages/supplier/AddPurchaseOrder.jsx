@@ -3,15 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import {
-    FaAlignLeft,
     FaBoxOpen,
     FaCodeBranch,
-    FaMoneyBillWave,
-    FaSave,
     FaShoppingCart,
     FaSpinner,
     FaTrash,
     FaUsers,
+    FaPercent,
+    FaPlus
 } from "react-icons/fa";
 
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
@@ -25,6 +24,7 @@ import {
     normalizeListPayload,
     parsePositiveInt,
 } from "@/features/supplier/utils/supplierHelpers";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 const STATUS_OPTIONS = ["PENDING", "DISPATCHED", "SHIPPED", "RECEIVED", "CANCELLED"];
 
@@ -39,89 +39,7 @@ const INITIAL_FORM = {
 function getErrorText(value) {
     if (!value) return null;
     if (typeof value === "string") return value;
-    // Use recursive extraction for objects/arrays to avoid React child crashes
     return extractFirstError({ data: value }, "Invalid input");
-}
-
-function resolveBranchId(branch) {
-    if (!branch && branch !== 0) return null;
-    if (typeof branch === "object") {
-        return branch.id ?? branch.branch_id ?? null;
-    }
-    return branch;
-}
-
-function resolveAssignedBranches(profile, requiredWorkType = null) {
-    if (!profile) return [];
-
-    const roleStr = typeof profile?.role === 'object' ? profile.role.role : profile?.role;
-    const isRestricted = roleStr === "EMPLOYEE" || roleStr === "MANAGER";
-
-    const toBranchObject = (value, workType = null) => {
-        if (!value && value !== 0) return null;
-
-        const id = typeof value === "object" ? (value.id ?? value.branch_id) : value;
-        if (!id && id !== 0) return null;
-
-        // Filter by work type if restricted
-        if (requiredWorkType && isRestricted) {
-            const normalizedRequired = requiredWorkType.toUpperCase();
-            const assignmentWorkType = (workType || (typeof value === 'object' ? value.work_type : null))?.toUpperCase();
-            if (assignmentWorkType && assignmentWorkType !== normalizedRequired) {
-                return null;
-            }
-        }
-
-        const source = typeof value === "object" ? value : null;
-        return {
-            id: String(id),
-            name: source?.name || source?.branch_name || source?.branch_details?.name || `Branch #${id}`,
-            is_default: Boolean(source?.is_default),
-        };
-    };
-
-    const collected = [];
-
-    // 1. Primary: assigned_branches (new API structure)
-    if (Array.isArray(profile.assigned_branches) && profile.assigned_branches.length > 0) {
-        const allowedBranchIds = requiredWorkType && isRestricted
-            ? new Set(
-                (profile.assigned_works || []).filter(w => w.work_type?.toUpperCase() === requiredWorkType.toUpperCase()).map(w => String(w.branch_id))
-            )
-            : null;
-
-        profile.assigned_branches.forEach(b => {
-            if (allowedBranchIds && !allowedBranchIds.has(String(b.id))) return;
-            const obj = toBranchObject(b);
-            if (obj) collected.push(obj);
-        });
-    } else if (Array.isArray(profile.assigned_works)) {
-        profile.assigned_works.forEach(w => {
-            const b = toBranchObject(w.branch_id || w, w.work_type);
-            if (b) collected.push(b);
-        });
-    }
-
-    // 2. Legacy fallback
-    if (collected.length === 0) {
-        const legacyRaw = [
-            ...(Array.isArray(profile.branches) ? profile.branches : []),
-            ...(Array.isArray(profile.branch_ids) ? profile.branch_ids : []),
-            ...(profile.branch ? [profile.branch] : []),
-            ...(profile.branch_id ? [profile.branch_id] : [])
-        ];
-        legacyRaw.forEach(b => {
-            const obj = toBranchObject(b);
-            if (obj) collected.push(obj);
-        });
-    }
-
-    const seen = new Set();
-    return collected.filter((branch) => {
-        if (seen.has(branch.id)) return false;
-        seen.add(branch.id);
-        return true;
-    });
 }
 
 export default function AddPurchaseOrder() {
@@ -130,7 +48,11 @@ export default function AddPurchaseOrder() {
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
     const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
-    const assignedBranches = useMemo(() => resolveAssignedBranches(profile, "SUPPLIER"), [profile]);
+    
+    const assignedBranches = useMemo(
+        () => getAssignedBranchesForWork(profile, 'SUPPLIER'),
+        [profile]
+    );
 
     const [vendors, setVendors] = useState([]);
     const [branches, setBranches] = useState([]);
@@ -156,15 +78,13 @@ export default function AddPurchaseOrder() {
                 if (!isMounted) return;
 
                 const vendorList = normalizeListPayload(vendorRes.data);
-                const branchList = normalizeListPayload(branchRes.data);
+                const branchData = normalizeListPayload(branchRes.data);
 
                 setVendors(vendorList);
+                
                 const accessibleBranches = (() => {
-                    if (!isRestrictedRole) return branchList;
-                    const assignedIds = new Set(assignedBranches.map((branch) => String(branch.id)));
-                    const filtered = assignedIds.size > 0
-                        ? branchList.filter((branch) => assignedIds.has(String(branch.id)))
-                        : branchList;
+                    if (!isRestrictedRole) return branchData;
+                    const filtered = filterBranchesForRole(branchData, assignedBranches);
                     return filtered.length > 0 ? filtered : assignedBranches;
                 })();
 
@@ -223,6 +143,7 @@ export default function AddPurchaseOrder() {
                 productName: product.name,
                 quantity: "1",
                 unit_cost: product.cost_price ? String(product.cost_price) : "0",
+                tax_rate: product.input_gst_rate ? String(product.input_gst_rate) : "0.00",
             };
             return { ...prev, items: [...prev.items, newItem] };
         });
@@ -236,21 +157,22 @@ export default function AddPurchaseOrder() {
         });
     };
 
-    const buildPayload = () => {
-        const items = formData.items.map((item) => ({
-            product_id: parsePositiveInt(item.product),
-            quantity: parsePositiveInt(item.quantity),
-            unit_cost: String(item.unit_cost || "").trim(),
-        }));
-
-        return {
-            supplier_id: parsePositiveInt(formData.supplier),
-            branch_id: parsePositiveInt(formData.branch_id),
-            status: String(formData.status || "PENDING").trim() || "PENDING",
-            notes: String(formData.notes || "").trim(),
-            items,
-        };
+    const calculateTotals = () => {
+        let subtotal = 0;
+        let tax = 0;
+        formData.items.forEach(item => {
+            const q = Number(item.quantity) || 0;
+            const c = Number(item.unit_cost) || 0;
+            const r = Number(item.tax_rate) || 0;
+            const lineSub = q * c;
+            const lineTax = (lineSub * r) / 100;
+            subtotal += lineSub;
+            tax += lineTax;
+        });
+        return { subtotal, tax, total: subtotal + tax };
     };
+
+    const { subtotal, tax, total } = calculateTotals();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -258,44 +180,36 @@ export default function AddPurchaseOrder() {
         setErrors({});
         setItemError("");
 
-        const payload = buildPayload();
-        const nextErrors = {};
+        const items = formData.items.map((item) => ({
+            product_id: parsePositiveInt(item.product),
+            quantity: parsePositiveInt(item.quantity),
+            unit_cost: String(item.unit_cost || "").trim(),
+            tax_rate: String(item.tax_rate || "0").trim(),
+        }));
 
-        if (!payload.supplier_id) nextErrors.supplier_id = ["Supplier is required"];
-        if (!payload.branch_id) nextErrors.branch_id = ["Branch is required"];
-        if (isRestrictedRole && payload.branch_id) {
-            const allowedBranches = new Set(branches.map((branch) => String(branch.id)));
-            if (allowedBranches.size > 0 && !allowedBranches.has(String(payload.branch_id))) {
-                nextErrors.branch_id = ["Select a branch assigned to your account"];
-            }
+        const payload = {
+            supplier_id: parsePositiveInt(formData.supplier),
+            branch_id: parsePositiveInt(formData.branch_id),
+            status: String(formData.status || "PENDING").trim() || "PENDING",
+            notes: String(formData.notes || "").trim(),
+            items,
+        };
+
+        if (!payload.supplier_id) {
+             setErrors({ supplier: ["Supplier is required"] });
+             setSaving(false);
+             return;
         }
-    
-        if (Object.keys(nextErrors).length > 0) {
-            setErrors(nextErrors);
-            setSaving(false);
-            return;
-        }
 
-        const hasInvalidItem = payload.items.some(
-            (item) => !item.product_id || !item.quantity || !item.unit_cost
-        );
-
-        if (payload.items.length === 0 || hasInvalidItem) {
-            setItemError("Each line item requires product, quantity, and unit cost.");
+        if (payload.items.length === 0) {
+            setItemError("Please add at least one product.");
             setSaving(false);
             return;
         }
 
         try {
-            await supplierService.createPurchaseOrder({
-                ...payload,
-                items: payload.items.map((item) => ({
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                    unit_cost: item.unit_cost,
-                })),
-            });
-            toast.success("Purchase order created");
+            await supplierService.createPurchaseOrder(payload);
+            toast.success("Purchase order created successfully");
             navigate(-1);
         } catch (error) {
             const responseErrors = error?.response?.data;
@@ -313,137 +227,125 @@ export default function AddPurchaseOrder() {
     };
 
     const inputClass = (name) =>
-        `w-full rounded-xl input-icon-left pr-4 py-3 text-sm ${errors[name]
-            ? "border-red-500 focus:ring-2 focus:ring-red-200"
-            : "border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
+        `w-full rounded-2xl border px-4 py-3.5 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-900/5 transition-all ${errors[name]
+            ? "border-rose-400 bg-rose-50"
+            : "border-slate-100 bg-slate-50 focus:border-slate-900 focus:bg-white shadow-sm"
         }`;
 
-    const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2";
+    const labelClass = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1";
 
     return (
-        <div className="min-h-screen bg-transparent">
+        <div className="min-h-screen bg-slate-50 pb-20">
             <ProtectedHeader />
 
-            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6">
-                <BackButton label="Back" />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+                <div className="flex items-center justify-between">
+                   <BackButton label="Back to Orders" />
+                </div>
 
-                <div className="max-w-6xl mx-auto">
-                    <section className="form-card overflow-hidden">
-                        <header className="px-4 sm:px-6 md:px-8 py-5 sm:py-6 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center gap-4">
-                            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-                                <FaShoppingCart />
+                <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
+                    <header className="px-8 sm:px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
+                                <FaShoppingCart className="text-xl" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold text-slate-900">Create Purchase Order</h1>
-                                <p className="text-sm text-slate-500">
-                                    Fill in the supplier, branch, and items for this new order.
-                                </p>
+                                <h1 className="text-2xl font-black text-slate-900 tracking-tight">New Purchase Order</h1>
+                                <p className="text-sm font-medium text-slate-500">Inventory procurement management</p>
                             </div>
-                        </header>
+                        </div>
+                        
+                        <div className="flex items-center gap-6 bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm">
+                             <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Grand Total</p>
+                                <p className="text-2xl font-black text-slate-900 tabular-nums">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                             </div>
+                        </div>
+                    </header>
 
-                        {loadingPage ? (
-                            <div className="p-10 flex items-center justify-center text-slate-500">
-                                <FaSpinner className="animate-spin mr-2" />
-                                Loading form details...
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
-                                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                                    <section className="xl:col-span-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 space-y-4">
-                                        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Order Details</h2>
-
+                    {loadingPage ? (
+                        <div className="p-20 flex flex-col items-center justify-center text-slate-400 gap-4">
+                            <FaSpinner className="animate-spin text-3xl text-slate-900" />
+                            <p className="font-bold text-xs uppercase tracking-widest">Initializing Order Pipeline...</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="p-8 sm:p-10 space-y-10">
+                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+                                {/* Left Side: Order Meta */}
+                                <section className="xl:col-span-4 space-y-8">
+                                    <div className="space-y-6">
+                                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-l-4 border-slate-900 pl-4">Order Meta</h3>
+                                        
                                         <div>
-                                            <label className={labelClass}>Supplier <span className="text-red-500">*</span></label>
-                                            <div className="relative group">
-                                                <FaUsers className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                                            <label className={labelClass}>Vendor / Supplier</label>
+                                            <div className="relative">
                                                 <select
                                                     name="supplier"
                                                     value={formData.supplier}
                                                     onChange={handleInputChange}
-                                                    className={`${inputClass("supplier")} pl-11`}
+                                                    className={`${inputClass("supplier")} appearance-none cursor-pointer`}
                                                     required
                                                 >
-                                                    <option value="">Select supplier</option>
-                                                    {vendors.map((vendor) => (
-                                                        <option key={vendor.id} value={vendor.id}>
-                                                            {vendor.name}
-                                                        </option>
-                                                    ))}
+                                                    <option value="">Select Vendor</option>
+                                                    {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
                                                 </select>
+                                                <FaUsers className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
                                             </div>
-                                            {getErrorText(errors.supplier) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.supplier)}</p>}
+                                            {errors.supplier && <p className="text-rose-600 text-[10px] font-bold mt-1.5 ml-1">{errors.supplier[0]}</p>}
                                         </div>
 
                                         <div>
-                                            <label className={labelClass}>Branch <span className="text-red-500">*</span></label>
-                                            <div className="relative group">
-                                                <FaCodeBranch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                                            <label className={labelClass}>Receiving Branch</label>
+                                            <div className="relative">
                                                 <select
                                                     name="branch_id"
                                                     value={formData.branch_id}
                                                     onChange={handleInputChange}
-                                                    disabled={isRestrictedRole && branches.length <= 1}
-                                                    className={`${inputClass("branch_id")} pl-11 ${isRestrictedRole && branches.length <= 1 ? "bg-slate-100" : ""}`}
+                                                    className={`${inputClass("branch_id")} appearance-none cursor-pointer`}
                                                     required
                                                 >
-                                                    <option value="">Select branch</option>
-                                                    {branches.map((branch) => (
-                                                        <option key={branch.id} value={String(branch.id)}>
-                                                            {branch.branch_name || branch.name}
-                                                        </option>
-                                                    ))}
+                                                    <option value="">Select Branch</option>
+                                                    {branches.map((b) => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
                                                 </select>
+                                                <FaCodeBranch className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
                                             </div>
-                                            {getErrorText(errors.branch_id || errors.branch) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.branch_id || errors.branch)}</p>}
-                                            {isRestrictedRole && branches.length === 0 && (
-                                                <p className="text-red-500 text-xs mt-2 font-medium">No branch is assigned to your account.</p>
-                                            )}
                                         </div>
 
                                         <div>
-                                            <label className={labelClass}>Status</label>
-                                            <div className="relative group">
-                                                <FaShoppingCart className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition" />
+                                            <label className={labelClass}>Execution Status</label>
+                                            <div className="relative">
                                                 <select
                                                     name="status"
                                                     value={formData.status}
                                                     onChange={handleInputChange}
-                                                    className={`${inputClass("status")} pl-11`}
+                                                    className={`${inputClass("status")} appearance-none cursor-pointer`}
                                                 >
-                                                    {STATUS_OPTIONS.map((status) => (
-                                                        <option key={status} value={status}>
-                                                            {status}
-                                                        </option>
-                                                    ))}
+                                                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                                                 </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
                                             </div>
-                                            {getErrorText(errors.status) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.status)}</p>}
                                         </div>
 
                                         <div>
-                                            <label className={labelClass}>Notes</label>
-                                            <div className="relative group">
-                                                <FaAlignLeft className="absolute left-4 top-4 text-slate-400 group-focus-within:text-brand-600 transition" />
-                                                <textarea
-                                                    rows={3}
-                                                    name="notes"
-                                                    value={formData.notes}
-                                                    onChange={handleInputChange}
-                                                    className={`${inputClass("notes")} pl-11`}
-                                                    placeholder="Optional notes for this order"
-                                                />
-                                            </div>
-                                            {getErrorText(errors.notes) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.notes)}</p>}
+                                            <label className={labelClass}>Purchase Notes</label>
+                                            <textarea
+                                                rows={3}
+                                                name="notes"
+                                                value={formData.notes}
+                                                onChange={handleInputChange}
+                                                className={`${inputClass("notes")} resize-none`}
+                                                placeholder="Instructions for the supplier..."
+                                            />
                                         </div>
-                                    </section>
+                                    </div>
+                                </section>
 
-                                    <section className="xl:col-span-7 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
-                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                            <div>
-                                                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Order Items</h2>
-                                                <p className="text-xs text-slate-500 mt-1">Search and add products to the purchase order</p>
-                                            </div>
-                                            <div className="w-full sm:w-[340px] max-w-full">
+                                {/* Right Side: Line Items */}
+                                <section className="xl:col-span-8 space-y-8">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-l-4 border-slate-900 pl-4">Inventory Items</h3>
+                                            <div className="w-64">
                                                 <PurchaseOrderProductSearch
                                                     onSelect={handleAddProduct}
                                                     branchId={formData.branch_id}
@@ -451,102 +353,134 @@ export default function AddPurchaseOrder() {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            {formData.items.map((item, index) => (
-                                                <div
-                                                    key={`item-${index}`}
-                                                    className="border border-slate-200 rounded-xl p-3 sm:p-4 grid grid-cols-1 md:grid-cols-12 gap-3 bg-slate-50/50"
-                                                >
-                                                    <div className="md:col-span-5">
-                                                        <label className={`${labelClass} flex items-center gap-1.5`}>
-                                                            <FaBoxOpen className="text-slate-400" />
-                                                            Product
-                                                        </label>
-                                                        <div className="w-full min-h-[46px] rounded-xl px-4 py-3 text-sm border border-slate-200 bg-slate-50 text-slate-700 font-medium relative flex items-center">
-                                                            <span className="truncate">{item.productName || "Product"}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="md:col-span-3">
-                                                        <label className={`${labelClass} flex items-center gap-1.5`}>
-                                                            <FaBoxOpen className="text-slate-400" />
-                                                            Quantity
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            value={item.quantity}
-                                                            onChange={(event) => handleItemChange(index, "quantity", event.target.value)}
-                                                            className="w-full rounded-xl px-4 py-3 text-sm border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
-                                                            placeholder="Qty"
-                                                            required
-                                                        />
-                                                    </div>
-
-                                                    <div className="md:col-span-3">
-                                                        <label className={`${labelClass} flex items-center gap-1.5`}>
-                                                            <FaMoneyBillWave className="text-slate-400" />
-                                                            Unit Cost
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            step="0.01"
-                                                            value={item.unit_cost}
-                                                            onChange={(event) => handleItemChange(index, "unit_cost", event.target.value)}
-                                                            className="w-full rounded-xl px-4 py-3 text-sm border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
-                                                            placeholder="0.00"
-                                                            required
-                                                        />
-                                                    </div>
-
-                                                    <div className="md:col-span-1 flex items-end md:justify-end">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeItemRow(index)}
-                                                            className="h-11 w-full md:w-11 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 inline-flex items-center justify-center transition-colors"
-                                                            title="Remove item"
-                                                        >
-                                                            <FaTrash />
-                                                        </button>
-                                                    </div>
+                                        <div className="space-y-4">
+                                            {formData.items.length === 0 ? (
+                                                <div className="text-center py-20 bg-slate-50/50 rounded-[32px] border-2 border-dashed border-slate-100">
+                                                     <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-200 border border-slate-100">
+                                                        <FaPlus size={20} />
+                                                     </div>
+                                                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No products added</p>
                                                 </div>
-                                            ))}
-                                        </div>
+                                            ) : (
+                                                formData.items.map((item, index) => {
+                                                    const lineSub = (Number(item.quantity) || 0) * (Number(item.unit_cost) || 0);
+                                                    const lineTax = (lineSub * (Number(item.tax_rate) || 0)) / 100;
+                                                    const lineTotal = lineSub + lineTax;
 
-                                        <div className="flex justify-end pt-4 border-t border-slate-100 mt-4">
-                                            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 sm:px-6 py-4 w-full sm:w-auto sm:min-w-[280px] flex justify-between items-center gap-4">
-                                                <span className="text-slate-500 font-bold uppercase tracking-wider text-sm">Order Total</span>
-                                                <span className="text-2xl font-bold text-slate-900">
-                                                    ₹{formData.items.reduce((sum, item) => sum + ((parsePositiveInt(item.quantity) || 0) * (parseFloat(item.unit_cost) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
+                                                    return (
+                                                        <div key={`item-${index}`} className="group relative bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-200 transition-all duration-300">
+                                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                                                <div className="md:col-span-5">
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">1. Product Information</p>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-900 border border-slate-100">
+                                                                            <FaBoxOpen size={16} />
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="font-black text-slate-900 text-sm truncate">{item.productName}</p>
+                                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Line Total:</span>
+                                                                                <span className="text-[10px] font-black text-slate-900 tabular-nums">₹{lineTotal.toFixed(2)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="md:col-span-7 grid grid-cols-4 gap-4">
+                                                                    <div>
+                                                                        <label className={labelClass}>1. Quantity</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            min="1"
+                                                                            value={item.quantity}
+                                                                            onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                                                                            className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-center shadow-sm"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className={labelClass}>2. Unit Cost</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">₹</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.01"
+                                                                                value={item.unit_cost}
+                                                                                onChange={(e) => handleItemChange(index, "unit_cost", e.target.value)}
+                                                                                className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-6 pr-3 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-right shadow-sm"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className={labelClass}>3. GST Rate %</label>
+                                                                        <div className="relative group">
+                                                                            <input
+                                                                                type="number"
+                                                                                step="0.01"
+                                                                                value={item.tax_rate}
+                                                                                onChange={(e) => handleItemChange(index, "tax_rate", e.target.value)}
+                                                                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-center shadow-sm"
+                                                                            />
+                                                                            <FaPercent className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] text-slate-400" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className={labelClass}>4. GST Amount</label>
+                                                                        <div className="h-[42px] flex items-center justify-end px-4 bg-slate-900 rounded-xl shadow-lg shadow-slate-900/10 border border-slate-800">
+                                                                            <span className="text-white/40 font-bold text-[10px] mr-1.5">₹</span>
+                                                                            <span className="text-white font-black text-xs tabular-nums tracking-tight">{lineTax.toFixed(2)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeItemRow(index)}
+                                                                className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-white border border-slate-100 text-slate-300 hover:text-rose-600 shadow-sm flex items-center justify-center transition-all hover:scale-110 active:scale-90"
+                                                            >
+                                                                <FaTrash size={10} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
+                                        
+                                        {itemError && <p className="text-rose-600 text-[10px] font-bold uppercase tracking-widest text-center mt-4">{itemError}</p>}
+                                    </div>
+                                </section>
+                            </div>
 
-                                        {itemError && <p className="text-red-500 text-xs font-medium">{itemError}</p>}
-                                    </section>
+                            {/* Sticky Footer Action */}
+                            <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-slate-100">
+                                <div className="flex items-center gap-10">
+                                    <div className="text-slate-400">
+                                        <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Subtotal (Net)</p>
+                                        <p className="text-lg font-bold text-slate-600 tabular-nums">₹{subtotal.toLocaleString()}</p>
+                                    </div>
+                                    <div className="text-slate-400">
+                                        <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Tax Amount</p>
+                                        <p className="text-lg font-bold text-indigo-600 tabular-nums">+ ₹{tax.toLocaleString()}</p>
+                                    </div>
                                 </div>
 
-                                <div className="form-actions flex-col-reverse sm:flex-row">
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
                                     <button
                                         type="button"
                                         onClick={() => navigate(-1)}
-                                        className="btn-secondary w-full sm:w-auto text-center"
+                                        className="flex-1 sm:flex-none px-10 py-4 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all"
                                     >
-                                        Cancel
+                                        Discard
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={saving}
-                                        className={`btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto ${saving ? "opacity-70 cursor-not-allowed" : ""}`}
+                                        className="flex-[2] sm:flex-none min-w-[240px] bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50"
                                     >
-                                        <FaSave />
-                                        {saving ? "Saving..." : "Create Purchase Order"}
+                                        {saving ? "Creating Order..." : "Authorize Purchase Order"}
                                     </button>
                                 </div>
-                            </form>
-                        )}
-                    </section>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </main>
         </div>

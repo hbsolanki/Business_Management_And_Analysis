@@ -1,9 +1,11 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaChartPie, FaHome, FaTable, FaUserFriends } from "react-icons/fa";
+import { useSelector } from "react-redux";
 import api from "@/services/api";
 
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
+import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branchFilter";
 
 const AnalyticsSummary = lazy(() => import("@/features/analytics/components/AnalyticsSummary"));
 const AnalyticsCharts = lazy(() => import("@/features/analytics/components/AnalyticsCharts"));
@@ -22,11 +24,50 @@ const normalizeProductDetails = (data) => {
 export default function Analytics({ initialView = "SUMMARY" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { profile } = useSelector((state) => state.user);
+  const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
+  const isRestrictedRole = userRole === "MANAGER" || userRole === "EMPLOYEE";
+  
+  const assignedBranches = useMemo(
+    () => getAssignedBranchesForWork(profile, 'ANALYTICS'),
+    [profile]
+  );
+
   const [view, setView] = useState(initialView);
   const [productStockData, setProductStockData] = useState([]);
   const [productDetailsData, setProductDetailsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const visualSection = searchParams.get("section");
+
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [fetchingBranches, setFetchingBranches] = useState(false);
+
+  useEffect(() => {
+    async function fetchBranches() {
+      setFetchingBranches(true);
+      try {
+        const response = await api.get("/business/branch/");
+        const list = Array.isArray(response.data) ? response.data : (response.data?.results || []);
+        
+        if (isRestrictedRole) {
+          const visibleBranches = filterBranchesForRole(list, assignedBranches);
+          const resolvedBranches = visibleBranches.length > 0 ? visibleBranches : assignedBranches;
+            
+          setBranches(resolvedBranches);
+          if (resolvedBranches.length > 0) setSelectedBranch(String(resolvedBranches[0].id));
+        } else {
+          setBranches(list);
+          setSelectedBranch(""); // Default to Global for Owners
+        }
+      } catch (err) {
+        console.error("Failed to fetch branches", err);
+      } finally {
+        setFetchingBranches(false);
+      }
+    }
+    fetchBranches();
+  }, [isRestrictedRole, assignedBranches]);
 
   useEffect(() => {
     setView(initialView);
@@ -59,13 +100,16 @@ export default function Analytics({ initialView = "SUMMARY" }) {
         let detailsRows = [];
         let stockRows = [];
 
+        const params = selectedBranch ? { branch: selectedBranch } : {};
+        const query = Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : "";
+
         if (needsDetails) {
-          const detailsRes = await api.get("/analytics/product/details/");
+          const detailsRes = await api.get(`/analytics/product/details/${query}`);
           detailsRows = detailsRes?.data?.results || detailsRes?.data || [];
         }
 
         if (needsStock) {
-          const stockRes = await api.get("/analytics/product/stock/");
+          const stockRes = await api.get(`/analytics/product/stock/${query}`);
           stockRows = stockRes?.data?.results || stockRes?.data || [];
         }
 
@@ -87,7 +131,7 @@ export default function Analytics({ initialView = "SUMMARY" }) {
     return () => {
       isMounted = false;
     };
-  }, [view, visualSection]);
+  }, [view, visualSection, selectedBranch]);
 
   if (loading && view !== "CUSTOMERS") {
     return (
@@ -116,31 +160,45 @@ export default function Analytics({ initialView = "SUMMARY" }) {
             <p className="text-slate-500 mt-1">Open insights by module and track financial + customer performance.</p>
           </div>
 
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-            <button
-              onClick={() => navigate("/analytics")}
-              className={navButtonClass(false)}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all cursor-pointer shadow-sm disabled:bg-slate-50 disabled:text-slate-500"
+              disabled={fetchingBranches || (isRestrictedRole && branches.length <= 1)}
             >
-              <FaHome /> Index
-            </button>
-            <button
-              onClick={() => navigate("/analytics/overview")}
-              className={navButtonClass(view === "SUMMARY")}
-            >
-              <FaTable /> Overview
-            </button>
-            <button
-              onClick={() => navigate("/analytics/visual")}
-              className={navButtonClass(view === "CHARTS")}
-            >
-              <FaChartPie /> Visuals
-            </button>
-            <button
-              onClick={() => navigate("/analytics/customers")}
-              className={navButtonClass(view === "CUSTOMERS")}
-            >
-              <FaUserFriends /> Customers
-            </button>
+              {!isRestrictedRole && <option value="">Global (All Branches)</option>}
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>{b.name} {b.is_default ? "(Main)" : ""}</option>
+              ))}
+            </select>
+
+            <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+              <button
+                onClick={() => navigate("/analytics")}
+                className={navButtonClass(false)}
+              >
+                <FaHome /> Index
+              </button>
+              <button
+                onClick={() => navigate("/analytics/overview")}
+                className={navButtonClass(view === "SUMMARY")}
+              >
+                <FaTable /> Overview
+              </button>
+              <button
+                onClick={() => navigate("/analytics/visual")}
+                className={navButtonClass(view === "CHARTS")}
+              >
+                <FaChartPie /> Visuals
+              </button>
+              <button
+                onClick={() => navigate("/analytics/customers")}
+                className={navButtonClass(view === "CUSTOMERS")}
+              >
+                <FaUserFriends /> Customers
+              </button>
+            </div>
           </div>
         </div>
 
@@ -153,11 +211,11 @@ export default function Analytics({ initialView = "SUMMARY" }) {
             }
           >
             {view === "SUMMARY" ? (
-              <AnalyticsSummary stockData={productStockData} detailsData={productDetailsData} />
+              <AnalyticsSummary stockData={productStockData} detailsData={productDetailsData} branchId={selectedBranch} />
             ) : view === "CHARTS" ? (
-              <AnalyticsCharts stockData={productStockData} detailsData={productDetailsData} />
+              <AnalyticsCharts stockData={productStockData} detailsData={productDetailsData} branchId={selectedBranch} />
             ) : (
-              <CustomerAnalytics />
+              <CustomerAnalytics branchId={selectedBranch} />
             )}
           </Suspense>
         </div>

@@ -6,7 +6,7 @@ from apps.notification.serializers import NotificationReadSerializer
 
 def send_notification(user, title, content, action_type, actor=None, action_link=None, request=None):
     """
-    Generalized function to create a notification and send it via WebSocket.
+    Generalized function to create a notification and offload delivery to Celery.
     """
     notification = Notification.objects.create(
         user=user,
@@ -16,28 +16,10 @@ def send_notification(user, title, content, action_type, actor=None, action_link
         action_type=action_type,
         action_link=action_link,
     )
-    serializer = NotificationReadSerializer(
-        notification,
-        context={"request": request} if request else {}
-    )
-
-    channel_layer = get_channel_layer()
-    if channel_layer:
-        async_to_sync(channel_layer.group_send)(
-            f"notification_{user.id}",
-            {
-                "type": "notification",
-                "id": notification.id,
-                "title": notification.title,
-                "content": notification.content,
-                "action_type": notification.action_type,
-                "action_link": notification.action_link,
-                "is_read": notification.is_read,
-                "created_at": str(notification.created_at),
-                "actor": serializer.data.get("actor"),
-                "user": serializer.data.get("user"),
-            }
-        )
+    
+    # Offload WebSocket delivery to Celery
+    from apps.notification.tasks import send_notification_task
+    send_notification_task.delay(notification.id)
     
     return notification
 def send_broadcast_notification(title, content, action_type, actor=None, action_link=None):

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { tokenService } from '@/services/tokenService';
 import { API_BASE_URL } from '@/services/api';
@@ -11,6 +11,7 @@ const resolveNotificationSSEUrl = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
+    const { profile: user } = useSelector((state) => state.user);
     const [notifications, setNotifications] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
     const abortControllerRef = useRef(null);
@@ -123,7 +124,6 @@ export const NotificationProvider = ({ children }) => {
         setIsConnected(false);
     }, []);
 
-    const { profile: user } = useSelector((state) => state.user);
 
     useEffect(() => {
         const token = tokenService.getAccessToken();

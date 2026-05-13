@@ -29,6 +29,7 @@ const InventoryTransactionCreate = lazy(
 );
 
 const BusinessEdit = lazy(() => import("@/pages/business/EditBusiness"));
+const ComplianceSettings = lazy(() => import("@/pages/business/ComplianceSettings"));
 const BranchList = lazy(() => import("@/pages/business/BranchList"));
 const AddBranch = lazy(() => import("@/pages/business/AddBranch"));
 const EditBranch = lazy(() => import("@/pages/business/EditBranch"));
@@ -82,6 +83,7 @@ const AnalyticsEndpointView = lazy(
 const AnalyticsReportGenerator = lazy(
   () => import("@/pages/analytics/AnalyticsReportGenerator"),
 );
+const GstSummary = lazy(() => import("@/pages/analytics/GstSummaryDashboard"));
 
 //Manage
 const ManagerManage = lazy(() => import("@/pages/manager/ManagerList"));
@@ -108,6 +110,9 @@ const OwnerInfo = lazy(() => import("@/pages/info/OwnerInfo"));
 const ManagerInfo = lazy(() => import("@/pages/info/ManagerInfo"));
 const EmployeeInfo = lazy(() => import("@/pages/info/EmployeeInfo"));
 const Support = lazy(() => import("@/pages/info/Support"));
+
+const ExpenseList = lazy(() => import("@/pages/cost/ExpenseList"));
+const AddExpense = lazy(() => import("@/pages/cost/AddExpense"));
 
 // loader
 function PageLoader() {
@@ -232,6 +237,7 @@ function App() {
                 <Route path="/owner" element={<Owner />} />
                 <Route path="/owner/edit" element={<OwnerEdit />} />
                 <Route path="/business/edit/:bid" element={<BusinessEdit />} />
+                <Route path="/business/compliance" element={<ComplianceSettings />} />
                 <Route
                   element={<PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />}
                 >
@@ -303,6 +309,8 @@ function App() {
                     <AnalyticsEndpointView defaultApiId="customer-revenue" />
                   }
                 />
+
+                <Route path="/analytics/gst" element={<GstSummary />} />
 
                 <Route path="/employees/manage" element={<EmployeesManage />} />
                 <Route path="/employee/new" element={<EmployeesNew />} />
@@ -409,6 +417,8 @@ function App() {
               >
                 <Route path="/cost-category" element={<CostDashboard />} />
                 <Route path="/cost-category/month" element={<AddCost />} />
+                <Route path="/cost/expenses" element={<ExpenseList />} />
+                <Route path="/cost/expenses/add" element={<AddExpense />} />
                 <Route
                   path="/cost"
                   element={<Navigate to="/cost-category" replace />}
@@ -449,7 +459,10 @@ function App() {
                   element={<NewBroadcast />}
                 />
                 <Route path="/ai-agent/session" element={<AiAgent />} />
-                <Route path="/ai-agent/session/:sessionId" element={<AiAgent />} />
+                <Route
+                  path="/ai-agent/session/:sessionId"
+                  element={<AiAgent />}
+                />
               </Route>
 
               <Route

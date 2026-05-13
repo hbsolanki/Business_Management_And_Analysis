@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { FaBell, FaLink, FaTrashAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import useNotification from '@/hooks/useNotification';
+import { getProfileImageUrl } from "@/utils/imageUtils";
 
 const NotificationBell = () => {
     const { notifications, fetchNotifications, markAsRead, clearNotifications, deleteNotification, bulkDeleteNotifications } = useNotification();
@@ -152,9 +153,9 @@ const NotificationBell = () => {
                                         onClick={() => handleNotificationClick(notification)}
                                     >
                                         <div className="flex-shrink-0">
-                                            {notification.actor?.profile_picture ? (
+                                            {getProfileImageUrl(notification.actor?.profile_picture) ? (
                                                 <img
-                                                    src={notification.actor.profile_picture}
+                                                    src={getProfileImageUrl(notification.actor.profile_picture)}
                                                     alt={notification.actor.username}
                                                     className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border border-white shadow-sm"
                                                 />

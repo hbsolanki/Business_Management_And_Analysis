@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import date
+from datetime import date, timedelta, datetime
 from django.utils import timezone
 from unittest.mock import patch
 from apps.base.tests import BaseTestCase
@@ -16,8 +16,12 @@ class CostTasksTests(BaseTestCase):
     @patch('apps.cost.tasks.date')
     def test_daily_financial_summary_update(self, mock_date):
         """Daily summary."""
-        # Setup: All invoices moved to the last day of March (2024-03-31)
-        invoice_date = timezone.now().replace(year=2024, month=3, day=31)
+        # Setup: All invoices moved to yesterday relative to our mock date
+        mock_today = date(2026, 5, 1)
+        prev_date = mock_today - timedelta(days=1)
+        
+        # Use a timezone-aware datetime for the invoices
+        invoice_date = timezone.make_aware(datetime(prev_date.year, prev_date.month, prev_date.day, 12, 0, 0))
         Invoice.objects.all().update(created_at=invoice_date)
         
         # Setup: Create operating expenses for March
@@ -35,16 +39,29 @@ class CostTasksTests(BaseTestCase):
             s.invoice_count = 0 
             s.save()
         
+        from apps.cost.models import Expense
         category_a = self.cost_category_a
-        MonthlyCostCategory.objects.update_or_create(monthly_summary=summary_a1, cost_category=category_a, defaults={"cost": Decimal("1000.00")})
-        MonthlyCostCategory.objects.update_or_create(monthly_summary=summary_a2, cost_category=category_a, defaults={"cost": Decimal("2000.00")})
-        
         category_b = self.cost_category_b
-        MonthlyCostCategory.objects.update_or_create(monthly_summary=summary_b1, cost_category=category_b, defaults={"cost": Decimal("1000.00")})
-        MonthlyCostCategory.objects.update_or_create(monthly_summary=summary_b2, cost_category=category_b, defaults={"cost": Decimal("2000.00")})
 
-        # Step: Run task on April 1st (processes March 31st invoices AND triggers end-month logic for March)
-        mock_date.today.return_value = date(2024, 4, 1)
+        # Create Expenses for Business A
+        Expense.objects.create(business=self.business_a, branch=self.summary_branch_a1.branch, category=category_a, amount=Decimal("1000.00"), total_amount=Decimal("1000.00"), date=date(2026, 4, 10), title="Exp A1")
+        Expense.objects.create(business=self.business_a, branch=self.summary_branch_a2.branch, category=category_a, amount=Decimal("2000.00"), total_amount=Decimal("2000.00"), date=date(2026, 4, 10), title="Exp A2")
+
+        # Create Expenses for Business B
+        Expense.objects.create(business=self.business_b, branch=self.summary_branch_b1.branch, category=category_b, amount=Decimal("1000.00"), total_amount=Decimal("1000.00"), date=date(2026, 4, 10), title="Exp B1")
+        Expense.objects.create(business=self.business_b, branch=self.summary_branch_b2.branch, category=category_b, amount=Decimal("2000.00"), total_amount=Decimal("2000.00"), date=date(2026, 4, 10), title="Exp B2")
+
+        # Step: Run task for today (processes yesterday's invoices)
+        # Mock as May 1st so it triggers end_month_finance_update for April
+        mock_date.today.return_value = date(2026, 5, 1)
+        prev_date = mock_date.today.return_value - timedelta(days=1)
+        
+        # Ensure summaries match the month we are testing (April 2026)
+        for s in [summary_a1, summary_a2, summary_b1, summary_b2]:
+            s.year = prev_date.year
+            s.month = prev_date.month
+            s.save()
+
         daily_financial_summary_update()
         
         # Read: Business A - Branch A1
@@ -136,14 +153,19 @@ class CostTasksTests(BaseTestCase):
         summary.month = 2
         summary.save()
         
-        MonthlyCostCategory.objects.update_or_create(
-            monthly_summary=summary,
-            cost_category=self.cost_category_a,
-            defaults={"cost": Decimal("5000.00")}
+        from apps.cost.models import Expense
+        Expense.objects.create(
+            business=self.business_a,
+            branch=self.branch_a1,
+            category=self.cost_category_a,
+            amount=Decimal("5000.00"),
+            total_amount=Decimal("5000.00"),
+            date=date(2026, 2, 10),
+            title="Test Expense"
         )
         
         # Execute
-        end_month_finance_update(summary, self.business_a, self.branch_a1)
+        end_month_finance_update(self.business_a.id, summary.month, summary.year)
         
         # Read
         summary.refresh_from_db()

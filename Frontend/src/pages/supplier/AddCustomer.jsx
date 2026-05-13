@@ -120,14 +120,15 @@ export default function AddCustomer() {
                 if (!isMounted) return;
 
                 const customer = res?.data || {};
+                const samePlatform = Boolean(customer.same_platform);
                 const loadedData = {
                     name: customer.name || "",
                     mobile_number: customer.mobile_number || "",
                     gender: customer.gender || "",
                     age: customer.age ? String(customer.age) : "",
                     email: customer.email || "",
-                    same_platform: Boolean(customer.same_platform),
-                    supplier_business_id: customer.same_platform && customer.customer_business ? String(customer.customer_business) : "",
+                    same_platform: samePlatform,
+                    supplier_business_id: samePlatform && customer.customer_business ? String(customer.customer_business) : "",
                 };
 
                 setFormData(loadedData);

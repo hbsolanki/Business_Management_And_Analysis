@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
 import {
@@ -11,7 +10,6 @@ import {
     FaPlus,
     FaSearch,
     FaTrash,
-    FaTruck,
     FaUsers,
     FaArrowLeft,
     FaEye
@@ -55,7 +53,6 @@ function toQueryString(filters) {
 
 export default function VendorList() {
     const navigate = useNavigate();
-    const { profile } = useSelector((state) => state.user);
 
     const [vendors, setVendors] = useState([]);
     const [loadingVendors, setLoadingVendors] = useState(true);
@@ -71,7 +68,7 @@ export default function VendorList() {
         [appliedVendorFilters]
     );
 
-    const loadVendors = async (filters = appliedVendorFilters) => {
+    const loadVendors = useCallback(async (filters = appliedVendorFilters) => {
         try {
             setLoadingVendors(true);
             const query = toQueryString(filters);
@@ -83,11 +80,11 @@ export default function VendorList() {
         } finally {
             setLoadingVendors(false);
         }
-    };
+    }, [appliedVendorFilters]);
 
     useEffect(() => {
         loadVendors(INITIAL_VENDOR_FILTERS);
-    }, []);
+    }, [loadVendors]);
 
     useEffect(() => {
         const closeMenuOnOutsideClick = (event) => {
@@ -145,9 +142,6 @@ export default function VendorList() {
             await supplierService.deleteVendor(vendorToDelete.id);
             toast.success("Vendor deleted");
             setVendors((prev) => prev.filter((vendor) => vendor.id !== vendorToDelete.id));
-            if (true) {
-                // Expansion logic removed, so this check is simplified
-            }
         } catch (error) {
             console.error("Vendor delete failed", error);
             toast.error(extractFirstError(error, "Failed to delete vendor"));

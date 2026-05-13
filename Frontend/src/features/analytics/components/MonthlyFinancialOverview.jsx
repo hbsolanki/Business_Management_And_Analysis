@@ -41,7 +41,7 @@ const getLatestRecord = (records) =>
         return latest;
     }, null);
 
-export default function MonthlyFinancialOverview() {
+export default function MonthlyFinancialOverview({ branchId = "" }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [allData, setAllData] = useState([]);
@@ -66,13 +66,14 @@ export default function MonthlyFinancialOverview() {
 
     useEffect(() => {
         fetchAllData();
-    }, []);
+    }, [branchId]);
 
     const fetchAllData = async () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await costService.getMonthlyFinancialSummary();
+            const params = branchId ? { branch: branchId } : {};
+            const response = await costService.getMonthlyFinancialSummary(params);
             const data = response.data?.results || response.data || [];
             setAllData(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -87,7 +88,10 @@ export default function MonthlyFinancialOverview() {
         try {
             setLoading(true);
             setError(null);
-            const response = await costService.getMonthlyFinancialSummary(filterParams);
+            const params = { ...filterParams };
+            if (branchId) params.branch = branchId;
+            
+            const response = await costService.getMonthlyFinancialSummary(params);
             const data = response.data?.results || response.data || [];
             setFilteredData(Array.isArray(data) ? data : []);
         } catch (err) {

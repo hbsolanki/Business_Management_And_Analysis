@@ -5,11 +5,12 @@ from apps.user.models import User
 
 @database_sync_to_async
 def get_or_create_session(user_id, session_id=None):
+    from django.core.exceptions import ValidationError
     user = User.all_objects.get(id=user_id)
-    if session_id:
+    if session_id and session_id != "new":
         try:
             return AiChatSession.objects.get(id=session_id, user=user)
-        except (AiChatSession.DoesNotExist, ValueError):
+        except (AiChatSession.DoesNotExist, ValueError, ValidationError):
             pass
     return AiChatSession.objects.create(user=user, title="New Chat")
 

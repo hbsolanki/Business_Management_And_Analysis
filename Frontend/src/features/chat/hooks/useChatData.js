@@ -61,7 +61,11 @@ export const useChatData = (socketMessages, setSocketMessages) => {
                     }
 
                     if (otherUser) {
-                        uniqueUsersMap.set(otherUser.id, { ...otherUser, conversation_id: conv.id });
+                        uniqueUsersMap.set(otherUser.id, { 
+                            ...otherUser, 
+                            conversation_id: conv.id,
+                            other_user_context: conv.other_user_context 
+                        });
                     }
                 });
 
@@ -83,13 +87,8 @@ export const useChatData = (socketMessages, setSocketMessages) => {
     const searchGlobalUsers = useCallback(async (query) => {
         if (!query) return [];
         try {
-            const response = await api.get(`/user/?search=${query}`);
-            if (response.data && Array.isArray(response.data.results)) {
-                return response.data.results.filter(u => u.id !== currentUserId);
-            } else if (Array.isArray(response.data)) {
-                return response.data.filter(u => u.id !== currentUserId);
-            }
-            return [];
+            const response = await api.get(`/chat/conversation/search/?search=${query}`);
+            return response.data;
         } catch (err) {
             console.error("Search failed", err);
             return [];
@@ -238,7 +237,7 @@ export const useChatData = (socketMessages, setSocketMessages) => {
 
             // Otherwise create a new conversation
             const res = await api.post("/chat/conversation/", { user_id: user.id });
-            const convId = res.data.conversation_id;
+            const convId = res.data.id;
             setConversationId(convId);
             await fetchMessages(convId);
             return convId;
@@ -295,7 +294,7 @@ export const useChatData = (socketMessages, setSocketMessages) => {
 
             if (!effectiveConversationId && targetUserId) {
                 const convRes = await api.post("/chat/conversation/", { user_id: targetUserId });
-                effectiveConversationId = convRes?.data?.conversation_id || null;
+                effectiveConversationId = convRes?.data?.id || null;
                 if (effectiveConversationId) {
                     setConversationId(effectiveConversationId);
                 }

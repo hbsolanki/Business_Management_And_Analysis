@@ -43,6 +43,7 @@ def create_invoice_from_sales_order_task(sales_order_id):
             }
             for item in sales_order.items.all()
         ],
+        "sales_order": sales_order.id,
         "payment_mode": "CASH",  # Default for delivered orders
         "notes": f"Auto-generated from Sales Order #{sales_order.id}"
     }

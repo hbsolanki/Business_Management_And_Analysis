@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    command: uvicorn bma.asgi:application --host 0.0.0.0 --port 8000
+    volumes:
+      - ./Backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    env_file:
+      - ./Backend/.env
+    ports:
+      - "8000:8000"
+    restart: always
+
+  worker:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    command: celery -A bma worker -l info --pool=solo
+    volumes:
+      - ./Backend:/app
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - backend
+    restart: always
+
+  beat:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    command: celery -A bma beat -l info
+    volumes:
+      - ./Backend:/app
+    env_file:
+      - ./Backend/.env
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  static_volume:
+  media_volume:

@@ -198,12 +198,12 @@ function EmployeeManage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all shadow-sm ${showFilters || activeFilterCount > 0 ? 'bg-brand-50 border-brand-200 text-brand-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all shadow-sm ${showFilters || activeFilterCount > 0 ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
             >
               <FaFilter className={activeFilterCount > 0 ? "animate-pulse" : ""} />
               Filters
               {activeFilterCount > 0 && (
-                <span className="ml-1 bg-brand-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center">
+                <span className="ml-1 bg-white text-slate-900 text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black">
                   {activeFilterCount}
                 </span>
               )}
@@ -224,14 +224,14 @@ function EmployeeManage() {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-fade-in-up">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
                   <FaFilter size={14} />
                 </div>
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Advanced Filters</h3>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Advanced Filters</h3>
               </div>
               <button
                 onClick={clearFilters}
-                className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-all"
+                className="text-xs font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-all"
               >
                 <FaTimes size={10} />
                 Clear All
@@ -247,7 +247,7 @@ function EmployeeManage() {
                   <select
                     value={selectedBranch}
                     onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-300 transition-all appearance-none cursor-pointer disabled:opacity-60"
+                    className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all appearance-none cursor-pointer disabled:opacity-60"
                     disabled={fetchingBranches || (typeof profile?.role === 'object' ? profile.role.role : profile?.role) === "MANAGER"}
                   >
                     <option value="">All Branches</option>
@@ -269,7 +269,7 @@ function EmployeeManage() {
                     placeholder="ID, Name, Mobile..."
                     value={filters.search}
                     onChange={handleFilterChange}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-300 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all"
                   />
                 </div>
               </div>
@@ -283,7 +283,7 @@ function EmployeeManage() {
                     name="work_assignment"
                     value={filters.work_assignment}
                     onChange={handleFilterChange}
-                    className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-300 transition-all appearance-none cursor-pointer"
+                    className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all appearance-none cursor-pointer"
                   >
                     <option value="">All Assignments</option>
                     <option value="PRODUCT">Product</option>
@@ -306,7 +306,7 @@ function EmployeeManage() {
                     placeholder="No min"
                     value={filters.salary_min}
                     onChange={handleFilterChange}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-300 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all"
                   />
                 </div>
               </div>
@@ -322,7 +322,7 @@ function EmployeeManage() {
                     placeholder="No max"
                     value={filters.salary_max}
                     onChange={handleFilterChange}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-brand-50 focus:border-brand-300 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-900 transition-all"
                   />
                 </div>
               </div>
@@ -331,7 +331,7 @@ function EmployeeManage() {
               <div className="flex items-end">
                 <button
                   onClick={handleApplyFilters}
-                  className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-slate-100 flex items-center justify-center gap-2"
                 >
                   <FaSearch size={12} />
                   Apply Filter
@@ -344,7 +344,7 @@ function EmployeeManage() {
         <Suspense
           fallback={
             <div className="h-64 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-slate-900"></div>
             </div>
           }
         >

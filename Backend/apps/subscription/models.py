@@ -22,6 +22,9 @@ class Plan(BaseModel):
 
     class Meta:
         db_table = "bma_subscription_plan"
+        constraints = [
+            models.UniqueConstraint(fields=["name", "price"], name="unique_plan_name_price")
+        ]
 
 class Subscription(BaseModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE)

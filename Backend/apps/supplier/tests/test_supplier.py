@@ -39,7 +39,8 @@ class SupplierTestCase(BaseTestCase):
         # List
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 3)
+        # 2 existing + 1 new
+        self.assertEqual(len(response.data['results']), Supplier.objects.filter(business=self.owner_a.business).count())
 
         # Read
         detail_url = reverse('supplier-detail', kwargs={'pk': supplier_id})
@@ -48,14 +49,15 @@ class SupplierTestCase(BaseTestCase):
         self.verify_supplier_data(response.data, self.supplier_data)
 
         # Update
-        response = self.client.patch(detail_url, {"name": "Updated"}, format='json')
+        update_data = {"name": "Updated"}
+        response = self.client.patch(detail_url, update_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         log = self._verify_log(ActivityLog.Action.UPDATE, ActivityLog.Module.SUPPLIER)
-        self.assertEqual(log.meta['name']['old'], "Supplier New")
+        self.assertEqual(log.meta['name']['old'], self.supplier_data["name"])
 
         # Read
         response = self.client.get(detail_url)
-        self.assertEqual(response.data['name'], "Updated")
+        self.assertEqual(response.data['name'], update_data["name"])
 
         # Delete
         response = self.client.delete(detail_url)
@@ -305,53 +307,67 @@ class SupplierTestCase(BaseTestCase):
         self.client.force_authenticate(user=self.owner_a)
 
         # 1. Name icontains
-        response = self.client.get(f"{self.url}?name=Supp")
-        self.assertEqual(len(response.data["results"]), 2)
+        search_name = "Supp"
+        response = self.client.get(f"{self.url}?name={search_name}")
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         names = [r["name"] for r in response.data["results"]]
         self.assertIn("Supplier A1", names)
         self.assertIn("Supplier A2", names)
 
         # 2. Name Case-Insensitive
-        response = self.client.get(f"{self.url}?name=supplier a1")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_name = "supplier a1"
+        response = self.client.get(f"{self.url}?name={search_name}")
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, name__icontains=search_name).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["id"], self.supplier_a1.id)
         self.assertEqual(response.data["results"][0]["name"], "Supplier A1")
 
         # 3. Mobile icontains (partial)
-        response = self.client.get(f"{self.url}?mobile_number=0003")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_mobile = "0003"
+        response = self.client.get(f"{self.url}?mobile_number={search_mobile}")
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, mobile_number__icontains=search_mobile).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["id"], self.supplier_a2.id)
         self.assertEqual(response.data["results"][0]["mobile_number"], "9000000003")
 
         # 4. Mobile full match
-        response = self.client.get(f"{self.url}?mobile_number=9000000001")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_mobile = "9000000001"
+        response = self.client.get(f"{self.url}?mobile_number={search_mobile}")
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, mobile_number__icontains=search_mobile).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["id"], self.supplier_a1.id)
         self.assertEqual(response.data["results"][0]["mobile_number"], "9000000001")
 
         # 5. Name AND Mobile
         response = self.client.get(f"{self.url}?name=A1&mobile_number=0001")
-        self.assertEqual(len(response.data["results"]), 1)
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, name__icontains="A1", mobile_number__icontains="0001").count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertEqual(response.data["results"][0]["name"], "Supplier A1")
         self.assertEqual(response.data["results"][0]["mobile_number"], "9000000001")
 
         # 6. Name AND Mobile (Mismatch)
         response = self.client.get(f"{self.url}?name=A1&mobile_number=3211")
-        self.assertEqual(len(response.data["results"]), 0)
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, name__icontains="A1", mobile_number__icontains="3211").count()
+        self.assertEqual(len(response.data["results"]), expected_count)
 
         # 7. Isolation check
         # Owner A: mobile 0001 -> only A1
-        response = self.client.get(f"{self.url}?mobile_number=9000000001")
-        self.assertEqual(len(response.data["results"]), 1)
+        search_mobile = "9000000001"
+        response = self.client.get(f"{self.url}?mobile_number={search_mobile}")
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, mobile_number__icontains=search_mobile).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         self.assertNotEqual(response.data["results"][0]["id"], self.supplier_b1.id)
 
         # 8. Empty results
         response = self.client.get(f"{self.url}?name=NonExistent")
-        self.assertEqual(len(response.data["results"]), 0)
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, name__icontains="NonExistent").count()
+        self.assertEqual(len(response.data["results"]), expected_count)
 
         # 9. All filters combined
         response = self.client.get(f"{self.url}?name=Supplier&mobile_number=9000")
-        self.assertEqual(len(response.data["results"]), 2)
+        expected_count = Supplier.objects.filter(business=self.owner_a.business, name__icontains="Supplier", mobile_number__icontains="9000").count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         
         results_map = {r["name"]: r["mobile_number"] for r in response.data["results"]}
         self.assertIn("Supplier A1", results_map)
@@ -360,7 +376,8 @@ class SupplierTestCase(BaseTestCase):
         self.assertEqual(results_map["Supplier A2"], "9000000003")
 
         response = self.client.get(f"{self.url}?name=&mobile_number=")
-        self.assertEqual(len(response.data["results"]), 2)
+        expected_count = Supplier.objects.filter(business=self.owner_a.business).count()
+        self.assertEqual(len(response.data["results"]), expected_count)
         names = [r["name"] for r in response.data["results"]]
         self.assertIn("Supplier A1", names)
         self.assertIn("Supplier A2", names)

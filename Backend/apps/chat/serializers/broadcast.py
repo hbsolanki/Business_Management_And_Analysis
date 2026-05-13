@@ -45,6 +45,12 @@ class BroadcastGroupMemberSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("User does not belong to your business")
         return value
 
+    def validate(self, attrs):
+        # Prevent duplicate users in the same group member list
+        user_id = attrs.get("user_member")
+        # This is handled by many=True in the parent serializer's validation
+        return attrs
+
 class BroadcastGroupSerializer(serializers.ModelSerializer):
     users = BroadcastGroupMemberSerializer(
         source="broadcast_group_members",
@@ -55,6 +61,23 @@ class BroadcastGroupSerializer(serializers.ModelSerializer):
         model = BroadcastGroup
         fields = ["id", "name", "users"]
         read_only_fields = ["id"]
+
+    def validate_name(self, value):
+        request_user = self.context["request"].user
+        qs = BroadcastGroup.objects.filter(user=request_user, name__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        
+        if qs.exists():
+            raise serializers.ValidationError(f"You already have a broadcast group named '{value}'.")
+        return value
+
+    def validate_users(self, value):
+        if value:
+            user_ids = [item['user_member'].id for item in value]
+            if len(user_ids) != len(set(user_ids)):
+                raise serializers.ValidationError("Duplicate users found in the member list.")
+        return value
 
     def create(self, validated_data):
         request_user = self.context["request"].user

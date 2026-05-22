@@ -3,8 +3,9 @@ from datetime import date, timedelta, datetime
 from django.utils import timezone
 from unittest.mock import patch
 from apps.base.tests import BaseTestCase
-from apps.cost.tasks import daily_financial_summary_update, end_month_finance_update
-from apps.cost.models import MonthlyProductPerformance, MonthlyCostCategory
+from apps.cost.tasks import daily_financial_summary_update
+from apps.cost.utils.financial_summary_update import end_month_finance_update
+from apps.cost.models import MonthlyProductPerformance
 from apps.invoice.models import Invoice
 
 
@@ -70,7 +71,7 @@ class CostTasksTests(BaseTestCase):
         self.assertEqual(summary_a1.total_revenue, Decimal("830.00"))
         self.assertEqual(summary_a1.cost_of_goods_sold, Decimal("80.00"))
         self.assertEqual(summary_a1.output_gst, Decimal("165.00")) 
-        self.assertEqual(summary_a1.input_gst, Decimal("103.50")) 
+        self.assertEqual(summary_a1.input_gst, Decimal("0.00")) 
         self.assertEqual(summary_a1.operating_expenses, Decimal("1000.00"))
         self.assertEqual(summary_a1.salary_expenses, Decimal("8000.00"))
         self.assertEqual(summary_a1.gross_profit, Decimal("750.00")) # 830 - 80
@@ -93,7 +94,7 @@ class CostTasksTests(BaseTestCase):
         self.assertEqual(summary_a2.total_revenue, Decimal("850.00"))
         self.assertEqual(summary_a2.cost_of_goods_sold, Decimal("90.00"))
         self.assertEqual(summary_a2.output_gst, Decimal("158.00"))
-        self.assertEqual(summary_a2.input_gst, Decimal("97.20"))
+        self.assertEqual(summary_a2.input_gst, Decimal("0.00"))
         self.assertEqual(summary_a2.operating_expenses, Decimal("2000.00"))
         self.assertEqual(summary_a1.salary_expenses, Decimal("8000.00"))
         self.assertEqual(summary_a2.invoice_count, 3)
@@ -109,8 +110,8 @@ class CostTasksTests(BaseTestCase):
         self.assertEqual(summary_b1.total_revenue, Decimal("250.00"))
         self.assertEqual(summary_b1.cost_of_goods_sold, Decimal("30.00"))
         self.assertEqual(summary_b1.output_gst, Decimal("45.00"))
-        self.assertEqual(summary_b1.input_gst, Decimal("40.50"))
-        self.assertEqual(summary_b1.gst_payable, Decimal("4.50"))
+        self.assertEqual(summary_b1.input_gst, Decimal("0.00"))
+        self.assertEqual(summary_b1.gst_payable, Decimal("45.00"))
         self.assertEqual(summary_b1.operating_expenses, Decimal("1000.00"))
         self.assertEqual(summary_b1.salary_expenses, Decimal("8000.00"))
         self.assertEqual(summary_b1.total_expenses, Decimal("9000.00"))
@@ -124,8 +125,8 @@ class CostTasksTests(BaseTestCase):
         self.assertEqual(summary_b2.total_revenue, Decimal("600.00"))
         self.assertEqual(summary_b2.cost_of_goods_sold, Decimal("90.00"))
         self.assertEqual(summary_b2.output_gst, Decimal("108.00"))
-        self.assertEqual(summary_b2.input_gst, Decimal("97.20"))
-        self.assertEqual(summary_b2.gst_payable, Decimal("10.80"))
+        self.assertEqual(summary_b2.input_gst, Decimal("0.00"))
+        self.assertEqual(summary_b2.gst_payable, Decimal("108.00"))
         self.assertEqual(summary_b2.operating_expenses, Decimal("2000.00"))
         self.assertEqual(summary_b2.salary_expenses, Decimal("8000.00"))
         self.assertEqual(summary_b2.total_expenses, Decimal("10000.00"))

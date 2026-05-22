@@ -1,8 +1,6 @@
 from unittest.mock import patch
 from apps.base.tests import BaseTestCase
 from apps.activity_log.models import ActivityLog
-from django.utils import timezone
-from datetime import date
 
 class ReportTestCase(BaseTestCase):
 

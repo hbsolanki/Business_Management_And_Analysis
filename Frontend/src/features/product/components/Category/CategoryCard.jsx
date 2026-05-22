@@ -1,4 +1,4 @@
-import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { HiOutlinePencilSquare, HiOutlineTrash } from "react-icons/hi2";
 
 export default function CategoryCard({ category, onEdit, onDelete }) {
   return (
@@ -19,14 +19,14 @@ export default function CategoryCard({ category, onEdit, onDelete }) {
             className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition"
             title="Edit"
           >
-            <PencilSquareIcon className="h-4 w-4" />
+            <HiOutlinePencilSquare className="h-4 w-4" />
           </button>
           <button
             onClick={onDelete}
             className="p-2 rounded-lg border border-slate-200 text-rose-600 hover:bg-rose-50 transition"
             title="Delete"
           >
-            <TrashIcon className="h-4 w-4" />
+            <HiOutlineTrash className="h-4 w-4" />
           </button>
         </div>
       </div>

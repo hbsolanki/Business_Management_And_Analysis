@@ -1,0 +1,1 @@
+import{u as s}from"./index-BWBm6xbs.js";const b={list:e=>s.get("/business/branch/",{params:e}),get:e=>s.get(`/business/branch/${e}/`),create:e=>s.post("/business/branch/",e),update:(e,t)=>s.patch(`/business/branch/${e}/`,t),delete:e=>s.delete(`/business/branch/${e}/`)};export{b};

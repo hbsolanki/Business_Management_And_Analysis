@@ -1,5 +1,4 @@
 from django.db import models
-from decimal import Decimal
 from apps.business.models import Business, Branch, BusinessCustomer
 from apps.product.models import Product
 from apps.base.models import BaseModel, GST

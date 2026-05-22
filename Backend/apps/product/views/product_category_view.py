@@ -6,7 +6,7 @@ from apps.activity_log.mixins import ActivityLogMixin
 from apps.activity_log.models import ActivityLog
 
 
-class ProductCategoryViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
+class ProductCategoryViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     activity_module = ActivityLog.Module.PRODUCT
     serializer_class = ProductCategorySerializer
 

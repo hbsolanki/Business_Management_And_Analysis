@@ -20,6 +20,8 @@ const OwnerEdit = lazy(() => import("@/pages/owner/EditProfile"));
 const Product = lazy(() => import("@/pages/product/ProductList"));
 const ProductAdd = lazy(() => import("@/pages/product/AddProduct"));
 const ProductEdit = lazy(() => import("@/pages/product/EditProduct"));
+const CategoryAdd = lazy(() => import("@/pages/product/AddCategory"));
+const CategoryEdit = lazy(() => import("@/pages/product/EditCategory"));
 const CreateBusiness = lazy(() => import("@/pages/business/CreateBusiness"));
 
 // inventory
@@ -96,6 +98,9 @@ const ProfileViewer = lazy(() => import("@/pages/common/ProfileViewer"));
 
 const PageNotFound = lazy(() => import("@/pages/NotFound"));
 const ActivityLogs = lazy(() => import("@/pages/common/ActivityLogs"));
+const Reminders = lazy(() => import("@/pages/reminder/Reminders"));
+const ReminderNew = lazy(() => import("@/pages/reminder/ReminderNew"));
+const ReminderEdit = lazy(() => import("@/pages/reminder/ReminderEdit"));
 
 // Utils
 const ForgetPassword = lazy(() => import("@/pages/auth/ForgetPassword"));
@@ -206,6 +211,9 @@ function App() {
                 <Route path="/sale/:sid" element={<SaleList />} />
                 <Route path="/sale/:sid/new" element={<AddSale />} />
                 <Route path="/business/new" element={<CreateBusiness />} />
+                <Route path="/reminders" element={<Reminders />} />
+                <Route path="/reminders/new" element={<ReminderNew />} />
+                <Route path="/reminders/:id/edit" element={<ReminderEdit />} />
               </Route>
 
               <Route path="/info" element={<InfoLayout />}>
@@ -329,6 +337,8 @@ function App() {
                 <Route path="/product" element={<Product />} />
                 <Route path="/product/add" element={<ProductAdd />} />
                 <Route path="/product/:id/edit" element={<ProductEdit />} />
+                <Route path="/product/category/add" element={<CategoryAdd />} />
+                <Route path="/product/category/:id/edit" element={<CategoryEdit />} />
               </Route>
 
               <Route
@@ -419,6 +429,7 @@ function App() {
                 <Route path="/cost-category/month" element={<AddCost />} />
                 <Route path="/cost/expenses" element={<ExpenseList />} />
                 <Route path="/cost/expenses/add" element={<AddExpense />} />
+                <Route path="/cost/expenses/:id/edit" element={<AddExpense />} />
                 <Route
                   path="/cost"
                   element={<Navigate to="/cost-category" replace />}

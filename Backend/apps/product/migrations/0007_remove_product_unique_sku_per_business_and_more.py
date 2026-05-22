@@ -5,28 +5,35 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('business', '0017_remove_businesscustomer_api_key_and_more'),
-        ('product', '0006_product_created_by_product_updated_by_and_more'),
+        ("business", "0017_remove_businesscustomer_api_key_and_more"),
+        ("product", "0006_product_created_by_product_updated_by_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='product',
-            name='unique_sku_per_business',
+            model_name="product",
+            name="unique_sku_per_business",
         ),
         migrations.RemoveConstraint(
-            model_name='productcategory',
-            name='unique_product_category_per_business',
+            model_name="productcategory",
+            name="unique_product_category_per_business",
         ),
         migrations.AddConstraint(
-            model_name='product',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_deleted', False)), fields=('business', 'sku'), name='unique_sku_per_business'),
+            model_name="product",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_deleted", False)),
+                fields=("business", "sku"),
+                name="unique_sku_per_business",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='productcategory',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_deleted', False)), fields=('business', 'name'), name='unique_product_category_per_business'),
+            model_name="productcategory",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_deleted", False)),
+                fields=("business", "name"),
+                name="unique_product_category_per_business",
+            ),
         ),
     ]

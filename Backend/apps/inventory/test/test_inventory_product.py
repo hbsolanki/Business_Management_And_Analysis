@@ -219,7 +219,6 @@ class InventoryProductTests(BaseTestCase):
 
     def test_inventory_product_pagination(self):
         """Stock pagination test."""
-        from apps.product.models import Product
         from apps.inventory.models import InventoryProduct
         self.client.force_authenticate(user=self.owner_a)
 

@@ -181,8 +181,8 @@ class PurchaseOrderSerializer(BaseSerializer):
         if business and value and value.business != business:
             raise serializers.ValidationError("Branch access denied.")
 
-        if user and user.role_name != UserRole.OWNER:
-            if not user.branches.filter(id=value.id).exists():
+        if user and request.user.role_name != UserRole.OWNER:
+            if not request.user.branches.filter(id=value.id).exists():
                 raise exceptions.PermissionDenied("Branch access denied.")
         return value
 
@@ -191,6 +191,38 @@ class PurchaseOrderSerializer(BaseSerializer):
         if business and value.business != business:
             raise serializers.ValidationError("Supplier ID invalid.")
         return value
+
+    def _calculate_totals(self, items):
+        total_tax_val = sum(item.tax_amount for item in items)
+        cgst_total_val = sum(item.cgst_amount for item in items)
+        sgst_total_val = sum(item.sgst_amount for item in items)
+        igst_total_val = sum(item.igst_amount for item in items)
+        total_amount_val = sum(item.quantity * item.unit_cost for item in items) + total_tax_val
+        return total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val
+
+    def _apply_gst_totals(self, order, total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val):
+        avg_gst_rate = ((total_tax_val / (total_amount_val - total_tax_val)) * Decimal("100")).quantize(Decimal("0.01")) if total_amount_val > total_tax_val else Decimal("0.00")
+
+        if order.gst:
+            order.gst.gst_rate = avg_gst_rate
+            order.gst.gst_amount = total_tax_val
+            order.gst.cgst_amount = cgst_total_val
+            order.gst.sgst_amount = sgst_total_val
+            order.gst.igst_amount = igst_total_val
+            order.gst.total_amount = total_amount_val
+            order.gst.save()
+        else:
+            order.gst = GST.objects.create(
+                gst_rate=avg_gst_rate,
+                gst_amount=total_tax_val,
+                cgst_amount=cgst_total_val,
+                sgst_amount=sgst_total_val,
+                igst_amount=igst_total_val,
+                total_amount=total_amount_val
+            )
+
+        order.total_amount = total_amount_val
+        order.save(update_fields=["total_amount", "gst"])
 
     @transaction.atomic
     def create(self, validated_data):
@@ -206,52 +238,31 @@ class PurchaseOrderSerializer(BaseSerializer):
         item_serializer = PurchaseOrderItemSerializer(context={**self.context, "purchase_order": purchase_order})
         items = [item_serializer.create(item_data) for item_data in items_data]
 
-        # Recalculate totals
-        total_tax_val = sum(item.tax_amount for item in items)
-        cgst_total_val = sum(item.cgst_amount for item in items)
-        sgst_total_val = sum(item.sgst_amount for item in items)
-        igst_total_val = sum(item.igst_amount for item in items)
-        total_amount_val = sum(item.quantity * item.unit_cost for item in items) + total_tax_val
-        
-        # Create/Update GST for the entire order
-        avg_gst_rate = ((total_tax_val / (total_amount_val - total_tax_val)) * Decimal("100")).quantize(Decimal("0.01")) if total_amount_val > total_tax_val else Decimal("0.00")
-        
-        if purchase_order.gst:
-            purchase_order.gst.gst_rate = avg_gst_rate
-            purchase_order.gst.gst_amount = total_tax_val
-            purchase_order.gst.cgst_amount = cgst_total_val
-            purchase_order.gst.sgst_amount = sgst_total_val
-            purchase_order.gst.igst_amount = igst_total_val
-            purchase_order.gst.total_amount = total_amount_val
-            purchase_order.gst.save()
-        else:
-            purchase_order.gst = GST.objects.create(
-                gst_rate=avg_gst_rate,
-                gst_amount=total_tax_val,
-                cgst_amount=cgst_total_val,
-                sgst_amount=sgst_total_val,
-                igst_amount=igst_total_val,
-                total_amount=total_amount_val
-            )
-        
-        purchase_order.total_amount = total_amount_val
-        purchase_order.save(update_fields=["total_amount", "gst"])
+        total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val = self._calculate_totals(items)
+        self._apply_gst_totals(
+            purchase_order,
+            total_tax_val,
+            cgst_total_val,
+            sgst_total_val,
+            igst_total_val,
+            total_amount_val,
+        )
 
         # Trigger GST summary update task if status is DELIVERED
         if purchase_order.status == OrderStatus.DELIVERED:
             try:
                 from apps.gst_management.tasks import update_gst_summary_task
                 update_gst_summary_task.delay(
-                    business_id=purchase_order.business.id,
+                    business_id=purchase_order.business.pk,
                     month=purchase_order.received_at.month if purchase_order.received_at else timezone.now().month,
                     year=purchase_order.received_at.year if purchase_order.received_at else timezone.now().year
                 )
-            except Exception as e:
+            except (AttributeError, TypeError, ValueError) as e:
                 print(f"Error queueing GST summary task for PO: {e}")
         
         # Trigger synchronization
         from apps.supplier.tasks.purchase_order_tasks import synchronize_purchase_order_to_supplier_task
-        transaction.on_commit(lambda: synchronize_purchase_order_to_supplier_task.delay(purchase_order.id))
+        transaction.on_commit(lambda: synchronize_purchase_order_to_supplier_task.delay(purchase_order.pk))
 
         return purchase_order
 
@@ -299,35 +310,15 @@ class PurchaseOrderSerializer(BaseSerializer):
                     item_serializer.is_valid(raise_exception=True)
                     item_serializer.save()
 
-            # Finalize totals
-            total_tax_val = sum(item.tax_amount for item in instance.items.all())
-            cgst_total_val = sum(item.cgst_amount for item in instance.items.all())
-            sgst_total_val = sum(item.sgst_amount for item in instance.items.all())
-            igst_total_val = sum(item.igst_amount for item in instance.items.all())
-            total_amount_val = sum(item.quantity * item.unit_cost for item in instance.items.all()) + total_tax_val
-            
-            avg_gst_rate = ((total_tax_val / (total_amount_val - total_tax_val)) * Decimal("100")).quantize(Decimal("0.01")) if total_amount_val > total_tax_val else Decimal("0.00")
-            
-            if instance.gst:
-                instance.gst.gst_rate = avg_gst_rate
-                instance.gst.gst_amount = total_tax_val
-                instance.gst.cgst_amount = cgst_total_val
-                instance.gst.sgst_amount = sgst_total_val
-                instance.gst.igst_amount = igst_total_val
-                instance.gst.total_amount = total_amount_val
-                instance.gst.save()
-            else:
-                instance.gst = GST.objects.create(
-                    gst_rate=avg_gst_rate,
-                    gst_amount=total_tax_val,
-                    cgst_amount=cgst_total_val,
-                    sgst_amount=sgst_total_val,
-                    igst_amount=igst_total_val,
-                    total_amount=total_amount_val
-                )
-            
-            instance.total_amount = total_amount_val
-            instance.save(update_fields=["total_amount", "gst"])
+            total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val = self._calculate_totals(instance.items.all())
+            self._apply_gst_totals(
+                instance,
+                total_tax_val,
+                cgst_total_val,
+                sgst_total_val,
+                igst_total_val,
+                total_amount_val,
+            )
 
             if was_delivered:
                 instance.status = OrderStatus.PENDING
@@ -337,14 +328,14 @@ class PurchaseOrderSerializer(BaseSerializer):
         # Triggers for GST and Sync
         if instance.status != old_status:
             from apps.supplier.tasks.purchase_order_tasks import synchronize_purchase_order_status_update_to_supplier_task
-            transaction.on_commit(lambda: synchronize_purchase_order_status_update_to_supplier_task.delay(instance.id))
+            transaction.on_commit(lambda: synchronize_purchase_order_status_update_to_supplier_task.delay(instance.pk))
             
         if instance.status == OrderStatus.DELIVERED:
             try:
                 from apps.gst_management.tasks import update_gst_summary_task
                 # Update current month
                 transaction.on_commit(lambda: update_gst_summary_task.delay(
-                    business_id=instance.business.id,
+                    business_id=instance.business.pk,
                     month=instance.received_at.month if instance.received_at else timezone.now().month,
                     year=instance.received_at.year if instance.received_at else timezone.now().year
                 ))
@@ -353,16 +344,16 @@ class PurchaseOrderSerializer(BaseSerializer):
                     if (old_received_at.month != instance.received_at.month or 
                         old_received_at.year != instance.received_at.year):
                         transaction.on_commit(lambda: update_gst_summary_task.delay(
-                            business_id=instance.business.id,
+                            business_id=instance.business.pk,
                             month=old_received_at.month,
                             year=old_received_at.year
                         ))
-            except Exception as e:
+            except (AttributeError, TypeError, ValueError) as e:
                 print(f"Error queueing GST summary task for PO update: {e}")
 
         if items_data is not None:
             from apps.supplier.tasks.purchase_order_tasks import synchronize_purchase_order_items_update_to_supplier_task
-            transaction.on_commit(lambda: synchronize_purchase_order_items_update_to_supplier_task.delay(instance.id))
+            transaction.on_commit(lambda: synchronize_purchase_order_items_update_to_supplier_task.delay(instance.pk))
 
         return instance
 

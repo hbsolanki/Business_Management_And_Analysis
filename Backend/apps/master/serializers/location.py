@@ -1,10 +1,12 @@
 from rest_framework import serializers
 from apps.master.models import Country, State, City
 
+
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:
         model = Country
         fields = ["id", "name"]
+
 
 class StateSerializer(serializers.ModelSerializer):
     country_name = serializers.CharField(write_only=True)
@@ -20,6 +22,7 @@ class StateSerializer(serializers.ModelSerializer):
         state_name = validated_data.get("name").strip().title()
         state, _ = State.objects.get_or_create(name=state_name, country=country)
         return state
+
 
 class CitySerializer(serializers.ModelSerializer):
     state_name = serializers.CharField(write_only=True)

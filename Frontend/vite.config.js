@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             vendor: ["react", "react-dom", "react-router-dom"],
-            mui: ["@mui/material", "@mui/system", "@emotion/react", "@emotion/styled"],
+
             utils: ["axios", "date-fns", "redux", "react-redux", "@reduxjs/toolkit"],
           },
         },

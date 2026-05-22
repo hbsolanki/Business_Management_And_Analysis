@@ -8,6 +8,7 @@ import taskService from '@/features/task/services/taskService';
 import { tokenService } from '@/services/tokenService';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'react-hot-toast';
+import LinkedRemindersPanel from '@/features/reminder/components/LinkedRemindersPanel';
 
 const TaskDetails = () => {
     const { id } = useParams();
@@ -98,7 +99,7 @@ const TaskDetails = () => {
                                 </span>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 {(canEdit || canDelete) && (
                                     <Menu as="div" className="relative inline-block text-left">
                                         <div>
@@ -167,7 +168,39 @@ const TaskDetails = () => {
                             </div>
                         )}
 
+                        {/* ── Linked Reminders Panel ── */}
+                        <div className="mb-8">
+                            <LinkedRemindersPanel
+                                entityType="tasks.task"
+                                entityId={task.id}
+                                entityTitle={task.title}
+                                entityDeadline={task.deadline}
+                            />
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-200 pt-8">
+                            {/* Deadline Card */}
+                            {task.deadline && (
+                                <div className="bg-rose-50/30 border border-rose-100 flex items-center gap-4 p-4 rounded-xl shadow-sm md:col-span-2">
+                                    <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 text-lg border border-rose-100 shadow-sm">
+                                        <FaClock />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-0.5">Deadline</p>
+                                        <p className="font-semibold text-slate-900">
+                                            {format(new Date(task.deadline), 'MMM d, yyyy h:mm a')}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            {new Date(task.deadline) < new Date() ? (
+                                                <span className="text-rose-600 font-bold">Overdue</span>
+                                            ) : (
+                                                <span className="text-emerald-600 font-medium">Active</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Assignee Card */}
                             <Link
                                 to={task.assignee?.id ? `/profile/${task.assignee.id}` : "#"}

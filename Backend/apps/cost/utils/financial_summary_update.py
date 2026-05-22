@@ -11,11 +11,9 @@ def end_month_finance_update(business_id, month, year):
     """
     Centrally triggers a full financial and GST aggregation for the month.
     """
-    from apps.business.models import Business
     from apps.gst_management.utils import aggregate_monthly_data
 
-    business = Business.objects.get(id=business_id)
-    return aggregate_monthly_data(business, month, year)
+    return aggregate_monthly_data(month=month, year=year, business_id=business_id)
 
 
 @transaction.atomic

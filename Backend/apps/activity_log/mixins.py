@@ -41,7 +41,7 @@ class ActivityLogMixin:
         target_id = getattr(instance, 'id', None)
         message = f"Created {target_model}"
 
-        business = getattr(self.request.user, 'business', None)
+        business = self.request.user.business if self.request.user.is_authenticated else None
         if not business and has_id:
             business = getattr(instance, 'business', None)
 
@@ -80,7 +80,7 @@ class ActivityLogMixin:
 
         if changes:
             changed_fields = ", ".join(changes.keys())
-            business = getattr(self.request.user, 'business', None)
+            business = self.request.user.business if self.request.user.is_authenticated else None
             if not business:
                 return instance
 
@@ -100,8 +100,9 @@ class ActivityLogMixin:
 
     # DELETE
     def perform_destroy(self, instance):
+        business = self.request.user.business if self.request.user.is_authenticated else None
         ActivityLog.objects.log(
-            business=self.request.user.business,
+            business=business,
             branch=self._get_activity_branch(None, instance),
             actor=self.request.user,
             action=ActivityLog.Action.DELETE,

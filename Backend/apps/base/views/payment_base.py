@@ -3,8 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.http import HttpResponse
+import logging
 from apps.base.services.stripe_service import StripeService
 import stripe
+
+logger = logging.getLogger(__name__)
 
 class BasePaymentViewSet(viewsets.ViewSet):
     """
@@ -29,7 +32,7 @@ class BasePaymentViewSet(viewsets.ViewSet):
             return Response({'clientSecret': intent['client_secret']}, status=status.HTTP_200_OK)
         except Exception as e:
             if "DoesNotExist" in str(type(e)):
-                 return self.handle_not_found()
+                return self.handle_not_found()
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -47,28 +50,42 @@ class StripeWebhookViewSet(viewsets.ViewSet):
             event = StripeService.construct_webhook_event(
                 request.body, request.META.get('HTTP_STRIPE_SIGNATURE')
             )
+            event_id = event.get('id')
+            event_type = event.get('type')
             intent = event['data']['object']
             metadata = intent.get('metadata', {})
             payment_type = metadata.get('type')
             
-            if event['type'] == 'payment_intent.succeeded':
+            if event_type == 'payment_intent.succeeded':
                 if payment_type == 'INVOICE':
                     from apps.invoice.services.payment_service import InvoicePaymentService
                     InvoicePaymentService.handle_success(metadata, intent.get('id'))
                 elif payment_type == 'SUBSCRIPTION':
                     from apps.subscription.services.payment_service import SubscriptionPaymentService
-                    SubscriptionPaymentService.handle_success(metadata, intent.get('id'))
+                    SubscriptionPaymentService.handle_success(
+                        metadata,
+                        intent.get('id'),
+                        event_id=event_id,
+                        event_type=event_type,
+                        payment_type=payment_type,
+                    )
             
-            elif event['type'] in ['payment_intent.payment_failed', 'payment_intent.canceled']:
+            elif event_type in ['payment_intent.payment_failed', 'payment_intent.canceled']:
                 if payment_type == 'INVOICE':
                     from apps.invoice.services.payment_service import InvoicePaymentService
                     InvoicePaymentService.handle_failure(metadata)
                 elif payment_type == 'SUBSCRIPTION':
                     from apps.subscription.services.payment_service import SubscriptionPaymentService
-                    SubscriptionPaymentService.handle_failure(metadata)
+                    SubscriptionPaymentService.handle_failure(
+                        metadata,
+                        event_id=event_id,
+                        event_type=event_type,
+                        payment_type=payment_type,
+                    )
                 
             return HttpResponse(status=status.HTTP_200_OK)
         except (ValueError, stripe.error.SignatureVerificationError):
             return HttpResponse(status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
-            return HttpResponse(status=status.HTTP_200_OK)
+        except Exception as exc:
+            logger.exception("Stripe webhook processing failed: %s", exc)
+            return HttpResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR)

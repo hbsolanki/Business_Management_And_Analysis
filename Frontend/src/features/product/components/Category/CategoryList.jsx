@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { HiOutlinePlus } from "react-icons/hi2";
 import { FaChevronDown, FaChevronUp, FaTags } from "react-icons/fa";
 import CategoryCard from "./CategoryCard";
 
@@ -33,7 +33,7 @@ export default function CategoryList({
             onClick={onAdd}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
           >
-            <PlusIcon className="h-4 w-4" />
+            <HiOutlinePlus className="h-4 w-4" />
             Add Category
           </button>
           <button

@@ -2,12 +2,12 @@ from django.urls import reverse
 from rest_framework import status
 from decimal import Decimal
 from django.utils import timezone
-from datetime import timedelta, datetime
+from datetime import datetime
 from apps.base.tests import BaseTestCase
 from apps.gst_management.models import MonthlyGSTSummary
 from apps.invoice.models import Invoice
-from apps.supplier.models import PurchaseOrder, OrderStatus, SalesOrder, SalesOrderItem
-from apps.cost.models import Expense, CostCategory
+from apps.supplier.models import OrderStatus
+from apps.cost.models import Expense
 from apps.base.models import GST
 
 class GSTManagementTestCase(BaseTestCase):
@@ -49,18 +49,18 @@ class GSTManagementTestCase(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Safety check/re-run
-        results = response.data.get('results', response.data)
+        results = response.data
         if len(results) == 0:
             update_gst_summary_task(self.business_a.id, now.month, now.year)
             response = self.client.get(self.summary_list_url)
-            results = response.data.get('results', response.data)
+            results = response.data
             
         self.assertGreaterEqual(len(results), 1, f"Summary not found for business {self.business_a.id}")
         
         # Filter by month/year
         response = self.client.get(f"{self.summary_list_url}?month={now.month}&year={now.year}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        results = response.data.get('results', response.data)
+        results = response.data
         self.assertGreaterEqual(len(results), 1)
         self.assertEqual(results[0]['month'], now.month)
         self.assertEqual(results[0]['year'], now.year)
@@ -72,7 +72,7 @@ class GSTManagementTestCase(BaseTestCase):
         # 1. Invoice Ledger Filters
         response = self.client.get(f"{self.invoice_ledger_url}?branch={self.branch_a1.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        for item in response.data['results']:
+        for item in response.data:
             self.assertEqual(item['branch'], self.branch_a1.id)
             
         # 2. Purchase Order Ledger Filters
@@ -83,7 +83,7 @@ class GSTManagementTestCase(BaseTestCase):
         supplier_name = self.supplier_a1.name
         response = self.client.get(f"{self.po_ledger_url}?supplier_name={supplier_name}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        for item in response.data['results']:
+        for item in response.data:
             self.assertEqual(item['party_name'], supplier_name)
 
     def test_cross_business_isolation(self):
@@ -93,7 +93,7 @@ class GSTManagementTestCase(BaseTestCase):
         # Try to filter by Business B's branch in A's ledger
         response = self.client.get(f"{self.invoice_ledger_url}?branch={self.branch_b1.id}")
         # View filtering should restrict results to 0 because branch_b1 is not in business_a's invoices
-        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(len(response.data), 0)
 
     def test_role_based_permissions_and_branch_isolation(self):
         """Test branch isolation for Managers."""
@@ -102,7 +102,7 @@ class GSTManagementTestCase(BaseTestCase):
         
         response = self.client.get(self.invoice_ledger_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        for item in response.data['results']:
+        for item in response.data:
             self.assertEqual(item['branch'], self.branch_a1.id)
 
     def test_aggregation_accuracy(self):

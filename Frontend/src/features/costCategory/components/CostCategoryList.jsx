@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash } from "react-icons/hi2";
 import { FaLayerGroup } from "react-icons/fa";
 import toast from "react-hot-toast";
 import costCategoryService from "../services/costCategoryService";
@@ -86,7 +86,7 @@ export default function CostCategoryList() {
                     onClick={() => { setSelectedCategory(null); setShowModal(true); }}
                     className="flex items-center justify-center gap-2 bg-gradient-to-r from-brand-600 to-brand-700 text-white px-5 py-2.5 rounded-xl hover:from-brand-700 hover:to-brand-800 transition-all shadow-md hover:shadow-lg font-medium"
                 >
-                    <PlusIcon className="w-5 h-5" />
+                    <HiOutlinePlus className="w-5 h-5" />
                     <span>Add New Category</span>
                 </button>
             </div>
@@ -125,14 +125,14 @@ export default function CostCategoryList() {
                                             className="p-2 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                             title="Edit"
                                         >
-                                            <PencilIcon className="w-4 h-4" />
+                                            <HiOutlinePencil className="w-4 h-4" />
                                         </button>
                                         <button
                                             onClick={() => confirmDelete(category)}
                                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                             title="Delete"
                                         >
-                                            <TrashIcon className="w-4 h-4" />
+                                            <HiOutlineTrash className="w-4 h-4" />
                                         </button>
                                     </div>
                                 </div>

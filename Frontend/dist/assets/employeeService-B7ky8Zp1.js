@@ -1,0 +1,1 @@
+import{u as t}from"./index-BWBm6xbs.js";const o={getAll:e=>t.get("/user/",{params:{role:"EMPLOYEE",...e}}),getById:e=>t.get(`/user/${e}/`),create:e=>t.post("/business/employee/",e),update:(e,s)=>t.patch(`/user/${e}/`,s,{timeout:12e4}),delete:e=>t.delete(`/user/${e}/`)};export{o as e};

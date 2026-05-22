@@ -20,4 +20,14 @@ export const paymentService = {
         const response = await api.post("/subscription/payment/create-intent/", { subscription_id: subscriptionId });
         return response.data;
     },
+
+    /**
+     * Confirm a subscription payment on the backend (secure retrieve or mock success).
+     * @param {object} payload - The confirmation payload (e.g. {payment_intent_id} or {subscription_id, mock: true}).
+     * @returns {Promise<any>}
+     */
+    confirmSubscriptionPayment: async (payload) => {
+        const response = await api.post("/subscription/payment/confirm/", payload);
+        return response.data;
+    },
 };

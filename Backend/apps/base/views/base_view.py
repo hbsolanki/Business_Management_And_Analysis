@@ -8,7 +8,7 @@ from apps.employee.models import UserRole
 
 
 class BaseUserThrottle(UserRateThrottle):
-    rate = '30/min'
+    rate = '60/min'
 
 
 class BaseViewSet(GenericViewSet):
@@ -27,6 +27,10 @@ class BaseViewSet(GenericViewSet):
         if hasattr(queryset.model, 'business'):
             if queryset.model.__name__ == 'User':
                 queryset = queryset.filter(business_roles__business=user.business)
+            elif queryset.model.__name__ == 'Branch':
+                queryset = queryset.filter(business=user.business)
+                if user.role_name != UserRole.OWNER:
+                    queryset = queryset.filter(id__in=user.branches.values_list('id', flat=True))
             else:
                 queryset = queryset.filter(business=user.business)
 

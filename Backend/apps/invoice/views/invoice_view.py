@@ -8,21 +8,19 @@ from apps.invoice.serializers.invoice import InvoiceSerializer
 from apps.invoice.filters import InvoiceFilter
 from apps.subscription.decorators.limits import limit_required
 from django.db import transaction
-from apps.subscription.models import Subscription,Usage
 from apps.activity_log.models import ActivityLog
 from apps.activity_log.mixins import ActivityLogMixin
 from apps.business.models import Branch
 from apps.inventory.models import Inventory
 
 
-class InvoiceViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
+class InvoiceViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     queryset = Invoice.objects.all()
     activity_module = ActivityLog.Module.INVOICE
     filterset_class = InvoiceFilter
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        user = self.request.user
             
         branch_id = self.request.data.get('branch_id') or self.request.query_params.get('branch')
         branch = None
@@ -40,33 +38,23 @@ class InvoiceViewSet(ActivityLogMixin,BaseViewSet,ModelViewSet):
         .select_related("customer")
         .order_by("-created_at"))
 
-    def perform_create(self, serializer):
-        print("DEBUG: InvoiceViewSet.perform_create starting")
-        super().perform_create(serializer)
-        print("DEBUG: InvoiceViewSet.perform_create finished")
-
     serializer_class = InvoiceSerializer
 
     @limit_required("max_invoices", usage_field="invoices_created")
     @transaction.atomic
-    def create(self, request, *args, **kwargs):
-        print(f"DEBUG: InvoiceViewSet.create received POST request from user {request.user}")
+    def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         
         # usage update
-        try:
-            from django.core.cache import cache
-            from apps.subscription.utils.entitlements import get_active_subscription
-            subscription = get_active_subscription(request.user.business)
-            if subscription:
-                usage, _ = Usage.objects.get_or_create(subscription=subscription)
-                usage.invoices_created += 1
-                usage.save(update_fields=["invoices_created"])
-                cache.delete(f"subscription:usage:{subscription.id}")
-        except Exception as e:
-            print(f"DEBUG: Error updating usage/cache: {e}")
+        from django.core.cache import cache
+        from apps.subscription.utils.entitlements import get_active_subscription, increment_usage
+
+        subscription = get_active_subscription(request.user.business)
+        if subscription:
+            increment_usage(subscription, "invoices_created")
+            cache.delete(f"subscription:usage:{subscription.id}")
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

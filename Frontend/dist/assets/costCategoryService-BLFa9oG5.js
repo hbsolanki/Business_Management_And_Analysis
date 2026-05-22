@@ -1,0 +1,1 @@
+import{u as o}from"./index-BWBm6xbs.js";const c={getAll:e=>{let t="/cost/category/";return e&&(t+=`?branch_id=${encodeURIComponent(e)}`),o.get(t)},create:e=>o.post("/cost/category/",e),update:(e,t)=>o.patch(`/cost/category/${e}/`,t),delete:e=>o.delete(`/cost/category/${e}/`)},a=c;export{a as c};

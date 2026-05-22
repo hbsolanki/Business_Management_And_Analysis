@@ -3,6 +3,7 @@ import Header from "@/components/layout/Header";
 import HeroSection from "@/features/home/components/HeroSection";
 import CallToAction from "@/features/home/components/CallToAction";
 import FeaturesSection from "@/features/home/components/FeaturesSection";
+import ShowcaseSection from "@/features/home/components/ShowcaseSection";
 import HowItWorks from "@/features/home/components/HowItWorks";
 import InfoPromoSection from "@/features/home/components/InfoPromoSection";
 import PlansSection from "@/features/subscription/components/PlansSection";
@@ -18,6 +19,9 @@ export default function Home() {
 
             {/* Features Section */}
             <FeaturesSection />
+
+            {/* Next-Gen Features Showcase */}
+            <ShowcaseSection />
 
             {/* How It Works Section */}
             <HowItWorks />

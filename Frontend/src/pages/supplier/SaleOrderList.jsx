@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
@@ -16,11 +16,14 @@ import {
     FaTrash,
     FaArrowLeft,
     FaEye,
-    FaChevronDown
+    FaChevronDown,
+    FaBell
 } from "react-icons/fa";
 
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import Modal from "@/components/ui/Modal";
+const EntityReminderModal = lazy(() => import("@/features/reminder/components/EntityReminderModal"));
+
 import { branchService } from "@/features/business/services/branchService";
 import { supplierService } from "@/features/supplier/services/supplierService";
 import {
@@ -129,6 +132,8 @@ export default function SaleOrderList() {
     const [loadingOrders, setLoadingOrders] = useState(true);
     const [orderToDelete, setOrderToDelete] = useState(null);
     const [orderToDeliver, setOrderToDeliver] = useState(null);
+    const [orderToRemind, setOrderToRemind] = useState(null);
+    const [showReminderModal, setShowReminderModal] = useState(false);
     const [poFilterForm, setPoFilterForm] = useState(INITIAL_PO_FILTERS);
     const [appliedPoFilters, setAppliedPoFilters] = useState(INITIAL_PO_FILTERS);
     const [actionsMenu, setActionsMenu] = useState(null);
@@ -595,6 +600,20 @@ export default function SaleOrderList() {
                                         type="button"
                                         onClick={() => {
                                             setActionsMenu(null);
+                                            setOrderToRemind(activeOrderMenuItem);
+                                            setShowReminderModal(true);
+                                        }}
+                                        className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-bold text-amber-600 hover:bg-amber-50 transition-colors flex items-center gap-3"
+                                    >
+                                        <div className="h-7 w-7 rounded-lg bg-amber-100/50 text-amber-600 flex items-center justify-center">
+                                            <FaBell size={12} />
+                                        </div>
+                                        Set Reminder
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActionsMenu(null);
                                             navigate(`/supplier/sales-order/${activeOrderMenuItem.id}/edit`);
                                         }}
                                         className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-brand-50 hover:text-brand-600 transition-colors flex items-center gap-3"
@@ -659,6 +678,18 @@ export default function SaleOrderList() {
                 confirmText="Confirm Delivery"
                 variant="success"
             />
+
+            {showReminderModal && orderToRemind && (
+                <Suspense fallback={null}>
+                    <EntityReminderModal
+                        isOpen={showReminderModal}
+                        onClose={() => { setShowReminderModal(false); setOrderToRemind(null); }}
+                        entityType="supplier.salesorder"
+                        entityId={orderToRemind.id}
+                        entityTitle={`Sales Order #${orderToRemind.id}`}
+                    />
+                </Suspense>
+            )}
         </div >
     );
 }

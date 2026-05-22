@@ -2,12 +2,8 @@ import uuid
 from django.db import models
 
 from apps.base.models import BaseModel
+from apps.master.utils.text_choices import AiChatMessageSenderChoices
 from apps.user.models import User
-
-
-class AiChatMessageSenderChoices(models.TextChoices):
-    USER = "user", "User"
-    ASSISTANT = "assistant", "Assistant"
 
 
 class AiChatSession(BaseModel):
@@ -37,6 +33,8 @@ class AiChatMessage(BaseModel):
     )
 
     content = models.TextField()
+    thinking_duration = models.FloatField(null=True, blank=True)
+    has_chart = models.BooleanField(default=False)
     embedding = models.JSONField(null=True, blank=True)
 
     class Meta:
@@ -56,7 +54,11 @@ class AiChartRef(BaseModel):
         null=True,
         blank=True
     )
-    html = models.TextField()
+    title = models.CharField(max_length=255, blank=True, null=True)
+    chart_type = models.CharField(max_length=100, blank=True, null=True)
+    data = models.JSONField(null=True, blank=True)
+    option = models.JSONField(null=True, blank=True)
+    config = models.JSONField(null=True, blank=True) # Legacy
 
     class Meta:
         db_table = 'bma_ai_chart_ref'

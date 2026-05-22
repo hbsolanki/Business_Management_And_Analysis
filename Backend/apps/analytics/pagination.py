@@ -1,12 +1,9 @@
-from rest_framework.pagination import CursorPagination
+from rest_framework.pagination import CursorPagination, PageNumberPagination
 
 class AnalyticsCustomerCursorPagination(CursorPagination):
     page_size = 6
     cursor_query_param = "cursor"
     ordering = None
-
-
-from rest_framework.pagination import PageNumberPagination
 
 class DefaultPagination(PageNumberPagination):
     page_size = 10

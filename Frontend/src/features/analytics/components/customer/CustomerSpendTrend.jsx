@@ -1,4 +1,4 @@
-import { BarChart } from "@mui/x-charts/BarChart";
+import EChartRenderer from "@/components/charts/EChartRenderer";
 import { FaCalendarAlt, FaChartBar, FaChevronDown } from "react-icons/fa";
 import PremiumOverlay from "@/components/common/PremiumOverlay";
 
@@ -142,41 +142,24 @@ export default function CustomerSpendTrend({ data, loading, month, year, onDateC
                             No revenue recorded for this period yet.
                         </p>
                     )}
-                    <div className="w-full h-[300px]">
-                        <BarChart
-                            xAxis={[
-                                {
-                                    scaleType: "band",
-                                    data: isLocked ? ["Cust A", "Cust B", "Cust C", "Cust D", "Cust E"] : customerNames,
-                                    tickLabelStyle: {
-                                        angle: -20,
-                                        textAnchor: "end",
-                                        fontSize: 10,
-                                        fontWeight: 600,
-                                        fill: "#64748b",
-                                    },
-                                },
-                            ]}
-                            series={[
-                                {
-                                    data: isLocked ? [50000, 40000, 30000, 20000, 10000] : revenueValues,
-                                    label: "Revenue (INR)",
-                                    color: "#0d9488",
-                                    valueFormatter: (value) => formatCurrency(value),
-                                    highlightScope: { faded: "global", highlighted: "item" },
-                                },
-                            ]}
-                            height={300}
-                            margin={{ top: 20, bottom: 60, left: 60, right: 20 }}
-                            slotProps={{ legend: { hidden: true } }}
-                            sx={{
-                                ".MuiBarElement-root": {
-                                    rx: 6,
-                                    "&:hover": { fill: "#0f766e" },
-                                },
-                                ".MuiChartsAxis-line": { stroke: "#e2e8f0" },
-                                ".MuiChartsAxis-tick": { stroke: "#e2e8f0" },
-                            }}
+                    <div className="w-full">
+                        <EChartRenderer 
+                            config={{
+                                chart_type: 'vertical_bar',
+                                labels: isLocked ? ["Cust A", "Cust B", "Cust C", "Cust D", "Cust E"] : customerNames,
+                                datasets: [
+                                    {
+                                        label: "Revenue (INR)",
+                                        data: isLocked ? [50000, 40000, 30000, 20000, 10000] : revenueValues,
+                                    }
+                                ],
+                                option: {
+                                    color: ["#0d9488"],
+                                    yAxis: { name: "Revenue (₹)" },
+                                    toolbox: { show: true }
+                                }
+                            }} 
+                            height="350px" 
                         />
                     </div>
                 </div>

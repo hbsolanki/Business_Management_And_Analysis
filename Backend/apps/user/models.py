@@ -4,6 +4,7 @@ import uuid
 
 from apps.base.models import BaseModel
 from apps.base.utils.active_use_manager import ActiveUserManager
+from apps.master.utils.text_choices import UserRole
 
 def user_avatar_path(instance, filename):
     ext = filename.split('.')[-1]
@@ -31,6 +32,7 @@ class User(BaseModel, AbstractUser):
             ("can_update_salary", "Can update salary"),
             ("can_update_work", "Can update work"),
         ]
+
 
     # Properties
     @property

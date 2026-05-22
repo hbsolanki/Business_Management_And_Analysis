@@ -13,7 +13,7 @@ from apps.subscription.permissions import AdvancedAnalyticsFeaturePermission
 from apps.business.models import Branch
 from apps.employee.models import UserRole
 from apps.product.models import Product
-from apps.inventory.models import Inventory, InventoryProduct
+from apps.inventory.models import InventoryProduct
 from apps.invoice.models import ProductInvoice
 from apps.cost.models import MonthlyProductPerformance
 
@@ -150,7 +150,7 @@ class AnalysisProductViewSet(BaseViewSet):
             return Response(cached_data, status=status.HTTP_200_OK)
         
         # 1. Base business-wide filtered queryset
-        base_qs = ProductInvoice.objects.filter(invoice__business=user.business)
+        base_qs = ProductInvoice.objects.filter(invoice__business=request.user.business)
         
         # We manually apply the filters to have more control
         # Clean current filters to get "Global" data within timeframe
@@ -174,13 +174,13 @@ class AnalysisProductViewSet(BaseViewSet):
         )
 
         # 2. Determine which branches to report on
-        if user.role_name == UserRole.OWNER:
+        if request.user.role_name == UserRole.OWNER:
             if branch_id:
-                branches = Branch.objects.filter(id=branch_id, business=user.business)
+                branches = Branch.objects.filter(id=branch_id, business=request.user.business)
             else:
-                branches = Branch.objects.filter(business=user.business)
+                branches = Branch.objects.filter(business=request.user.business)
         else:
-            assigned_branches = user.branches
+            assigned_branches = request.user.branches
             if branch_id:
                 branches = assigned_branches.filter(id=branch_id)
             else:

@@ -25,7 +25,6 @@ from apps.analytics.serializers.filter.customer import (
     CustomerCreatedAtRangeFilterSerializer
 )
 from drf_spectacular.utils import extend_schema
-from apps.analytics.pagination import DefaultPagination
 from django.core.cache import cache
 from apps.master.utils.cache import make_cache_key
 from apps.analytics.permission import CanViewCustomerAnalytics
@@ -40,7 +39,6 @@ class CustomerViewSet(BaseViewSet):
             business=self.request.user.business,
             customer__isnull=False
         )
-    pagination_class = DefaultPagination
 
     def get_filter_set(self):
         if self.action == "customer_leaderboard_revenue":
@@ -98,13 +96,6 @@ class CustomerViewSet(BaseViewSet):
             )
             .order_by("-total_revenue", "customer_id")
         )
-
-        page_data = self.paginate_queryset(data)
-        if page_data is not None:
-            serializer = CustomerRevenueLeaderboardSerializer(page_data, many=True)
-            response = self.get_paginated_response(serializer.data)
-            cache.set(cache_key, response.data, timeout=60 * 5)
-            return response
 
         serializer = CustomerRevenueLeaderboardSerializer(data, many=True)
         cache.set(cache_key, serializer.data, timeout=60 * 5)
@@ -208,13 +199,6 @@ class CustomerViewSet(BaseViewSet):
             .order_by("-total_revenue", "customer_id")
         )
 
-        page = self.paginate_queryset(product_preferences_data)
-        if page is not None:
-            serializer = CustomerProductPreferenceSerializer(page, many=True)
-            response = self.get_paginated_response(serializer.data)
-            cache.set(cache_key, response.data, timeout=60 * 5)
-            return response
-
         serializer = CustomerProductPreferenceSerializer(product_preferences_data, many=True)
         cache.set(cache_key, serializer.data, timeout=60 * 5)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -274,13 +258,6 @@ class CustomerViewSet(BaseViewSet):
             })
 
         final_data = list(grouped.values())
-
-        page = self.paginate_queryset(final_data)
-        if page is not None:
-            serializer = CustomerProductNestedSerializer(page, many=True)
-            response = self.get_paginated_response(serializer.data)
-            cache.set(cache_key, response.data, timeout=60 * 5)
-            return response
 
         serializer = CustomerProductNestedSerializer(final_data, many=True)
         cache.set(cache_key, serializer.data, timeout=60 * 5)

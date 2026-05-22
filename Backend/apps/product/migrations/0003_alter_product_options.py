@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('product', '0002_initial'),
+        ("product", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='product',
+            name="product",
             options={},
         ),
     ]

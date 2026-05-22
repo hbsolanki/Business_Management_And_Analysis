@@ -123,9 +123,10 @@ function EditProfile() {
                 hasChanges = true;
             }
 
-            Object.keys(userPayload).forEach(key => {
-                data.append(key, userPayload[key]);
-            });
+            // Nesting Fix: Wrap user fields in a JSON string as expected by OwnerSerializer
+            if (Object.keys(userPayload).length > 0) {
+                data.append("user", JSON.stringify(userPayload));
+            }
 
             if (formData.profile_picture instanceof File) {
                 data.append("profile_picture", formData.profile_picture);

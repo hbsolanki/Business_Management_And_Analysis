@@ -1,6 +1,7 @@
 from django.db import models
 from apps.base.models import BaseModel
 
+
 class Country(BaseModel):
     name = models.CharField(max_length=100, unique=True)
 
@@ -11,15 +12,19 @@ class Country(BaseModel):
     def __str__(self):
         return self.name
 
+
 class State(BaseModel):
     name = models.CharField(max_length=100, unique=True)
-    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="states")
+    country = models.ForeignKey(
+        Country, on_delete=models.CASCADE, related_name="states"
+    )
 
     class Meta:
         db_table = "bma_state"
 
     def __str__(self):
         return f"{self.name} ({self.country.name})"
+
 
 class City(BaseModel):
     name = models.CharField(max_length=100)
@@ -34,4 +39,3 @@ class City(BaseModel):
 
     def __str__(self):
         return f"{self.name}, {self.state.name}"
-

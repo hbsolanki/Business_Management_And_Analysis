@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
-from apps.employee.models import EmployeeDetails, UserRole, EmployeeAddress
+from apps.employee.models import EmployeeDetails, UserRole
 from apps.base.serializers.base import BaseSerializer
 from apps.employee.serializers.employee_address import EmployeeAddressSerializer
 
@@ -20,6 +20,7 @@ class EmployeeDetailsSerializer(BaseSerializer):
         user = getattr(self.instance, 'user', self.context.get('user'))
         
         if request and user:
+            # Check target user's role
             target_role = user.role_name
             if target_role == UserRole.MANAGER and not request.user.has_perm('employee.change_manager_salary'):
                 raise PermissionDenied("You do not have permission to update a manager's salary.")

@@ -1,4 +1,4 @@
-from apps.inventory.models import Inventory, InventoryTransaction
+from apps.inventory.models import Inventory
 from apps.inventory.serializers.inventory_transaction import InventoryTransactionSerializer
 
 def reverse_order_inventory(order, old_items, old_branch, action_on_reversal, description_prefix, context_request):

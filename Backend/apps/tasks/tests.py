@@ -15,6 +15,7 @@ class TasksTestCase(BaseTestCase):
         # Seed two tasks
         self.task_a1 = Task.objects.create(
             business=self.business_a,
+            branch=self.branch_a1,
             assigned_by=self.owner_a,
             assignee=self.employee_a1,
             title="Task A1",
@@ -22,6 +23,7 @@ class TasksTestCase(BaseTestCase):
         )
         self.task_a2 = Task.objects.create(
             business=self.business_a,
+            branch=self.branch_a2,
             assigned_by=self.manager_a1,
             assignee=self.employee_a2,
             title="Task A2",
@@ -144,9 +146,9 @@ class TasksTestCase(BaseTestCase):
     def test_task_list_access_permissions(self):
         # Owner sees assigned tasks
         self.client.force_authenticate(user=self.owner_a)
-        task1 = Task.objects.create(business=self.business_a, assigned_by=self.owner_a, assignee=self.employee_a1, title="Task 1", description="D1")
-        task2 = Task.objects.create(business=self.business_a, assigned_by=self.owner_a, assignee=self.employee_a2, title="Task 2", description="D2")
-        Task.objects.create(business=self.business_a, assigned_by=self.owner_a, assignee=self.owner_a, title="Task 3", description="D3")
+        Task.objects.create(business=self.business_a, branch=self.branch_a1, assigned_by=self.owner_a, assignee=self.employee_a1, title="Task 1", description="D1")
+        Task.objects.create(business=self.business_a, branch=self.branch_a2, assigned_by=self.owner_a, assignee=self.employee_a2, title="Task 2", description="D2")
+        Task.objects.create(business=self.business_a, branch=self.branch_a1, assigned_by=self.owner_a, assignee=self.owner_a, title="Task 3", description="D3")
 
         # Owner sees own (task_a1 + task1 + task2 + task3 = 4)
         response = self.client.get(self.task_list_url)
@@ -260,3 +262,133 @@ class TasksTestCase(BaseTestCase):
         # Page 2 (size 2)
         response = self.client.get(response.data["next"])
         self.assertEqual(len(response.data["results"]), 2)
+
+    def test_task_deadline_authorization(self):
+        """Test that only assigned_by (creator) can modify the deadline."""
+        url = reverse('tasks-detail', args=[self.task_a1.id])
+        deadline_time = timezone.now() + timezone.timedelta(days=2)
+
+        # 1. As Assigner (owner_a), setting the deadline should succeed
+        self.client.force_authenticate(user=self.owner_a)
+        response = self.client.patch(url, {"deadline": deadline_time.isoformat()})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.task_a1.refresh_from_db()
+        self.assertIsNotNone(self.task_a1.deadline)
+
+        # 2. As Assignee (employee_a1), changing the deadline should fail
+        self.client.force_authenticate(user=self.employee_a1)
+        new_deadline_time = timezone.now() + timezone.timedelta(days=5)
+        response = self.client.patch(url, {"deadline": new_deadline_time.isoformat()})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("deadline", response.data)
+
+        # 3. As Assignee, updating other fields (like status) without changing deadline should succeed
+        response = self.client.patch(url, {
+            "status": Task.Status.IN_PROGRESS,
+            "deadline": self.task_a1.deadline.isoformat()
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.task_a1.refresh_from_db()
+        self.assertEqual(self.task_a1.status, Task.Status.IN_PROGRESS)
+
+    def test_task_deadline_filtering(self):
+        """Test task filtering by from_deadline, to_deadline, and overdue status."""
+        self.client.force_authenticate(user=self.owner_a)
+        
+        # Clear existing deadlines first
+        Task.objects.all().delete()
+        
+        from datetime import timedelta
+        # 1. Task A: Overdue (deadline yesterday, status PENDING)
+        task_overdue = Task.objects.create(
+            business=self.business_a,
+            assigned_by=self.owner_a,
+            assignee=self.employee_a1,
+            title="Overdue Task",
+            description="D1",
+            deadline=timezone.now() - timedelta(days=1),
+            status=Task.Status.PENDING
+        )
+        # 2. Task B: Upcoming (deadline tomorrow, status PENDING)
+        task_upcoming = Task.objects.create(
+            business=self.business_a,
+            assigned_by=self.owner_a,
+            assignee=self.employee_a1,
+            title="Upcoming Task",
+            description="D2",
+            deadline=timezone.now() + timedelta(days=1),
+            status=Task.Status.PENDING
+        )
+        # 3. Task C: Completed yesterday (deadline yesterday, status COMPLETED)
+        task_completed_yesterday = Task.objects.create(
+            business=self.business_a,
+            assigned_by=self.owner_a,
+            assignee=self.employee_a1,
+            title="Completed Task",
+            description="D3",
+            deadline=timezone.now() - timedelta(days=1),
+            status=Task.Status.COMPLETED
+        )
+
+        from urllib.parse import urlencode
+
+        # Test overdue=true
+        response = self.client.get(f"{self.task_list_url}?overdue=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {t["id"] for t in response.data["results"]}
+        self.assertIn(task_overdue.id, returned_ids)
+        self.assertNotIn(task_upcoming.id, returned_ids)
+        self.assertNotIn(task_completed_yesterday.id, returned_ids)
+
+        # Test overdue=false
+        response = self.client.get(f"{self.task_list_url}?overdue=false")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {t["id"] for t in response.data["results"]}
+        self.assertIn(task_upcoming.id, returned_ids)
+        self.assertIn(task_completed_yesterday.id, returned_ids)
+        self.assertNotIn(task_overdue.id, returned_ids)
+
+        # Test from_deadline & to_deadline
+        from_deadline = (timezone.now() + timedelta(hours=12)).isoformat()
+        to_deadline = (timezone.now() + timedelta(days=2)).isoformat()
+        qs = urlencode({"from_deadline": from_deadline, "to_deadline": to_deadline})
+        response = self.client.get(f"{self.task_list_url}?{qs}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {t["id"] for t in response.data["results"]}
+        self.assertIn(task_upcoming.id, returned_ids)
+        self.assertNotIn(task_overdue.id, returned_ids)
+
+    def test_task_create_custom_reminder_action(self):
+        """Test the custom action /api/tasks/{id}/create-reminder/ to create decoupled reminders."""
+        self.client.force_authenticate(user=self.owner_a)
+        
+        from apps.notification.models import Reminder
+        from datetime import timedelta
+        
+        # 1. Verify invalid payload is rejected
+        url = reverse('tasks-detail', args=[self.task_a1.id]) + "create-reminder/"
+        response = self.client.post(url, {})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # 2. Verify creating a custom reminder with valid data
+        future_time = timezone.now() + timedelta(days=1)
+        data = {
+            "title": "Custom Task Alert",
+            "content": "Check project milestones",
+            "remind_at": future_time.isoformat()
+        }
+        
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify the created general reminder in DB
+        reminder_id = response.data['id']
+        reminder = Reminder.objects.get(id=reminder_id)
+        self.assertEqual(reminder.title, "Custom Task Alert")
+        self.assertIn("Check project milestones", reminder.content)
+        self.assertEqual(reminder.user, self.owner_a)
+        self.assertIsNotNone(reminder.celery_task_id)
+
+

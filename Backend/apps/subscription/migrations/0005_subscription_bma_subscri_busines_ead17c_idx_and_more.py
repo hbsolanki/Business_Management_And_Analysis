@@ -5,20 +5,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('business', '0003_branch'),
-        ('subscription', '0004_plan_max_branches_subscription_max_branches_and_more'),
+        ("business", "0003_branch"),
+        ("subscription", "0004_plan_max_branches_subscription_max_branches_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='subscription',
-            index=models.Index(fields=['business', 'plan'], name='bma_subscri_busines_ead17c_idx'),
+            model_name="subscription",
+            index=models.Index(
+                fields=["business", "plan"], name="bma_subscri_busines_ead17c_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='usage',
-            index=models.Index(fields=['subscription'], name='bma_plan_us_subscri_d4af6c_idx'),
+            model_name="usage",
+            index=models.Index(
+                fields=["subscription"], name="bma_plan_us_subscri_d4af6c_idx"
+            ),
         ),
     ]

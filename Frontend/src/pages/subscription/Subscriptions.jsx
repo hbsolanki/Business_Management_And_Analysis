@@ -11,8 +11,14 @@ import {
     FaBoxOpen,
     FaUsers,
     FaChartBar,
-    FaCodeBranch
+    FaCodeBranch,
+    FaExclamationTriangle,
+    FaArrowRight,
+    FaBell
 } from "react-icons/fa";
+import { lazy, Suspense } from "react";
+
+const EntityReminderModal = lazy(() => import("@/features/reminder/components/EntityReminderModal"));
 
 export default function Subscriptions() {
     const [purchased, setPurchased] = useState(null);
@@ -23,6 +29,15 @@ export default function Subscriptions() {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [renewSubscriptionId, setRenewSubscriptionId] = useState(null);
     const [renewAmount, setRenewAmount] = useState(0);
+    const [showReminderModal, setShowReminderModal] = useState(false);
+
+    const pendingSub = useMemo(() => {
+        if (!purchased) return null;
+        if (purchased.status === "pending_payment" || purchased.status === "pending") {
+            return purchased;
+        }
+        return purchased.pending_subscription || null;
+    }, [purchased]);
 
     const usageStats = useMemo(() => {
         if (!purchased || !usage) return [];
@@ -138,7 +153,7 @@ export default function Subscriptions() {
 
     const handlePaymentSuccess = useCallback(() => {
         setIsPaymentModalOpen(false);
-        toast.success("Subscription renewed successfully!");
+        toast.success("Subscription payment completed and activated!");
         fetchPurchased(true);
     }, [fetchPurchased]);
 
@@ -176,6 +191,16 @@ export default function Subscriptions() {
                                     {renewing ? "Processing..." : "Renew Now"}
                                 </button>
                             )}
+                            {!loading && purchased && (purchased.plan || purchased.plan_id) && (
+                                <button
+                                    onClick={() => setShowReminderModal(true)}
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-amber-500 hover:bg-amber-50 hover:border-amber-200 text-sm font-semibold transition-all shadow-sm"
+                                    title="Set Reminder"
+                                >
+                                    <FaBell />
+                                    <span>Reminder</span>
+                                </button>
+                            )}
                         </div>
 
                         {loading && (
@@ -187,6 +212,36 @@ export default function Subscriptions() {
                         {!loading && !purchased && (
                             <div className="text-sm text-slate-500 bg-white border border-dashed border-slate-200 rounded-2xl p-6">
                                 No active subscription found. Choose a plan below to get started.
+                            </div>
+                        )}
+
+                        {pendingSub && (
+                            <div className="mb-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-md border border-amber-500/20 rounded-3xl p-6 shadow-xl shadow-amber-500/5 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -z-10 transition-transform group-hover:scale-150 duration-700"></div>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="h-12 w-12 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center flex-shrink-0 animate-pulse">
+                                            <FaExclamationTriangle size={20} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-base font-black text-amber-900 leading-tight">Payment Action Required</h4>
+                                            <p className="text-xs text-amber-700 font-semibold mt-1 max-w-xl">
+                                                You have an incomplete checkout for the <strong className="text-amber-900 font-black">{pendingSub.plan_name}</strong> plan (₹{pendingSub.price} for {pendingSub.duration_days} days). Pay securely to activate your features instantly.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setRenewSubscriptionId(pendingSub.subscription_id || pendingSub.id);
+                                            setRenewAmount(parseFloat(pendingSub.price || 0));
+                                            setIsPaymentModalOpen(true);
+                                        }}
+                                        className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-amber-600 text-white text-xs font-black uppercase tracking-wider hover:bg-amber-500 active:translate-y-0.5 hover:-translate-y-0.5 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/30 transition-all duration-300 w-full sm:w-auto"
+                                    >
+                                        <span>Pay Securely Now</span>
+                                        <FaArrowRight size={10} />
+                                    </button>
+                                </div>
                             </div>
                         )}
 
@@ -335,6 +390,18 @@ export default function Subscriptions() {
                 amount={renewAmount}
                 onPaymentSuccess={handlePaymentSuccess}
             />
+
+            {showReminderModal && purchased && (purchased.plan || purchased.plan_id) && (
+                <Suspense fallback={null}>
+                    <EntityReminderModal
+                        isOpen={showReminderModal}
+                        onClose={() => setShowReminderModal(false)}
+                        entityType="subscription.plan"
+                        entityId={purchased.plan || purchased.plan_id}
+                        entityTitle={`Subscription Plan: ${purchased.plan_name || "Current Plan"}`}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 }

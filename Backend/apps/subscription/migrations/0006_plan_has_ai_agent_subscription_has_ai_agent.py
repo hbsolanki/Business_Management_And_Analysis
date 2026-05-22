@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('subscription', '0005_subscription_bma_subscri_busines_ead17c_idx_and_more'),
+        ("subscription", "0005_subscription_bma_subscri_busines_ead17c_idx_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='plan',
-            name='has_ai_agent',
+            model_name="plan",
+            name="has_ai_agent",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='subscription',
-            name='has_ai_agent',
+            model_name="subscription",
+            name="has_ai_agent",
             field=models.BooleanField(null=True),
         ),
     ]

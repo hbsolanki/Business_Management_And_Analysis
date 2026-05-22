@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { HiOutlinePlus } from "react-icons/hi2";
 import { FaBox } from "react-icons/fa";
 
 export default function ProductHeader() {
@@ -23,7 +23,7 @@ export default function ProductHeader() {
         to="/product/add"
         className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition"
       >
-        <PlusIcon className="h-5 w-5" />
+        <HiOutlinePlus className="h-5 w-5" />
         Add Product
       </Link>
     </div>

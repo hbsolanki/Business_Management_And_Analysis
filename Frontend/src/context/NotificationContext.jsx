@@ -33,9 +33,6 @@ export const NotificationProvider = ({ children }) => {
     }, []);
 
     const connectSSE = useCallback(() => {
-        const token = tokenService.getAccessToken();
-        if (!token) return;
-
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -45,12 +42,26 @@ export const NotificationProvider = ({ children }) => {
 
         const connect = async () => {
             try {
+                // Fetch token INSIDE connect so retries get the refreshed token
+                const currentToken = tokenService.getAccessToken();
+                if (!currentToken) return;
+
                 const response = await fetch(resolveNotificationSSEUrl(), {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        'Authorization': `Bearer ${currentToken}`,
                     },
                     signal: abortController.signal,
                 });
+
+                if (response.status === 401) {
+                    // Try to trigger a token refresh by making a dummy API call
+                    try {
+                        await api.get('/notification/?limit=1');
+                    } catch (e) {
+                        console.error('Failed to refresh token before SSE reconnect', e);
+                    }
+                    throw new Error('Unauthorized');
+                }
 
                 if (!response.ok) {
                     throw new Error('Notification stream connection failed');

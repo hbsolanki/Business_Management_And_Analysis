@@ -39,13 +39,13 @@ class BusinessTestCase(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_cannot_create_business_by_manager(self):
-        manager = self.create_manager(authenticate=True)
+        self.create_manager(authenticate=True)
         data = {"name": "Manager Business"}
         response = self.client.post(self.business_list_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_cannot_create_business_by_employee(self):
-        employee = self.create_employee(authenticate=True)
+        self.create_employee(authenticate=True)
         data = {"name": "Employee Business"}
         response = self.client.post(self.business_list_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -63,7 +63,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_update_business_by_manager(self):
         business = Business.objects.create(name="Test Biz")
-        manager = self.create_manager(username="test_manager", business=business, authenticate=True)
+        self.create_manager(username="test_manager", business=business, authenticate=True)
         
         detail_url = reverse('business-detail', kwargs={'pk': business.id})
         response = self.client.patch(detail_url, {"name": "Hacked"})
@@ -71,7 +71,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_update_business_by_employee(self):
         business = Business.objects.create(name="Test Biz")
-        employee = self.create_employee(username="test_employee", business=business, authenticate=True)
+        self.create_employee(username="test_employee", business=business, authenticate=True)
         
         detail_url = reverse('business-detail', kwargs={'pk': business.id})
         response = self.client.patch(detail_url, {"name": "Hacked"})
@@ -89,7 +89,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_delete_business_by_manager(self):
         business = Business.objects.create(name="Test Biz")
-        manager = self.create_manager(username="mgr_del", business=business, authenticate=True)
+        self.create_manager(username="mgr_del", business=business, authenticate=True)
         
         detail_url = reverse('business-detail', kwargs={'pk': business.id})
         response = self.client.delete(detail_url)
@@ -97,7 +97,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_delete_business_by_employee(self):
         business = Business.objects.create(name="Test Biz")
-        employee = self.create_employee(username="emp_del", business=business, authenticate=True)
+        self.create_employee(username="emp_del", business=business, authenticate=True)
         
         detail_url = reverse('business-detail', kwargs={'pk': business.id})
         response = self.client.delete(detail_url)
@@ -110,7 +110,7 @@ class BusinessTestCase(BaseTestCase):
         
         # Business B & Owner B
         biz_b = Business.objects.create(name="Business B")
-        user_b = self.create_owner(username="user_b", business=biz_b)
+        self.create_owner(username="user_b", business=biz_b)
 
         self.client.force_authenticate(user=user_a)
         
@@ -192,7 +192,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_create_manager_by_manager(self):
         business, plan, sub = self.setup_business_with_plan(business_name="Test Biz 3")
-        manager = self.create_manager(username="manager_u", business=business, authenticate=True)
+        self.create_manager(username="manager_u", business=business, authenticate=True)
         
         data = {
             "user": {
@@ -209,7 +209,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_create_manager_by_employee(self):
         business, plan, sub = self.setup_business_with_plan(business_name="Test Biz 4")
-        employee = self.create_employee(username="employee_u", business=business, authenticate=True)
+        self.create_employee(username="employee_u", business=business, authenticate=True)
         
         data = {
             "user": {
@@ -226,7 +226,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_create_employee_by_manager(self):
         business, plan, sub = self.setup_business_with_plan(business_name="Test Biz 5")
-        manager = self.create_manager(username="manager_ok", business=business, authenticate=True)
+        self.create_manager(username="manager_ok", business=business, authenticate=True)
         
         data = {
             "user": {
@@ -244,7 +244,7 @@ class BusinessTestCase(BaseTestCase):
 
     def test_cannot_create_employee_by_employee(self):
         business, plan, sub = self.setup_business_with_plan(business_name="Test Biz 6")
-        employee = self.create_employee(username="employee_fail", business=business, authenticate=True)
+        self.create_employee(username="employee_fail", business=business, authenticate=True)
         
         data = {
             "user": {

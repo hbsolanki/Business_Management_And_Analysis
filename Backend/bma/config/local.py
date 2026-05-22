@@ -1,4 +1,4 @@
-from .base import *
+from bma.config.base import *
 
 # Override properties for local development
 DEBUG = True

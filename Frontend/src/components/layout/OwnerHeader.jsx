@@ -18,7 +18,8 @@ import {
     FaUserEdit,
     FaSignOutAlt,
     FaHistory,
-    FaBrain
+    FaBrain,
+    FaClock
 } from "react-icons/fa";
 
 import NotificationBell from "@/components/shared/NotificationBell";
@@ -188,7 +189,7 @@ function OwnerHeader() {
 
                                             <div className="space-y-0.5 px-2">
                                                 <DropdownItem to="/profile" text="My Profile" icon={<FaUserCircle />} onClick={() => setActiveDropdown(null)} />
-                                                <DropdownItem to="/activity-logs" text="Activity Logs" icon={<FaHistory />} onClick={() => setActiveDropdown(null)} />
+                                                <DropdownItem to="/reminders" text="Reminder" icon={<FaClock />} onClick={() => setActiveDropdown(null)} />
                                                 <DropdownItem to="/owner/edit" text="Edit Profile" icon={<FaUserEdit />} onClick={() => setActiveDropdown(null)} />
                                                 <DropdownItem to="/ai-agent/session" text="AI Agent" icon={<FaBrain />} onClick={() => setActiveDropdown(null)} />
                                             </div>

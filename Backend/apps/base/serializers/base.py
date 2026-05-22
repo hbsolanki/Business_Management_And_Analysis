@@ -1,7 +1,6 @@
 from rest_framework import serializers
 import re
 from apps.business.models import Branch
-from apps.user.models import User
 from apps.employee.models import UserRole
 from apps.subscription.utils.entitlements import check_resource_limit
 
@@ -44,6 +43,8 @@ class BaseSerializer(serializers.ModelSerializer):
         return attrs
 
     def validate_branch_id(self, value):
+        if value is None:
+            return None
         request = self.context.get("request")
         if not request or not hasattr(request, "user") or request.user is None:
             return value
@@ -54,16 +55,16 @@ class BaseSerializer(serializers.ModelSerializer):
             branch = value
         else:
             try:
-                branch = Branch.objects.get(id=value, business=user.business, is_active=True)
+                branch = Branch.objects.get(id=value, business=request.user.business, is_active=True)
             except (Branch.DoesNotExist, ValueError, TypeError):
                 raise serializers.ValidationError("Branch not found or branch inactive.")
 
         # Business Ownership check (crucial for PrimaryKeyRelatedField which defaults to Branch.objects.all())
-        if branch.business != user.business:
+        if branch.business != request.user.business:
             raise serializers.ValidationError("This branch does not belong to your business.")
 
         # Role-based assignment check
-        if user.role_name in (UserRole.MANAGER, UserRole.EMPLOYEE) and not user.branches.filter(id=branch.id).exists():
+        if request.user.role_name in (UserRole.MANAGER, UserRole.EMPLOYEE) and not request.user.branches.filter(id=branch.id).exists():
             raise serializers.ValidationError("You do not have access to this branch.")
 
         self._validated_branch = branch

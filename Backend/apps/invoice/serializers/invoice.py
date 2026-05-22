@@ -8,8 +8,7 @@ from apps.invoice.models import Invoice
 from apps.business.serializers.customer import BusinessCustomerSerializer
 from apps.invoice.serializers.product_invoice import ProductInvoiceSerializer
 from apps.inventory.serializers.inventory_transaction import InventoryTransactionSerializer
-from apps.invoice.tasks import send_invoice_email
-from apps.inventory.models import Inventory, InventoryTransaction
+from apps.inventory.models import Inventory
 from apps.business.models import Branch
 
 
@@ -36,9 +35,10 @@ class InvoiceSerializer(BaseSerializer):
         return super().validate_branch_id(value)
 
     def validate(self, attrs):
-        user      = self.context["request"].user
+        request = self.context["request"]
+        user = request.user
         branch    = self._validated_branch
-        inventory = Inventory.objects.filter(business=user.business, branch=branch).first()
+        inventory = Inventory.objects.filter(business=request.user.business, branch=branch).first()
         if not inventory:
             raise serializers.ValidationError({"branch_id": "Inventory not found for this branch."})
         
@@ -68,7 +68,7 @@ class InvoiceSerializer(BaseSerializer):
 
         # Save Invoice
         invoice = Invoice.objects.create(
-            business=user.business,
+            business=request.user.business,
             branch=branch,
             customer=customer,
             created_by=user,
@@ -158,7 +158,7 @@ class InvoiceSerializer(BaseSerializer):
                 month=now.month,
                 year=now.year
             )
-        except Exception as e:
+        except Exception:
             # Log error but don't fail invoice creation
             pass
         
@@ -167,7 +167,6 @@ class InvoiceSerializer(BaseSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         request = self.context.get('request')
-        user = request.user
         items_data = validated_data.pop('invoice_items', None)
         customer_data = validated_data.pop('customer', None)
         
@@ -205,7 +204,7 @@ class InvoiceSerializer(BaseSerializer):
         # 3. Update Invoice basic fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        instance.save()
+        instance.save(update_fields=list(validated_data.keys()) or None)
 
         # 4. Update Items and Apply New Stock
         if items_data is not None:
@@ -272,13 +271,12 @@ class InvoiceSerializer(BaseSerializer):
         # 5. Trigger GST summary update
         try:
             from apps.gst_management.tasks import update_gst_summary_task
-            now = timezone.now()
             update_gst_summary_task.delay(
                 business_id=instance.business.id,
                 month=instance.created_at.month,
                 year=instance.created_at.year
             )
-        except Exception as e:
+        except Exception:
             pass
 
         return instance

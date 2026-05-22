@@ -1,9 +1,8 @@
 from django.urls import reverse
 from rest_framework import status
 from apps.base.tests import BaseTestCase
-from apps.supplier.models import PurchaseOrder, OrderStatus, Supplier
+from apps.supplier.models import PurchaseOrder, OrderStatus
 from apps.activity_log.models import ActivityLog
-from apps.product.models import Product
 from apps.employee.models import WorkType
 from django.utils import timezone
 

@@ -214,18 +214,20 @@ function MultiSelectAsync({ label, placeholder, fetchOptions, selectedIds, onCha
     );
 }
 
-export default function AnalyticsReportGenerator() {
+export default function AnalyticsReportGenerator({ isEmbed = false, onComplete }) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const role = tokenService.getRole();
-        const normalizedRole = role ? role.toUpperCase() : "";
-        if (normalizedRole !== "OWNER" && normalizedRole !== "MANAGER") {
-            toast.error("Unauthorized access. This area is reserved for Management.");
-            navigate('/analytics', { replace: true });
+        if (!isEmbed) {
+            const role = tokenService.getRole();
+            const normalizedRole = role ? role.toUpperCase() : "";
+            if (normalizedRole !== "OWNER" && normalizedRole !== "MANAGER") {
+                toast.error("Unauthorized access. This area is reserved for Management.");
+                navigate('/analytics', { replace: true });
+            }
         }
-    }, [navigate]);
+    }, [navigate, isEmbed]);
 
     const defaultDates = getPresetDates('last_month');
     const [reportTypes, setReportTypes] = useState([]);
@@ -299,6 +301,7 @@ export default function AnalyticsReportGenerator() {
             setLoading(true);
             await api.post('/analytics/report/generate/', payload);
             toast.success("Report generation started! It will be sent to your email in 5 to 10 minutes.");
+            if (onComplete) onComplete({ success: true, message: "Report generation started." });
             const defaultDates = getPresetDates('last_month');
             setReportTypes([]);
             setDates({ start_date: defaultDates.start_date, end_date: defaultDates.end_date });
@@ -313,172 +316,195 @@ export default function AnalyticsReportGenerator() {
         }
     };
 
-    return (
-        <div className="min-h-screen bg-slate-50/30">
-      <ProtectedHeader />
-
-      <main className="max-w-4xl mx-auto px-4 pt-6 space-y-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-hidden relative">
-          <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
-            <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
-          </div>
-          
-          <div className="relative z-10">
-            <button
-                onClick={() => navigate('/analytics')}
-                className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all mb-3 group"
-            >
-                <ArrowLeftIcon size={10} className="transition-transform group-hover:-translate-x-1" />
-                Return to Analytics
-            </button>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-                <div className="h-10 w-10 bg-slate-900 rounded-xl text-white flex items-center justify-center shadow-md">
-                    <FaFileExport size={16} />
-                </div>
-                Report Dispatch Center
-            </h1>
-            <p className="text-slate-400 text-[11px] font-medium mt-1.5 ml-0.5">
-                Generate enterprise intelligence reports and automated data exports.
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handleGenerate} className="space-y-4">
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                    <CalendarIcon className="text-slate-400" size={12} />
-                    Time Period <span className="text-rose-500">*</span>
-                </h2>
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200/50">
-                    {['current_month', 'last_month', 'last_3_months', 'custom'].map(presetId => (
-                        <button
-                            key={presetId}
-                            type="button"
-                            onClick={() => {
-                                setActivePreset(presetId);
-                                if (presetId !== 'custom') setDates(getPresetDates(presetId));
-                            }}
-                            className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activePreset === presetId ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            {presetId.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reporting From</label>
-                    <input
-                        type="date"
-                        required
-                        max={getTodayFormatted()}
-                        value={dates.start_date}
-                        onChange={(e) => { setActivePreset('custom'); setDates({ ...dates, start_date: e.target.value }); }}
-                        className="w-full px-4 py-2 text-sm font-bold bg-slate-50 border border-slate-100 rounded-xl focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all outline-none"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reporting To</label>
-                    <input
-                        type="date"
-                        required
-                        max={getTodayFormatted()}
-                        value={dates.end_date}
-                        onChange={(e) => { setActivePreset('custom'); setDates({ ...dates, end_date: e.target.value }); }}
-                        className="w-full px-4 py-2 text-sm font-bold bg-slate-50 border border-slate-100 rounded-xl focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all outline-none"
-                    />
-                </div>
-            </div>
-          </section>
-
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div className="flex items-center justify-between mb-5 border-b border-slate-50 pb-3">
-                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                    <FaTags className="text-slate-400" size={12} />
-                    Report Types <span className="text-rose-500">*</span>
-                </h2>
+    const innerContent = (
+        <div className={`space-y-4 ${isEmbed ? 'p-6' : 'max-w-4xl mx-auto px-4 pt-6'}`}>
+          {!isEmbed && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm overflow-hidden relative">
+              <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
+              </div>
+              
+              <div className="relative z-10">
                 <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-1 rounded-md bg-slate-50 border border-slate-100"
+                    onClick={() => navigate('/analytics')}
+                    className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all mb-3 group"
                 >
-                    {reportTypes.length === REPORT_TYPE_CHOICES.length ? 'Clear Selection' : 'Select All'}
+                    <ArrowLeftIcon size={10} className="transition-transform group-hover:-translate-x-1" />
+                    Return to Analytics
                 </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {REPORT_TYPE_CHOICES.map(choice => {
-                    const isSelected = reportTypes.includes(choice.value);
-                    return (
-                        <button
-                            key={choice.value}
-                            type="button"
-                            onClick={() => handleReportTypeToggle(choice.value)}
-                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isSelected ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-100 hover:border-slate-200'}`}
-                        >
-                            <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isSelected ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-400'}`}>
-                                <choice.icon size={14} />
-                            </div>
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-left truncate">{choice.label}</span>
-                            {isSelected && <FaCheck className="ml-auto text-white" size={10} />}
-                        </button>
-                    );
-                })}
-            </div>
-          </section>
-
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative z-20">
-            <h2 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-5 flex items-center gap-2 border-b border-slate-50 pb-3">
-                <FaSearch className="text-slate-400" size={12} />
-                Filtering Scope <span className="text-[9px] font-bold text-slate-300 ml-auto">Optional</span>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <MultiSelectAsync
-                    label="Specific Products"
-                    placeholder="All items included..."
-                    fetchOptions={fetchProducts}
-                    onChange={(ids) => setFilterIds({ ...filterIds, product_ids: ids })}
-                    selectedIds={filterIds.product_ids}
-                    optionLabelKey="name"
-                    optionValueKey="id"
-                />
-                <MultiSelectAsync
-                    label="Target Branches"
-                    placeholder="All branches included..."
-                    fetchOptions={fetchBranches}
-                    onChange={(ids) => setFilterIds({ ...filterIds, branch_ids: ids })}
-                    selectedIds={filterIds.branch_ids}
-                    optionLabelKey="name"
-                    optionValueKey="id"
-                />
-            </div>
-          </section>
-
-          <div className="pt-4 flex flex-col items-center gap-5">
-            <button
-                type="submit"
-                disabled={loading}
-                className="w-full sm:w-auto px-12 py-3 rounded-xl bg-slate-900 text-white font-bold text-[11px] uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
-            >
-                {loading ? <FaSpinner className="animate-spin" /> : <DownloadIcon size={12} />}
-                {loading ? "Generating Intelligent Report..." : "Generate & Dispatch Intelligence"}
-            </button>
-
-            <div className="max-w-md bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
-                <div className="flex gap-3 items-start">
-                    <div className="h-6 w-6 rounded-lg bg-slate-50 text-slate-300 flex items-center justify-center shrink-0 border border-slate-100">
-                        <FaFileDownload size={10} />
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+                    <div className="h-10 w-10 bg-slate-900 rounded-xl text-white flex items-center justify-center shadow-md">
+                        <FaFileExport size={16} />
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                        <span className="text-slate-900 font-bold uppercase tracking-wider block mb-0.5">Automated Dispatch</span>
-                        Processing usually completes in <span className="text-slate-800 font-bold">5-10 minutes</span>. Report link will be dispatched to your registered management email.
-                    </p>
-                </div>
+                    Report Dispatch Center
+                </h1>
+                <p className="text-slate-400 text-[11px] font-medium mt-1.5 ml-0.5">
+                    Generate enterprise intelligence reports and automated data exports.
+                </p>
+              </div>
             </div>
-          </div>
-        </form>
-      </main>
-    </div>
+          )}
+
+          {isEmbed && (
+              <div className="mb-6">
+                <h1 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <div className="h-8 w-8 bg-slate-900 rounded-xl text-white flex items-center justify-center shadow-md">
+                        <FaFileExport size={12} />
+                    </div>
+                    Report Generator
+                </h1>
+                <p className="text-slate-400 text-[10px] font-medium mt-1.5 ml-0.5 uppercase tracking-widest">
+                    Automated data exports
+                </p>
+              </div>
+          )}
+
+          <form onSubmit={handleGenerate} className="space-y-4">
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-50 pb-3">
+                  <h2 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                      <CalendarIcon className="text-slate-400" size={12} />
+                      Time Period <span className="text-rose-500">*</span>
+                  </h2>
+                  <div className="flex flex-wrap bg-slate-100 p-1 rounded-lg border border-slate-200/50 gap-1">
+                      {['current_month', 'last_month', 'last_3_months', 'custom'].map(presetId => (
+                          <button
+                              key={presetId}
+                              type="button"
+                              onClick={() => {
+                                  setActivePreset(presetId);
+                                  if (presetId !== 'custom') setDates(getPresetDates(presetId));
+                              }}
+                              className={`px-2.5 py-1 text-[9px] font-bold rounded-md transition-all whitespace-nowrap ${activePreset === presetId ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                              {presetId.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
+                          </button>
+                      ))}
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reporting From</label>
+                      <input
+                          type="date"
+                          required
+                          max={getTodayFormatted()}
+                          value={dates.start_date}
+                          onChange={(e) => { setActivePreset('custom'); setDates({ ...dates, start_date: e.target.value }); }}
+                          className="w-full px-3 py-2 text-sm font-bold bg-slate-50 border border-slate-100 rounded-xl focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all outline-none"
+                      />
+                  </div>
+                  <div className="space-y-1.5">
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reporting To</label>
+                      <input
+                          type="date"
+                          required
+                          max={getTodayFormatted()}
+                          value={dates.end_date}
+                          onChange={(e) => { setActivePreset('custom'); setDates({ ...dates, end_date: e.target.value }); }}
+                          className="w-full px-3 py-2 text-sm font-bold bg-slate-50 border border-slate-100 rounded-xl focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all outline-none"
+                      />
+                  </div>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="flex items-center justify-between mb-4 border-b border-slate-50 pb-3">
+                  <h2 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                      <FaTags className="text-slate-400" size={12} />
+                      Report Types <span className="text-rose-500">*</span>
+                  </h2>
+                  <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-2.5 py-1 rounded-md bg-slate-50 border border-slate-100"
+                  >
+                      {reportTypes.length === REPORT_TYPE_CHOICES.length ? 'Clear Selection' : 'Select All'}
+                  </button>
+              </div>
+              <div className={`grid grid-cols-1 ${isEmbed ? '' : 'sm:grid-cols-2 lg:grid-cols-3'} gap-2.5`}>
+                  {REPORT_TYPE_CHOICES.map(choice => {
+                      const isSelected = reportTypes.includes(choice.value);
+                      return (
+                          <button
+                              key={choice.value}
+                              type="button"
+                              onClick={() => handleReportTypeToggle(choice.value)}
+                              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${isSelected ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-100 hover:border-slate-200'}`}
+                          >
+                              <div className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isSelected ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                                  <choice.icon size={12} />
+                              </div>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-left truncate">{choice.label}</span>
+                              {isSelected && <FaCheck className="ml-auto text-white" size={10} />}
+                          </button>
+                      );
+                  })}
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative z-20">
+              <h2 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-50 pb-3">
+                  <FaSearch className="text-slate-400" size={12} />
+                  Filtering Scope <span className="text-[9px] font-bold text-slate-300 ml-auto">Optional</span>
+              </h2>
+              <div className={`grid grid-cols-1 ${isEmbed ? '' : 'md:grid-cols-2'} gap-5`}>
+                  <MultiSelectAsync
+                      label="Specific Products"
+                      placeholder="All items included..."
+                      fetchOptions={fetchProducts}
+                      onChange={(ids) => setFilterIds({ ...filterIds, product_ids: ids })}
+                      selectedIds={filterIds.product_ids}
+                      optionLabelKey="name"
+                      optionValueKey="id"
+                  />
+                  <MultiSelectAsync
+                      label="Target Branches"
+                      placeholder="All branches included..."
+                      fetchOptions={fetchBranches}
+                      onChange={(ids) => setFilterIds({ ...filterIds, branch_ids: ids })}
+                      selectedIds={filterIds.branch_ids}
+                      optionLabelKey="name"
+                      optionValueKey="id"
+                  />
+              </div>
+            </section>
+
+            <div className="pt-2 pb-32 flex flex-col items-center gap-4">
+              <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full ${isEmbed ? '' : 'sm:w-auto px-12'} py-3 rounded-xl bg-slate-900 text-white font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2.5`}
+              >
+                  {loading ? <FaSpinner className="animate-spin" /> : <DownloadIcon size={12} />}
+                  {loading ? "Generating Intelligent Report..." : "Generate & Dispatch Intelligence"}
+              </button>
+
+              <div className="w-full bg-white rounded-xl p-3.5 border border-slate-100 shadow-sm">
+                  <div className="flex gap-3 items-start">
+                      <div className="h-6 w-6 rounded-lg bg-slate-50 text-slate-300 flex items-center justify-center shrink-0 border border-slate-100">
+                          <FaFileDownload size={10} />
+                      </div>
+                      <p className="text-[9px] text-slate-400 font-medium leading-relaxed">
+                          <span className="text-slate-900 font-bold uppercase tracking-wider block mb-0.5">Automated Dispatch</span>
+                          Processing usually completes in <span className="text-slate-800 font-bold">5-10 minutes</span>. Report link will be dispatched to your registered management email.
+                      </p>
+                  </div>
+              </div>
+            </div>
+          </form>
+        </div>
+    );
+
+    if (isEmbed) {
+        return innerContent;
+    }
+
+    return (
+        <div className="min-h-screen bg-slate-50/30 pb-12">
+            <ProtectedHeader />
+            {innerContent}
+        </div>
     );
 }

@@ -26,7 +26,7 @@ import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branc
 const InvoiceItems = lazy(() => import("@/features/invoice/components/InvoiceItems"));
 const PaymentModal = lazy(() => import("@/features/payment/components/PaymentModal"));
 
-export default function AddInvoice() {
+export default function AddInvoice({ isEmbed = false, initialData = null, onComplete = null }) {
     const navigate = useNavigate();
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
@@ -45,8 +45,8 @@ export default function AddInvoice() {
         String(value ?? "").replace(/\D/g, "").slice(0, 10);
 
     const [customer, setCustomer] = useState({
-        name: "",
-        mobile_number: "",
+        name: initialData?.customer_name || "",
+        mobile_number: initialData?.customer_mobile || "",
         email: "",
         address: "",
         age: "",
@@ -54,7 +54,7 @@ export default function AddInvoice() {
     });
 
     const [items, setItems] = useState([]);
-    const [paymentMode, setPaymentMode] = useState("CASH");
+    const [paymentMode, setPaymentMode] = useState(initialData?.payment_mode || "CASH");
     const [loading, setLoading] = useState(false);
     const [createdInvoice, setCreatedInvoice] = useState(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -212,6 +212,7 @@ export default function AddInvoice() {
                 toast.success("Invoice created. Proceed to payment.");
             } else {
                 toast.success("Invoice created successfully");
+                if (isEmbed && onComplete) { onComplete(res.data); return; }
                 navigate(-1);
             }
         } catch (err) {
@@ -231,58 +232,34 @@ export default function AddInvoice() {
 
     const inputClass = "w-full rounded-xl border border-slate-200 input-icon-left pr-4 py-3 text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all";
 
-    return (
-        <div className="min-h-screen bg-transparent">
-            <div className="pb-24 sm:pb-10">
-                <ProtectedHeader />
-
-                <div className="container mx-auto px-4 py-8 max-w-6xl space-y-8">
+    const formContent = (
+        <div className={`bg-white ${isEmbed ? "" : "rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50"} overflow-hidden`}>
+            {!isEmbed && (
+                <header className="px-8 sm:px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg">
+                        <FaFileInvoiceDollar />
+                    </div>
                     <div>
-                        <BackButton />
+                        <h1 className="text-xl font-bold text-slate-900">Create Invoice</h1>
+                        <p className="text-sm text-slate-500">Generate a new invoice for a customer</p>
                     </div>
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-                                <div className="p-2 bg-slate-900 rounded-lg text-white shadow-sm">
-                                    <FaFileInvoiceDollar className="text-xl" />
-                                </div>
-                                Create Invoice
-                            </h1>
-                            <p className="text-slate-500 mt-2 font-medium">Generate a new invoice for customer</p>
-                        </div>
-                        {/* Desktop Actions */}
-                        <div className="hidden md:flex gap-3">
-                            <button
-                                onClick={() => navigate(-1)}
-                                className="bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSubmit}
-                                disabled={loading}
-                                className={`px-8 py-2.5 rounded-xl text-white font-semibold shadow-sm transition-all active:scale-95 flex items-center gap-2 ${loading
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-slate-900 hover:bg-slate-800"
-                                    }`}
-                            >
-                                {loading ? "Creating..." : "Create Invoice"}
-                            </button>
-                        </div>
-                    </div>
+                </header>
+            )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* LEFT COLUMN: Customer Details */}
-                        <div className="lg:col-span-1 space-y-6">
-                            <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm sticky top-24">
-                                <div className="p-6 border-b border-slate-200 bg-slate-50">
-                                    <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
-                                        <FaUser className="text-slate-900" />
-                                    </h2>
-                                </div>
+            <div className={`${isEmbed ? "p-5 space-y-5" : "p-8 space-y-8"}`}>
+                {/* Layout: dynamic grid based on screen and embed width */}
+                <div className={`grid grid-cols-1 ${isEmbed ? "md:grid-cols-3 gap-6" : "lg:grid-cols-3 gap-8"}`}>
+                    {/* LEFT / Customer Details */}
+                    <div className={`${isEmbed ? "md:col-span-1" : "lg:col-span-1"} space-y-4`}>
+                        <section className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
+                            <div className="px-5 py-3 border-b border-slate-200 bg-white">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                    <FaUser />
+                                    Customer Details
+                                </h2>
+                            </div>
 
-                                <div className="p-6 space-y-5">
+                            <div className="p-5 space-y-4">
                                     {(userRole === "OWNER" || isRestrictedRole) && (
                                         <div>
                                             <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Branch <span className="text-red-500">*</span></label>
@@ -377,7 +354,7 @@ export default function AddInvoice() {
                                     </div>
 
                                     {/* Address */}
-                                    <div>
+                                    {!isEmbed && <div>
                                         <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Address <span className="text-red-500">*</span></label>
                                         <div className="relative group">
                                             <FaMapMarkerAlt className="absolute left-3 top-4 text-slate-400 group-focus-within:text-slate-600 transition" />
@@ -391,7 +368,7 @@ export default function AddInvoice() {
                                                 }
                                             />
                                         </div>
-                                    </div>
+                                    </div>}
 
                                     <div className="grid grid-cols-2 gap-4">
                                         {/* Age */}
@@ -457,12 +434,12 @@ export default function AddInvoice() {
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </section>
-                        </div>
+                            </div>
+                        </section>
+                    </div>
 
-                        {/* RIGHT COLUMN: Items */}
-                        <div className="lg:col-span-2 space-y-6">
+                    {/* RIGHT / Items */}
+                    <div className={`${isEmbed ? "md:col-span-2" : "lg:col-span-2"} space-y-4`}>
                             <Suspense fallback={
                                 <div className="bg-white border border-slate-200 rounded-2xl p-8 h-64 flex items-center justify-center shadow-sm">
                                     <div className="flex flex-col items-center gap-2">
@@ -471,46 +448,66 @@ export default function AddInvoice() {
                                     </div>
                                 </div>
                             }>
-                                <InvoiceItems items={items} setItems={setItems} branchId={selectedBranch} />
-                            </Suspense>
-                        </div>
+                                <InvoiceItems items={items} setItems={setItems} branchId={selectedBranch} isEmbed={isEmbed} />
+                    </Suspense>
                     </div>
                 </div>
-            </div>
 
-            {/* Mobile Actions */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 md:hidden">
-                <div className="flex items-center gap-3">
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                     <button
-                        onClick={() => navigate(-1)}
-                        className="flex-1 bg-white border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+                        type="button"
+                        onClick={() => { if (isEmbed && onComplete) { onComplete(null); } else { navigate(-1); } }}
+                        className="px-5 py-2 rounded-lg text-slate-400 font-bold uppercase tracking-widest text-xs hover:text-slate-900 hover:bg-slate-50 transition-all"
                     >
                         Cancel
                     </button>
                     <button
+                        type="button"
                         onClick={handleSubmit}
                         disabled={loading}
-                        className={`flex-1 px-4 py-3 rounded-xl text-white font-semibold shadow-sm transition-all active:scale-95 ${loading
-                            ? "bg-gray-400 cursor-not-allowed"
-                            : "bg-slate-900 hover:bg-slate-800"
-                            }`}
+                        className={`px-8 py-2.5 rounded-xl text-white font-bold uppercase tracking-widest text-xs shadow-lg transition-all disabled:opacity-50 active:scale-95 ${
+                            loading ? "bg-slate-400 cursor-not-allowed" : "bg-slate-800 hover:bg-slate-700"
+                        }`}
                     >
-                        {loading ? "Creating..." : "Create"}
+                        {loading ? "Processing..." : "Create Invoice"}
                     </button>
                 </div>
             </div>
+        </div>
+    );
 
+    if (isEmbed) return (
+        <>
+            {formContent}
             <Suspense fallback={null}>
                 <PaymentModal
                     isOpen={showPaymentModal}
-                    onClose={() => {
-                        setShowPaymentModal(false);
-                        navigate(-1);
-                    }}
+                    onClose={() => { setShowPaymentModal(false); if (onComplete) onComplete(null); }}
                     invoiceId={createdInvoice?.id}
                     amount={createdInvoice?.total_amount}
                 />
             </Suspense>
-        </div >
+        </>
+    );
+
+    return (
+        <div className="min-h-screen bg-transparent">
+            <div className="pb-24 sm:pb-10">
+                <ProtectedHeader />
+                <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+                    <BackButton />
+                    {formContent}
+                </div>
+            </div>
+            <Suspense fallback={null}>
+                <PaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => { setShowPaymentModal(false); navigate(-1); }}
+                    invoiceId={createdInvoice?.id}
+                    amount={createdInvoice?.total_amount}
+                />
+            </Suspense>
+        </div>
     );
 }

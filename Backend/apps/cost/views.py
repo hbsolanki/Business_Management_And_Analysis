@@ -1,29 +1,30 @@
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
+from apps.notification.mixins import CreateReminderMixin
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from apps.base.views.base_view import BaseViewSet
-from apps.cost.models import CostCategory, MonthlyCostCategory, MonthlyFinancialSummary
+from apps.cost.models import CostCategory, MonthlyCostCategory, MonthlyFinancialSummary, Expense
 from apps.cost.serializers.cost_category_month import (
     MonthlyCostCategorySerializer,
     MonthlyCostCategoryBulkSerializer,
 )
 from apps.cost.serializers.cost_category import CostCategorySerializer
+from apps.cost.serializers.expense import ExpenseSerializer
 from apps.activity_log.models import ActivityLog
 from apps.activity_log.mixins import ActivityLogMixin
 
 
 from apps.cost.serializers.cost_month import MonthlyFinancialSummaryDetailSerializer
-from apps.cost.filters import MonthCostFilter, MonthlyCostCategoryFilter, CostCategoryFilter
+from apps.cost.filters import MonthCostFilter, MonthlyCostCategoryFilter, CostCategoryFilter, ExpenseFilter
 from apps.cost.serializers.filter import (
     MonthlyCostCategoryFilterSerializer,
     CostMonthFilterSerializer
 )
 from rest_framework.mixins import ListModelMixin
-from apps.user.models import User
 from apps.employee.models import UserRole
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 
 @extend_schema_view(
@@ -31,7 +32,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
         summary="List cost categories",
     )
 )
-class CostCategoryViewSet(ActivityLogMixin,BaseViewSet, ModelViewSet):
+class CostCategoryViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, ModelViewSet):
     activity_module = ActivityLog.Module.COST
     serializer_class = CostCategorySerializer
     queryset = CostCategory.objects.all()
@@ -47,7 +48,7 @@ class CostCategoryViewSet(ActivityLogMixin,BaseViewSet, ModelViewSet):
         parameters=[MonthlyCostCategoryFilterSerializer]
     )
 )
-class MonthlyCostCategoryViewSet(ActivityLogMixin,BaseViewSet, ModelViewSet):
+class MonthlyCostCategoryViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, ModelViewSet):
     activity_module = ActivityLog.Module.COST
     filterset_class = MonthlyCostCategoryFilter
     queryset = MonthlyCostCategory.objects.all()
@@ -97,7 +98,7 @@ class MonthlyCostCategoryViewSet(ActivityLogMixin,BaseViewSet, ModelViewSet):
             data = [
                 {
                     "cost_category": CostCategorySerializer(cat).data,
-                    "role": user.role_name,
+                    "role": request.user.role_name,
                     "cost": str(cost_map[cat.id]),
                     "month": int(request.query_params.get('month', 0)) if request.query_params.get('month') else None,
                     "year": int(request.query_params.get('year', 0)) if request.query_params.get('year') else None,
@@ -124,13 +125,11 @@ class CostMonthViewSet(BaseViewSet, ListModelMixin):
     def get_queryset(self):
         return super().get_queryset()
 
-from apps.cost.models import Expense
-from apps.cost.serializers.expense import ExpenseSerializer
-
-class ExpenseViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
+class ExpenseViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, ModelViewSet):
     activity_module = ActivityLog.Module.COST
     serializer_class = ExpenseSerializer
     queryset = Expense.objects.all()
+    filterset_class = ExpenseFilter
 
     def get_queryset(self):
         return super().get_queryset().order_by('-date', '-created_at')

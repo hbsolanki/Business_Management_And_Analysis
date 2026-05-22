@@ -4,12 +4,9 @@ from rest_framework import status
 from rest_framework.decorators import action
 from django.db import transaction
 
-from apps.base.views.base_view import BaseViewSet
 from apps.chat.serializers.broadcast import BroadcastGroupSerializer,MessageBroadcastSerializer
-from apps.chat.models import BroadcastGroup,Conversation,Message,BroadcastGroupMember
-from apps.user.models import User
+from apps.chat.models import BroadcastGroup,Conversation,Message
 from apps.base.permission.model_permissions import ModelPermissions
-from django.core.cache import cache
 from apps.subscription.permissions import ChatFeaturePermission
 
 

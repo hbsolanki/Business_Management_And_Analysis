@@ -1,0 +1,1 @@
+import{u as e}from"./index-BWBm6xbs.js";const u={create:s=>e.post("/business/",s),list:(s={})=>e.get("/business/",{params:s}),get:s=>e.get(`/business/${s}/`),update:(s,t)=>e.patch(`/business/${s}/`,t),delete:s=>e.delete(`/business/${s}/`)};export{u as b};

@@ -3,7 +3,7 @@ from rest_framework import status
 from decimal import Decimal
 from apps.base.tests import BaseTestCase
 from apps.activity_log.models import ActivityLog
-from apps.inventory.models import InventoryTransaction, InventoryTransactionItem
+from apps.inventory.models import InventoryTransaction
 
 
 class InvoiceTestCase(BaseTestCase):

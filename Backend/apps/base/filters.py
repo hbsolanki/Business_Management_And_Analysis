@@ -1,5 +1,4 @@
 import django_filters
-from django.db import models
 
 class BaseFilter(django_filters.FilterSet):
     from_date = django_filters.DateFilter(

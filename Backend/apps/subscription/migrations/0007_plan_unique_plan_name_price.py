@@ -5,15 +5,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('subscription', '0006_plan_has_ai_agent_subscription_has_ai_agent'),
+        ("subscription", "0006_plan_has_ai_agent_subscription_has_ai_agent"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='plan',
-            constraint=models.UniqueConstraint(fields=('name', 'price'), name='unique_plan_name_price'),
+            model_name="plan",
+            constraint=models.UniqueConstraint(
+                fields=("name", "price"), name="unique_plan_name_price"
+            ),
         ),
     ]

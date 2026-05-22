@@ -17,7 +17,10 @@ const TaskDashboard = () => {
         title: '',
         from_date: '',
         to_date: '',
-        remarks: ''
+        remarks: '',
+        from_deadline: '',
+        to_deadline: '',
+        overdue: ''
     });
 
     // Only Owners and Managers can create tasks
@@ -125,7 +128,7 @@ const TaskDashboard = () => {
                 )}
 
                 {/* Filters */}
-                <div className="bg-white border border-slate-200 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 shadow-sm">
+                <div className="bg-white border border-slate-200 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 shadow-sm">
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
                         <input
@@ -134,6 +137,16 @@ const TaskDashboard = () => {
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
                             value={filters.title}
                             onChange={(e) => setFilters(prev => ({ ...prev, title: e.target.value }))}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Remarks</label>
+                        <input
+                            type="text"
+                            placeholder="Filter by remarks..."
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
+                            value={filters.remarks}
+                            onChange={(e) => setFilters(prev => ({ ...prev, remarks: e.target.value }))}
                         />
                     </div>
                     <div>
@@ -155,14 +168,34 @@ const TaskDashboard = () => {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Remarks</label>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From Deadline</label>
                         <input
-                            type="text"
-                            placeholder="Filter by remarks..."
+                            type="date"
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.remarks}
-                            onChange={(e) => setFilters(prev => ({ ...prev, remarks: e.target.value }))}
+                            value={filters.from_deadline}
+                            onChange={(e) => setFilters(prev => ({ ...prev, from_deadline: e.target.value }))}
                         />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Deadline</label>
+                        <input
+                            type="date"
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
+                            value={filters.to_deadline}
+                            onChange={(e) => setFilters(prev => ({ ...prev, to_deadline: e.target.value }))}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Overdue Status</label>
+                        <select
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none bg-white cursor-pointer"
+                            value={filters.overdue}
+                            onChange={(e) => setFilters(prev => ({ ...prev, overdue: e.target.value }))}
+                        >
+                            <option value="">All Tasks</option>
+                            <option value="true">Overdue Only</option>
+                            <option value="false">Active Only</option>
+                        </select>
                     </div>
                 </div>
 

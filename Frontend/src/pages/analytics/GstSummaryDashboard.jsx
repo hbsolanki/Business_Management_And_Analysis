@@ -16,7 +16,10 @@ import {
   FaChevronDown,
   FaShieldAlt,
   FaFingerprint,
+  FaBell,
 } from "react-icons/fa";
+import { lazy, Suspense } from "react";
+const EntityReminderModal = lazy(() => import("@/features/reminder/components/EntityReminderModal"));
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
 
@@ -103,6 +106,8 @@ export default function GstSummaryDashboard() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isComplianceChecking, setIsComplianceChecking] = useState(true);
   const [isAdvancedFiltersExpanded, setIsAdvancedFiltersExpanded] = useState(true);
+  
+  const [showReminderModal, setShowReminderModal] = useState(false);
 
   const years = Array.from(
     { length: 5 },
@@ -816,6 +821,17 @@ export default function GstSummaryDashboard() {
                   </div>
                 </div>
 
+                {currentSummary && currentSummary.id && (
+                  <button
+                    onClick={() => setShowReminderModal(true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-amber-500 hover:bg-amber-50 hover:border-amber-200 text-sm font-semibold transition-all shadow-sm h-full"
+                    title="Set Reminder"
+                  >
+                    <FaBell />
+                    <span className="hidden sm:inline">Reminder</span>
+                  </button>
+                )}
+
                 {role === "OWNER" && (
                   <div className="relative">
                     <select
@@ -1025,6 +1041,18 @@ export default function GstSummaryDashboard() {
           </>
         )}
       </main>
+
+      {showReminderModal && currentSummary && currentSummary.id && (
+        <Suspense fallback={null}>
+          <EntityReminderModal
+            isOpen={showReminderModal}
+            onClose={() => setShowReminderModal(false)}
+            entityType="gst_management.monthlygstsummary"
+            entityId={currentSummary.id}
+            entityTitle={`GST Summary: ${monthNames[filters.month - 1]} ${filters.year}`}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('product', '0008_alter_product_base_price_alter_product_cost_price_and_more'),
+        ("product", "0008_alter_product_base_price_alter_product_cost_price_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='product',
-            name='hsn_code',
+            model_name="product",
+            name="hsn_code",
             field=models.CharField(blank=True, max_length=20, null=True),
         ),
     ]

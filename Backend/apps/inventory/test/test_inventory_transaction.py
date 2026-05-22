@@ -44,6 +44,14 @@ class InventoryTransactionTests(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data.get("results", [])), 0)
 
+    def test_inventory_transaction_by_owner_without_query_params(self):
+        """Owner CRUD without query parameters in URL."""
+        self.client.force_authenticate(user=self.owner_a)
+        
+        url = self.transaction_url
+        response = self.client.post(url, self.get_transaction_data(self.branch_a1.id), format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
     # --- MANAGER ---
 
     def test_inventory_transaction_by_manager_on_assigned_branch(self):
@@ -339,7 +347,7 @@ class InventoryTransactionTests(BaseTestCase):
         self.client.force_authenticate(user=self.owner_a)
         # Seed 10 more (total 10+)
         for i in range(10):
-            t = InventoryTransaction.objects.create(
+            InventoryTransaction.objects.create(
                 inventory=self.branch_a1.inventory,
                 action=InventoryTransaction.Action.IN,
                 description=f"Paginated {i}"

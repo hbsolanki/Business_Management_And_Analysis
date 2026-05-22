@@ -4,7 +4,7 @@ import { FaCheck, FaCrown, FaUsers, FaBoxOpen, FaFileInvoice, FaCodeBranch, FaCh
 import toast from "react-hot-toast";
 import PaymentModal from "@/features/payment/components/PaymentModal";
 
-export default function PlansSection({ compact = false, title = "Select Your Experience", subtitle = "Choose a plan that fits your business scale. From startups to enterprises, we have you covered.", currentPlan = null, onSuccess }) {
+export default function PlansSection({ compact = false, title = "Select Your Experience", subtitle = "Choose a plan that fits your business scale. From startups to enterprises, we have you covered.", currentPlan = null, onSuccess, isEmbed = false, onComplete = null }) {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -51,6 +51,7 @@ export default function PlansSection({ compact = false, title = "Select Your Exp
             } else {
                 toast.success("Plan activated successfully");
                 if (onSuccess) onSuccess();
+                if (isEmbed && onComplete) onComplete(res.data);
             }
         } catch (err) {
             toast.error(err?.response?.data?.detail || "Action failed");
@@ -63,6 +64,7 @@ export default function PlansSection({ compact = false, title = "Select Your Exp
         setIsPaymentModalOpen(false);
         toast.success("Subscription activated!");
         if (onSuccess) onSuccess();
+        if (isEmbed && onComplete) onComplete({ success: true });
     };
 
     if (loading) {
@@ -78,17 +80,21 @@ export default function PlansSection({ compact = false, title = "Select Your Exp
     }
 
     return (
-        <section className="relative py-16 overflow-hidden">
+        <section className={isEmbed ? "relative p-2 overflow-hidden bg-transparent" : "relative py-16 overflow-hidden"}>
             {/* Background Elements */}
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl -z-10"></div>
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl -z-10"></div>
+            {!isEmbed && (
+                <>
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-3xl -z-10"></div>
+                    <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl -z-10"></div>
+                </>
+            )}
 
-            <div className="section-shell">
-                <div className="text-center max-w-3xl mx-auto mb-12">
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-4">
+            <div className={isEmbed ? "" : "section-shell"}>
+                <div className={`text-center max-w-3xl mx-auto ${isEmbed ? "mb-6" : "mb-12"}`}>
+                    <h2 className={`font-black text-slate-900 tracking-tight ${isEmbed ? "text-xl mb-2" : "text-3xl md:text-4xl mb-4"}`}>
                         {title}
                     </h2>
-                    <p className="text-base text-slate-500 font-medium leading-relaxed">
+                    <p className={`text-slate-500 font-medium leading-relaxed ${isEmbed ? "text-xs px-2" : "text-base"}`}>
                         {subtitle}
                     </p>
                 </div>

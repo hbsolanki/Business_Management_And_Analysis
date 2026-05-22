@@ -11,13 +11,14 @@ from apps.activity_log.mixins import ActivityLogMixin
 from apps.activity_log.models import ActivityLog
 from apps.base.views.base_view import BaseViewSet
 from apps.master.utils.cache import make_cache_key, invalidate_cache
+from apps.notification.mixins import CreateReminderMixin
 from apps.supplier.filters import PurchaseOrderFilter
 from apps.supplier.models import PurchaseOrder, OrderStatus
 from apps.supplier.serializers import PurchaseOrderSerializer
 from apps.supplier.utils.purchase_order_inventory import update_purchase_order_inventory_stock
 
 
-class PurchaseOrderViewSet(ActivityLogMixin, ModelViewSet, BaseViewSet):
+class PurchaseOrderViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, ModelViewSet):
     queryset = PurchaseOrder.objects.all()
     serializer_class = PurchaseOrderSerializer
     filterset_class = PurchaseOrderFilter
@@ -82,3 +83,4 @@ class PurchaseOrderViewSet(ActivityLogMixin, ModelViewSet, BaseViewSet):
         invalidate_cache("purchase_order", "list", self.request.user)
 
         return Response({"message": "Purchase order received and inventory updated"}, status=status.HTTP_200_OK)
+

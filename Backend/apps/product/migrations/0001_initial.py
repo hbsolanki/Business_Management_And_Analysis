@@ -5,51 +5,95 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('business', '0001_initial'),
+        ("business", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ProductCategory',
+            name="ProductCategory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('is_deleted', models.BooleanField(default=False)),
-                ('is_active', models.BooleanField(default=True)),
-                ('name', models.CharField(max_length=200)),
-                ('description', models.TextField()),
-                ('business', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='business.business')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("is_deleted", models.BooleanField(default=False)),
+                ("is_active", models.BooleanField(default=True)),
+                ("name", models.CharField(max_length=200)),
+                ("description", models.TextField()),
+                (
+                    "business",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="business.business",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'bma_product_category',
+                "db_table": "bma_product_category",
             },
         ),
         migrations.CreateModel(
-            name='Product',
+            name="Product",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('is_deleted', models.BooleanField(default=False)),
-                ('is_active', models.BooleanField(default=True)),
-                ('name', models.CharField(max_length=50)),
-                ('description', models.TextField(default='')),
-                ('base_price', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('cost_price', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('input_gst_rate', models.DecimalField(decimal_places=2, max_digits=5)),
-                ('output_gst_rate', models.DecimalField(decimal_places=2, max_digits=5)),
-                ('net_profit', models.DecimalField(decimal_places=2, editable=False, max_digits=12)),
-                ('sku', models.CharField(max_length=50)),
-                ('business', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='products', to='business.business')),
-                ('product_category', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='product.productcategory')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("is_deleted", models.BooleanField(default=False)),
+                ("is_active", models.BooleanField(default=True)),
+                ("name", models.CharField(max_length=50)),
+                ("description", models.TextField(default="")),
+                ("base_price", models.DecimalField(decimal_places=2, max_digits=12)),
+                ("cost_price", models.DecimalField(decimal_places=2, max_digits=12)),
+                ("input_gst_rate", models.DecimalField(decimal_places=2, max_digits=5)),
+                (
+                    "output_gst_rate",
+                    models.DecimalField(decimal_places=2, max_digits=5),
+                ),
+                (
+                    "net_profit",
+                    models.DecimalField(
+                        decimal_places=2, editable=False, max_digits=12
+                    ),
+                ),
+                ("sku", models.CharField(max_length=50)),
+                (
+                    "business",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="products",
+                        to="business.business",
+                    ),
+                ),
+                (
+                    "product_category",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="product.productcategory",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'bma_product',
+                "db_table": "bma_product",
             },
         ),
     ]

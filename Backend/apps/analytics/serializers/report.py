@@ -9,6 +9,7 @@ class ReportGenerateSerializer(serializers.Serializer):
                 "transaction",
                 "cost",
                 "purchase_order",
+                "gst",
             ]
         ),
         required=False

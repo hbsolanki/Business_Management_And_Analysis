@@ -178,6 +178,26 @@ export const PRODUCT_MODULES = [
         highlights: ["Personal details", "Business details", "Role-based edit flow"],
     },
     {
+        id: "gst-dashboard",
+        title: "GST Ledger Board",
+        category: "Finance",
+        icon: ReceiptIndianRupee,
+        description: "Professional compliance ledger with real-time tracking of Liability, ITC, and Settlements.",
+        roles: ["OWNER", "MANAGER"],
+        path: "/analytics/gst",
+        highlights: ["Liability Ledger", "ITC Tracker", "Tax Settlement Summary", "Branch-wise compliance filtering"],
+    },
+    {
+        id: "ai-agent",
+        title: "AI Operational Agent",
+        category: "Workspace",
+        icon: MessageSquareMore,
+        description: "High-performance AI companion to trigger operational forms, run natural language analysis, and auto-execute tasks.",
+        roles: ["OWNER", "MANAGER"],
+        path: "/ai-agent/session",
+        highlights: ["Inline action form triggers", "Natural language business queries", "Constellation state-tracking pipeline"],
+    },
+    {
         id: "support",
         title: "Support",
         category: "Help",
@@ -637,6 +657,56 @@ export const MODULE_GUIDES = {
         ],
         relatedModules: ["business-profile", "manager-management", "employee-management"],
     },
+    "gst-dashboard": {
+        meaning: "GST Ledger Board provides audit-ready, real-time tracking of tax compliance liabilities, Input Tax Credits (ITC), and final tax settlements across all branches.",
+        whenToUse: [
+            "Before monthly tax filings to reconcile liability and credit balances.",
+            "To audit transaction records for Branch-level tax splits.",
+            "During monthly financial reviews to plan tax settlements and optimize cashflow."
+        ],
+        howToUse: [
+            "Navigate to the GST Summary dashboard under Analytics (/analytics/gst).",
+            "Switch between Ledger views: Liability (tax on sales), ITC (tax credit on purchases), or Tax Settlement.",
+            "Apply Branch filters to view exact branch compliance details.",
+            "Review transaction cards to identify unconverted orders or missing invoice items."
+        ],
+        keyTerms: [
+            { term: "Liability Ledger", definition: "Records the outward GST collected on sales invoices that must be paid to the government." },
+            { term: "Input Tax Credit (ITC)", definition: "Calculates the tax paid on business purchases (purchase orders, expenses) that can be offset against liability." },
+            { term: "Settlement Summary", definition: "Final net calculation (Liability minus ITC) showing the outstanding payable tax or carry-forward credit." }
+        ],
+        checks: [
+            "Ensure all converting Sales Orders have finalized Invoices to attribute correct tax periods.",
+            "Verify purchase invoice documents are uploaded to claim complete ITC.",
+            "Confirm branch filters are applied when reviewing regional returns."
+        ],
+        relatedModules: ["invoice", "supplier-management", "cost-center", "analytics"],
+    },
+    "ai-agent": {
+        meaning: "AI Operational Agent is a real-time autonomous companion that translates natural language conversation into database actions, report generation, and interactive workflow forms.",
+        whenToUse: [
+            "To open operational forms instantly without manual page navigation.",
+            "To run instant voice/text business queries across multiple tables (e.g. sales trends, best-selling SKUs).",
+            "To quickly create or edit products, vendors, purchase orders, or tasks inline in the chat feed."
+        ],
+        howToUse: [
+            "Open the AI Agent panel from the navigation menu (/ai-agent/session).",
+            "Type a command like 'Create a new invoice for client Solanki' or 'Find top products this month'.",
+            "Interact directly with the inline form cards rendered in the chat flow. Fill details and save.",
+            "If you change your mind, click 'Cancel' on the form to halt the agent loop cleanly."
+        ],
+        keyTerms: [
+            { term: "Inline Form Card", definition: "Interactive, glassmorphism React cards rendered inside the chat feed to complete forms." },
+            { term: "Operational Tool Trigger", definition: "Backend instruction enabling the AI to auto-open specific forms with pre-filled context." },
+            { term: "Constellation Status Pipeline", definition: "Real-time thinking indicators showing exactly which tool is being processed." }
+        ],
+        checks: [
+            "Verify pre-filled fields before clicking save on inline forms.",
+            "Use clear, precise language when querying specific product SKU names or invoice numbers.",
+            "Cancel a form if you want the agent to stop waiting and receive new commands."
+        ],
+        relatedModules: ["dashboard", "invoice", "tasks", "analytics", "chat"],
+    },
     support: {
         meaning: "Support page is the fallback help channel for unresolved product, workflow, or access issues.",
         whenToUse: [
@@ -672,7 +742,7 @@ export const PLATFORM_PHASES = [
     {
         title: "Phase 2: Daily Operations",
         description: "Build product catalog, track inventory changes, and generate invoices consistently.",
-        modules: ["product-catalog", "inventory", "invoice", "employee-management"],
+        modules: ["product-catalog", "inventory", "invoice", "employee-management", "ai-agent"],
     },
     {
         title: "Phase 3: Monitoring",
@@ -682,7 +752,7 @@ export const PLATFORM_PHASES = [
     {
         title: "Phase 4: Scale and Optimize",
         description: "Use analytics and subscription usage to improve margin, productivity and growth.",
-        modules: ["analytics", "cost-center", "subscriptions"],
+        modules: ["analytics", "gst-dashboard", "cost-center", "subscriptions"],
     },
 ];
 

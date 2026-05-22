@@ -1,5 +1,3 @@
-from django.urls import reverse
-from rest_framework import status
 from apps.base.tests import BaseTestCase
 from apps.employee.models import WorkType
 

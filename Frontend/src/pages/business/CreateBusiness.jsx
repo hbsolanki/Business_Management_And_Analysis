@@ -90,22 +90,7 @@ export default function CreateBusiness() {
                 </div>
               </div>
 
-              {/* GST Number */}
-              <div className="space-y-2">
-                <label htmlFor="gst_number" className="block text-xs font-semibold uppercase tracking-widest text-slate-400 ml-2">
-                  GST Number (Optional)
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="gst_number"
-                    id="gst_number"
-                    onChange={handleChange}
-                    className="w-full min-h-[44px] px-1 pl-2 py-2 border-b-2 border-slate-200 focus:border-brand-500 bg-transparent text-sm text-slate-800 font-medium placeholder:text-slate-400 outline-none transition-colors duration-150"
-                    placeholder="Enter GSTIN for tax compliance"
-                  />
-                </div>
-              </div>
+
 
               {/* Description */}
               <div className="space-y-2">
@@ -131,11 +116,10 @@ export default function CreateBusiness() {
             <button
               type="submit"
               disabled={loading}
-              className={`group relative flex items-center justify-center gap-3 px-10 py-4 rounded-xl font-bold text-base text-white transition-all duration-300 shadow-lg ${
-                loading
-                  ? "bg-brand-400 cursor-not-allowed"
-                  : "bg-brand-600 hover:bg-brand-700 hover:shadow-brand-200 hover:-translate-y-1 active:scale-95"
-              }`}
+              className={`group relative flex items-center justify-center gap-3 px-10 py-4 rounded-xl font-bold text-base text-white transition-all duration-300 shadow-lg ${loading
+                ? "bg-brand-400 cursor-not-allowed"
+                : "bg-brand-600 hover:bg-brand-700 hover:shadow-brand-200 hover:-translate-y-1 active:scale-95"
+                }`}
             >
               {loading ? (
                 <>
@@ -149,7 +133,7 @@ export default function CreateBusiness() {
                 </>
               )}
             </button>
-            
+
             <p className="text-xs text-slate-400 font-medium">
               By creating a business, you agree to our Terms of Service.
             </p>

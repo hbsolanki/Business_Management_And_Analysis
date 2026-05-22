@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.business.models import BusinessGSTProfile, GSTRegistrationType
+from apps.business.models import BusinessGSTProfile
 import re
 
 class BusinessGSTProfileSerializer(serializers.ModelSerializer):

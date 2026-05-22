@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import { FaArrowRight, FaPlay, FaTimes } from "react-icons/fa";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import app_owner_dashboard from "../../../assets/Home/app_owner_dashboard_BMA.png";
+import AntigravityCanvas from "./AntigravityCanvas";
 
 
 export default function HeroSection() {
     const [isVideoOpen, setIsVideoOpen] = useState(false);
 
     return (
-        <section className="relative isolate overflow-hidden">
+        <section className="relative isolate overflow-hidden bg-transparent">
+            <AntigravityCanvas />
             <div className="absolute inset-0 -z-10">
                 <div className="absolute -top-32 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-brand-300/40 blur-3xl"></div>
                 <div className="absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-sky-200/50 blur-3xl"></div>

@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('subscription', '0002_initial'),
+        ("subscription", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='plan',
-            name='duration_days',
+            model_name="plan",
+            name="duration_days",
             field=models.IntegerField(blank=True, null=True),
         ),
     ]

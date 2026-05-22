@@ -8,6 +8,7 @@ from apps.base.views.base_view import BaseViewSet
 from apps.tasks.models import Task
 from apps.tasks.serializers import TaskSerializer
 from apps.tasks.filters import TaskFilter
+from apps.notification.mixins import CreateReminderMixin
 from apps.tasks.utils.send_notification import (
     send_task_assigned_notification,
     send_task_completed_notification,
@@ -17,7 +18,7 @@ from apps.activity_log.models import ActivityLog
 from apps.master.utils.cache import make_cache_key, invalidate_cache
 
 
-class TaskViewSet(ActivityLogMixin, BaseViewSet, viewsets.ModelViewSet):
+class TaskViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, viewsets.ModelViewSet):
     queryset = Task.objects.all()
     activity_module = ActivityLog.Module.TASKS
     serializer_class = TaskSerializer
@@ -25,7 +26,8 @@ class TaskViewSet(ActivityLogMixin, BaseViewSet, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return super().get_queryset().filter(Q(assignee=user) | Q(assigned_by=user))
+        queryset = super().get_queryset() # This gets branch filtering from BaseViewSet
+        return queryset.filter(Q(assignee=user) | Q(assigned_by=user))
 
     def list(self, request, *args, **kwargs):
         cache_key = make_cache_key(request, "tasks", "list", request.user)
@@ -58,3 +60,4 @@ class TaskViewSet(ActivityLogMixin, BaseViewSet, viewsets.ModelViewSet):
 
         if old_status != Task.Status.COMPLETED and task.status == Task.Status.COMPLETED:
             send_task_completed_notification(task, self.request)
+

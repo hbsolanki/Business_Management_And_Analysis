@@ -8,9 +8,14 @@ from rest_framework_simplejwt.views import (
 )
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from apps.base.views.payment_base import StripeWebhookViewSet
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("OK", status=200)
 
 
 urlpatterns = [
+    path('', health_check, name='health'),
 
     path('admin/', admin.site.urls),
     path('business/',include('apps.business.urls')),

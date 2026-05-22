@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.invoice.models import Invoice
-from apps.supplier.models import SalesOrder, PurchaseOrder
+from apps.supplier.models import PurchaseOrder
 from apps.cost.models import Expense, MonthlyCostCategory
 
 class InvoiceLedgerSerializer(serializers.ModelSerializer):

@@ -1,8 +1,7 @@
 from rest_framework import serializers
-from decimal import Decimal
 from rest_framework.exceptions import ValidationError
 from apps.product.models import Product
-from apps.inventory.models import InventoryProduct, InventoryTransactionItem
+from apps.inventory.models import InventoryProduct
 from apps.invoice.models import ProductInvoice
 
 class ProductMinimalSerializer(serializers.ModelSerializer):
@@ -26,7 +25,7 @@ class ProductInvoiceSerializer(serializers.ModelSerializer):
         if not request or not hasattr(request, 'user') or request.user is None:
             return value
         user = request.user
-        if value.business != user.business or not value.is_active:
+        if value.business != request.user.business or not value.is_active:
             raise ValidationError(f"Invalid product ID or product is inactive {value.id}")
         return value
 
@@ -52,7 +51,6 @@ class ProductInvoiceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from apps.base.utils.tax import TaxCalculator
-        from apps.base.models import GST
         invoice = self.context.get('invoice')
         product = validated_data.pop('product')
         quantity = validated_data.get('quantity')

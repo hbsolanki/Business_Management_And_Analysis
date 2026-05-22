@@ -5,6 +5,7 @@ from django.db.models.fields.files import FieldFile
 from apps.base.models import BaseModel
 from apps.user.models import User
 from apps.business.models import Business, Branch
+from apps.master.utils.text_choices import ActivityLogAction, ActivityLogModule
 
 class ActivityLogJSONEncoder(DjangoJSONEncoder):
     def default(self, o):
@@ -39,30 +40,8 @@ class ActivityLogManager(models.Manager):
         return log_instance
 
 class ActivityLog(BaseModel):
-
-    class Action(models.TextChoices):
-        CREATE = "CREATE", "Create"
-        UPDATE = "UPDATE", "Update"
-        DELETE = "DELETE" , "Delete"
-        LOGIN = "LOGIN", "Login"
-        LOGOUT = "LOGOUT", "Logout"
-        PURCHASE = "PURCHASE", "Purchase"
-        CUSTOM = "CUSTOM", "Custom"
-
-    class Module(models.TextChoices):
-        USER = "USER", "User"
-        BUSINESS = "BUSINESS", "Business"
-        CHAT = "CHAT", "Chat"
-        COST = "COST", "Cost"
-        ANALYTICS = "ANALYTICS", "Analytics"
-        INVENTORY = "INVENTORY", "Inventory"
-        INVOICE = "INVOICE", "Invoice"
-        PRODUCT = "PRODUCT", "Product"
-        NOTIFICATION = "NOTIFICATION", "Notification"
-        SUBSCRIPTION = "SUBSCRIPTION", "Subscription"
-        SUPPLIER = "SUPPLIER", "Supplier"
-        TASKS = "TASKS", "Tasks"
-        OTHER = "OTHER", "Other"
+    Action = ActivityLogAction
+    Module = ActivityLogModule
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="activity_logs", null=True, blank=True)
     branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True, related_name="activity_logs")

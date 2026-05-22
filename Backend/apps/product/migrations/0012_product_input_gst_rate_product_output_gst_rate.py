@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('product', '0011_remove_product_input_gst_remove_product_output_gst_and_more'),
+        ("product", "0011_remove_product_input_gst_remove_product_output_gst_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='product',
-            name='input_gst_rate',
+            model_name="product",
+            name="input_gst_rate",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
         ),
         migrations.AddField(
-            model_name='product',
-            name='output_gst_rate',
+            model_name="product",
+            name="output_gst_rate",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
         ),
     ]

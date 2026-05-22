@@ -1,5 +1,4 @@
-from rest_framework import viewsets, permissions, status
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.gst_management.models import MonthlyGSTSummary
@@ -16,15 +15,17 @@ from apps.gst_management.filters import (
 
 from apps.base.views.base_view import BaseViewSet
 from apps.invoice.models import Invoice
-from apps.supplier.models import PurchaseOrder, SalesOrder, OrderStatus
+from apps.supplier.models import PurchaseOrder, OrderStatus
 from apps.cost.models import Expense, MonthlyCostCategory
 from datetime import datetime
 
 from apps.master.permission.custom_permissions import IsOwnerOrManager, BranchWorkPermission
+from apps.notification.mixins import CreateReminderMixin
 
-class MonthlyGSTSummaryViewSet(BaseViewSet, viewsets.ReadOnlyModelViewSet):
+class MonthlyGSTSummaryViewSet(CreateReminderMixin, BaseViewSet, viewsets.ReadOnlyModelViewSet):
     serializer_class = MonthlyGSTSummarySerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrManager, BranchWorkPermission]
+    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -81,30 +82,25 @@ class MonthlyGSTSummaryViewSet(BaseViewSet, viewsets.ReadOnlyModelViewSet):
         }
         return mapping.get(self.action, self.serializer_class)
 
-    def _get_paginated_ledger_response(self, queryset):
-        """Helper to paginate ledger querysets in custom actions."""
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        
+    def _get_ledger_response(self, queryset):
+        """Returns full ledger datasets for consistent analytics visualization."""
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def invoices(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-        return self._get_paginated_ledger_response(queryset)
+        return self._get_ledger_response(queryset)
 
     @action(detail=False, methods=['get'])
     def purchase_orders(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-        return self._get_paginated_ledger_response(queryset)
+        return self._get_ledger_response(queryset)
 
     @action(detail=False, methods=['get'])
     def expenses(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-        return self._get_paginated_ledger_response(queryset)
+        return self._get_ledger_response(queryset)
 
     @action(detail=False, methods=['get'])
     def cost_categories(self, request):
@@ -113,4 +109,4 @@ class MonthlyGSTSummaryViewSet(BaseViewSet, viewsets.ReadOnlyModelViewSet):
         if category_id:
             queryset = queryset.filter(cost_category_id=category_id)
             
-        return self._get_paginated_ledger_response(queryset)
+        return self._get_ledger_response(queryset)

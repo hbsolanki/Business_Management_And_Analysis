@@ -11,13 +11,13 @@ from apps.activity_log.mixins import ActivityLogMixin
 from apps.activity_log.models import ActivityLog
 from apps.base.views.base_view import BaseViewSet
 from apps.master.utils.cache import invalidate_cache, make_cache_key
+from apps.notification.mixins import CreateReminderMixin
 from apps.supplier.filters import SalesOrderFilter
 from apps.supplier.models import OrderStatus, SalesOrder
 from apps.supplier.serializers.sales_order import SalesOrderSerializer
 
 
-
-class SalesOrderViewSet(ActivityLogMixin, ModelViewSet, BaseViewSet):
+class SalesOrderViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, ModelViewSet):
     queryset = SalesOrder.objects.all()
     serializer_class = SalesOrderSerializer
     filterset_class = SalesOrderFilter
@@ -83,3 +83,4 @@ class SalesOrderViewSet(ActivityLogMixin, ModelViewSet, BaseViewSet):
         invalidate_cache("sales_order", "list", self.request.user)
 
         return Response({"message": "Sales order delivered and inventory updated"}, status=status.HTTP_200_OK)
+

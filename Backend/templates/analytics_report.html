@@ -11,275 +11,346 @@
     }
 
     body {
-      font-family: "Helvetica Neue", Arial, sans-serif;
-      font-size: 13px;
+      font-family: "Helvetica", "Arial", sans-serif;
+      font-size: 11px;
       color: #334155;
-      margin: 0;
+      line-height: 1.4;
+    }
+
+    #footer {
+      position: fixed;
+      bottom: -10px;
+      left: 0;
+      right: 0;
+      text-align: right;
+      font-size: 8px;
+      color: #94a3b8;
+    }
+
+    /* Modern Executive Header Block */
+    .header-table {
+      width: 100%;
+      border-bottom: 3px solid #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 30px;
+    }
+
+    .header-table td {
+      border: none;
       padding: 0;
-      background: #ffffff;
+      vertical-align: bottom;
     }
 
-    .header {
-      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-      color: #ffffff;
-      padding: 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-radius: 8px;
+    .header-title {
+      font-size: 26px;
+      font-weight: bold;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .header-content h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 800;
+    .header-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 5px;
+      font-weight: normal;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .header-report-badge {
+      font-size: 11px;
+      font-weight: bold;
+      color: #2563eb;
+      letter-spacing: 1px;
       text-transform: uppercase;
     }
 
-    .header-content p {
-      margin: 5px 0 0;
-      font-size: 14px;
-      opacity: 0.9;
-    }
-
-    .invoice-label h2 {
-      margin: 0;
-      font-size: 20px;
-      text-align: right;
-    }
-
-    .invoice-label span {
-      display: block;
+    .header-date-range {
+      font-size: 10px;
+      color: #475569;
       margin-top: 5px;
-      font-size: 14px;
-      text-align: right;
     }
 
+    /* Core Typographic Hierarchy */
     .section-title {
-      font-size: 18px;
-      color: #1e3a8a;
-      border-bottom: 2px solid #e2e8f0;
-      padding-bottom: 10px;
-      margin-top: 40px;
-      margin-bottom: 20px;
-      page-break-after: avoid;
+      font-size: 15px;
+      font-weight: bold;
+      color: #0f172a;
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 6px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    table {
+    .branch-section-header {
+      background-color: #0f172a;
+      color: #ffffff;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 4px;
+      margin-top: 35px;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .subsection-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #1e3a8a;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      border-left: 3px solid #2563eb;
+      padding-left: 8px;
+    }
+
+    /* Summary KPI Grid via Tables */
+    .kpi-table {
       width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      margin-bottom: 30px;
-      table-layout: auto;
+      border-collapse: separate;
+      border-spacing: 12px 0;
+      margin-bottom: 20px;
     }
 
-    th {
-      background: #f8fafc;
-      color: #1e3a8a;
-      text-align: left;
+    .kpi-card {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
       padding: 12px;
-      font-weight: 700;
-      border-bottom: 2px solid #3b82f6;
-      font-size: 11px;
-    }
-
-    td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 11px;
+      border-radius: 6px;
       vertical-align: top;
     }
 
-    .text-right {
-      text-align: right;
-    }
-
-    .summary-grid {
-      display: flex;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-
-    .summary-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 12px;
-      width: 31%;
-      margin-right: 2%;
-      margin-bottom: 15px;
-      box-sizing: border-box;
-    }
-
-    .summary-card:nth-child(3n) {
-      margin-right: 0;
-    }
-
-    .card-title {
-      font-size: 10px;
+    .kpi-label {
+      font-size: 9px;
+      font-weight: bold;
       color: #64748b;
       text-transform: uppercase;
-      margin-bottom: 5px;
-      font-weight: 600;
+      letter-spacing: 0.5px;
     }
 
-    .card-value {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1e3a8a;
-    }
-
-    .branch-header {
-      background: #1e3a8a;
-      padding: 12px 15px;
-      border-radius: 6px;
+    .kpi-value {
       font-size: 16px;
       font-weight: bold;
-      color: #ffffff;
-      margin-top: 40px;
-      margin-bottom: 20px;
-      page-break-before: always;
+      color: #0f172a;
+      margin-top: 5px;
     }
 
-    h3 {
-      font-size: 14px;
+    /* Colored values for rapid analytics scanning */
+    .value-positive {
+      color: #16a34a !important; /* Emerald green */
+    }
+
+    .value-neutral {
+      color: #2563eb !important; /* Corporate blue */
+    }
+
+    .value-negative {
+      color: #dc2626 !important; /* Alert red */
+    }
+
+    /* Ledger & Data Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 22px;
+    }
+
+    .data-table th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 9px 12px;
+      border-bottom: 2px solid #e2e8f0;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table td {
+      font-size: 10px;
       color: #334155;
-      margin-top: 25px;
-      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
     }
 
-    /* Section Numbering */
-    body {
-      counter-reset: section;
+    /* Zebra striping */
+    .data-table tr:nth-child(even) td {
+      background-color: #fcfcfd;
     }
 
-    .section-title {
-      counter-increment: section;
-      counter-reset: branch-counter;
+    /* Highlighted table total rows */
+    .table-total-row td {
+      font-weight: bold;
+      background-color: #f8fafc !important;
+      border-top: 1.5px solid #cbd5e1;
+      border-bottom: 2px double #cbd5e1;
+      color: #0f172a;
     }
 
-    .section-title::before {
-      content: counter(section) ". ";
-      font-weight: 800;
+    .text-right {
+      text-align: right !important;
     }
 
-    .branch-header {
-      counter-increment: branch-counter;
-      counter-reset: subsection;
+    .text-center {
+      text-align: center !important;
     }
 
-    .branch-header::before {
-      content: counter(section) "." counter(branch-counter) " ";
-      font-weight: 800;
-    }
-
-    h3 {
-      counter-increment: subsection;
-    }
-
-    h3::before {
-      content: counter(section) "." counter(branch-counter) "." counter(subsection) " ";
-      font-weight: 700;
-      color: #1e3a8a;
+    .empty-row {
+      color: #94a3b8 !important;
+      font-style: italic;
+      text-align: center;
+      padding: 15px !important;
     }
   </style>
 </head>
 
 <body>
-  <div class="header">
-    <div class="header-content">
-      <h1>{{ business_name }}</h1>
-      <p>Business Analytics Report</p>
-    </div>
-    <div class="invoice-label">
-      <h2>REPORT</h2>
-      <span>{{ start_date }} to {{ end_date }}</span>
-    </div>
+
+  <!-- Footer -->
+  <div id="footer">
+    Page <pdf:pagenumber> of <pdf:pagecount>
   </div>
 
+  <!-- Header -->
+  <table class="header-table">
+    <tr>
+      <td>
+        <div class="header-title">{{ business_name }}</div>
+        <div class="header-subtitle">Executive Performance & Compliance Report</div>
+      </td>
+      <td class="header-right">
+        <div class="header-report-badge">BI-ANALYTICS REPORT</div>
+        <div class="header-date-range">{{ start_date }} to {{ end_date }}</div>
+      </td>
+    </tr>
+  </table>
+
   <div>
-    <h2 class="section-title">General Summary</h2>
+    <h2 class="section-title">Global Executive Summary</h2>
 
-    {% if report_data.general_summary.product %}
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="card-title">Total Rev (Sales)</div>
-        <div class="card-value">₹{{ report_data.general_summary.product.total_revenue|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Total Profit (Sales)</div>
-        <div class="card-value">₹{{ report_data.general_summary.product.total_profit|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Qty Sold</div>
-        <div class="card-value">{{ report_data.general_summary.product.total_quantity_sold|intcomma }}</div>
-      </div>
-    </div>
-    {% endif %}
-
+    <!-- Financial Performance Pillar -->
     {% if report_data.general_summary.cost %}
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="card-title">Global Revenue</div>
-        <div class="card-value">₹{{ report_data.general_summary.cost.total_revenue|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Global Expenses</div>
-        <div class="card-value">₹{{ report_data.general_summary.cost.total_expenses|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Net Profit (EBT)</div>
-        <div class="card-value">₹{{ report_data.general_summary.cost.net_profit_before_tax|floatformat:2|intcomma }}
-        </div>
-      </div>
-    </div>
+    <table class="kpi-table">
+      <tr>
+        <td class="kpi-card" style="width: 33%;">
+          <div class="kpi-label">Consolidated Revenue</div>
+          <div class="kpi-value value-positive">₹{{ report_data.general_summary.cost.total_revenue|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 33%;">
+          <div class="kpi-label">Operating Expenses</div>
+          <div class="kpi-value value-negative">₹{{ report_data.general_summary.cost.total_expenses|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 33%;">
+          <div class="kpi-label">Net Profit (EBT)</div>
+          <div class="kpi-value {% if report_data.general_summary.cost.net_profit_before_tax >= 0 %}value-positive{% else %}value-negative{% endif %}">
+            ₹{{ report_data.general_summary.cost.net_profit_before_tax|floatformat:2|intcomma }}
+          </div>
+        </td>
+      </tr>
+    </table>
     {% endif %}
 
-    {% if report_data.general_summary.inventory %}
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="card-title">Total Stock Value</div>
-        <div class="card-value">₹{{ report_data.general_summary.inventory.total_stock_value|floatformat:2|intcomma }}
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Distinct Items in Stock</div>
-        <div class="card-value">{{ report_data.general_summary.inventory.total_quantity|intcomma }}</div>
-      </div>
-    </div>
+    <!-- Sales & Product Activity Pillar -->
+    {% if report_data.general_summary.product %}
+    <table class="kpi-table">
+      <tr>
+        <td class="kpi-card" style="width: 33%;">
+          <div class="kpi-label">Sales Revenue</div>
+          <div class="kpi-value value-positive">₹{{ report_data.general_summary.product.total_revenue|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 33%;">
+          <div class="kpi-label">Direct Sales Profit</div>
+          <div class="kpi-value value-positive">₹{{ report_data.general_summary.product.total_profit|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 33%;">
+          <div class="kpi-label">Quantity Dispatched</div>
+          <div class="kpi-value value-neutral">{{ report_data.general_summary.product.total_quantity_sold|intcomma }} units</div>
+        </td>
+      </tr>
+    </table>
     {% endif %}
 
-    {% if report_data.general_summary.purchase_order %}
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="card-title">Total PO Amount</div>
-        <div class="card-value">₹{{ report_data.general_summary.purchase_order.total_po_amount|floatformat:2|intcomma }}
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Total Orders</div>
-        <div class="card-value">{{ report_data.general_summary.purchase_order.total_orders|intcomma }}</div>
-      </div>
-    </div>
+    <!-- Assets & Compliance Pillar -->
+    {% if report_data.general_summary.inventory or report_data.general_summary.gst %}
+    <table class="kpi-table">
+      <tr>
+        <td class="kpi-card" style="width: 33%;">
+          {% if report_data.general_summary.inventory %}
+          <div class="kpi-label">On-Hand Stock Asset Value</div>
+          <div class="kpi-value value-neutral">₹{{ report_data.general_summary.inventory.total_stock_value|floatformat:2|intcomma }}</div>
+          {% endif %}
+        </td>
+        <td class="kpi-card" style="width: 33%;">
+          {% if report_data.general_summary.purchase_order %}
+          <div class="kpi-label">Procurement Volume</div>
+          <div class="kpi-value value-neutral">₹{{ report_data.general_summary.purchase_order.total_po_amount|floatformat:2|intcomma }}</div>
+          {% endif %}
+        </td>
+        <td class="kpi-card" style="width: 33%;">
+          {% if report_data.general_summary.gst %}
+          <div class="kpi-label">Net GST Liability</div>
+          <div class="kpi-value {% if report_data.general_summary.gst.net_payable >= 0 %}value-negative{% else %}value-positive{% endif %}">
+            ₹{{ report_data.general_summary.gst.net_payable|floatformat:2|intcomma }}
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
     {% endif %}
 
-    <h2 class="section-title">Branch Breakdowns</h2>
+    <!-- Branch Performance Breakdowns -->
+    <h2 class="section-title" style="page-break-before: always;">Branch Performance Analysis</h2>
 
     {% for branch in report_data.branch %}
-    <div class="branch-header">
-      Branch: {{ branch.branch_name }}
+    <div class="branch-section-header" {% if not forloop.first %}style="page-break-before: always;"{% endif %}>
+      🏢 Branch Office: {{ branch.branch_name }}
     </div>
 
+    <!-- Branch Financial Summary Cards -->
+    {% if branch.cost %}
+    <table class="kpi-table" style="margin-bottom: 25px;">
+      <tr>
+        <td class="kpi-card" style="width: 25%;">
+          <div class="kpi-label">Revenue</div>
+          <div class="kpi-value value-positive">₹{{ branch.cost.financial_summary.total_revenue|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 25%;">
+          <div class="kpi-label">COGS</div>
+          <div class="kpi-value value-negative">₹{{ branch.cost.financial_summary.cost_of_goods_sold|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 25%;">
+          <div class="kpi-label">Total Expenses</div>
+          <div class="kpi-value value-negative">₹{{ branch.cost.financial_summary.total_expenses|floatformat:2|intcomma }}</div>
+        </td>
+        <td class="kpi-card" style="width: 25%;">
+          <div class="kpi-label">Branch Net Profit</div>
+          <div class="kpi-value {% if branch.cost.financial_summary.net_profit_before_tax >= 0 %}value-positive{% else %}value-negative{% endif %}">
+            ₹{{ branch.cost.financial_summary.net_profit_before_tax|floatformat:2|intcomma }}
+          </div>
+        </td>
+      </tr>
+    </table>
+    {% endif %}
+
+    <!-- 1. Detailed Sales Log -->
     {% if branch.product %}
-    <h3>Products Sold</h3>
-    <table>
+    <div class="subsection-title">Direct Product Sales Breakdown</div>
+    <table class="data-table">
       <thead>
         <tr>
-          <th>Product Name</th>
-          <th>Category</th>
-          <th class="text-right">Qty</th>
-          <th class="text-right">Revenue</th>
-          <th class="text-right">Profit</th>
+          <th style="width: 35%;">Product Name</th>
+          <th style="width: 20%;">Category</th>
+          <th class="text-center" style="width: 15%;">Qty Sold</th>
+          <th class="text-right" style="width: 15%;">Gross Revenue</th>
+          <th class="text-right" style="width: 15%;">Gross Profit</th>
         </tr>
       </thead>
       <tbody>
@@ -287,86 +358,96 @@
         <tr>
           <td>{{ p.product_name }}</td>
           <td>{{ p.category_name }}</td>
-          <td class="text-right">{{ p.total_quantity_sold|intcomma }}</td>
+          <td class="text-center">{{ p.total_quantity_sold|intcomma }}</td>
           <td class="text-right">₹{{ p.total_revenue|floatformat:2|intcomma }}</td>
-          <td class="text-right">₹{{ p.total_profit|floatformat:2|intcomma }}</td>
+          <td class="text-right value-positive">₹{{ p.total_profit|floatformat:2|intcomma }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="empty-row">No product transactions logged for this branch.</td>
         </tr>
         {% endfor %}
+        
+        {% if branch.product.products %}
+        <tr class="table-total-row">
+          <td colspan="2">Consolidated Total</td>
+          <td class="text-center">{{ branch.product.summary.total_quantity_sold|intcomma }}</td>
+          <td class="text-right">₹{{ branch.product.summary.total_revenue|floatformat:2|intcomma }}</td>
+          <td class="text-right value-positive">₹{{ branch.product.summary.total_profit|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
     {% endif %}
 
+    <!-- 2. Inventory Asset Tracking -->
     {% if branch.inventory %}
-    <h3>Current Stock Snapshot</h3>
-    <table>
+    <div class="subsection-title">Branch Asset & Inventory Stock Valuation</div>
+    <table class="data-table">
       <thead>
         <tr>
-          <th>Product Name</th>
-          <th class="text-right">Stock Qty</th>
-          <th class="text-right">Stock Value</th>
+          <th style="width: 45%;">Product Name</th>
+          <th style="width: 25%;">Category Name</th>
+          <th class="text-center" style="width: 15%;">Stock Balance</th>
+          <th class="text-right" style="width: 15%;">Asset Value (Cost)</th>
         </tr>
       </thead>
       <tbody>
         {% for i in branch.inventory.products %}
         <tr>
           <td>{{ i.product_name }}</td>
-          <td class="text-right">{{ i.current_stock|floatformat:0|intcomma }}</td>
+          <td>{{ i.category_name }}</td>
+          <td class="text-center">{{ i.current_stock|floatformat:0|intcomma }}</td>
           <td class="text-right">₹{{ i.stock_value|floatformat:2|intcomma }}</td>
         </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="empty-row">No active inventory balance found.</td>
+        </tr>
         {% endfor %}
+        
+        {% if branch.inventory.products %}
+        <tr class="table-total-row">
+          <td colspan="2">Total Asset Value</td>
+          <td class="text-center">{{ branch.inventory.summary.total_quantity|intcomma }} units</td>
+          <td class="text-right">₹{{ branch.inventory.summary.total_stock_value|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
     {% endif %}
 
-    {% if branch.cost %}
-    <h3>Financial Summary</h3>
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="card-title">Revenue</div>
-        <div class="card-value">₹{{ branch.cost.financial_summary.total_revenue|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">COGS</div>
-        <div class="card-value">₹{{ branch.cost.financial_summary.cost_of_goods_sold|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Expenses</div>
-        <div class="card-value">₹{{ branch.cost.financial_summary.total_expenses|floatformat:2|intcomma }}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-title">Net Profit</div>
-        <div class="card-value">₹{{ branch.cost.financial_summary.net_profit_before_tax|floatformat:2|intcomma }}</div>
-      </div>
-    </div>
+    <!-- 3. Expenses Categorization -->
     {% if branch.cost.categories %}
-    <table>
+    <div class="subsection-title">Operating Expense Breakdown</div>
+    <table class="data-table" style="width: 50%;">
       <thead>
         <tr>
           <th>Expense Category</th>
-          <th class="text-right">Total Cost</th>
+          <th class="text-right" style="width: 40%;">Total Outflow</th>
         </tr>
       </thead>
       <tbody>
         {% for c in branch.cost.categories %}
         <tr>
           <td>{{ c.cost_category__name }}</td>
-          <td class="text-right">₹{{ c.total_cost|floatformat:2|intcomma }}</td>
+          <td class="text-right value-negative">₹{{ c.total_cost|floatformat:2|intcomma }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% endif %}
-    {% endif %}
 
+    <!-- 4. Procurement Records (Purchase Orders) -->
     {% if branch.purchase_order %}
-    <h3>Purchase Orders</h3>
-    <table>
+    <div class="subsection-title">Procurement Activity (Purchase Orders)</div>
+    <table class="data-table">
       <thead>
         <tr>
-          <th>Supplier Name</th>
-          <th>Date</th>
-          <th>Status</th>
-          <th class="text-right">Amount</th>
+          <th style="width: 40%;">Supplier Name</th>
+          <th style="width: 20%;">Order Date</th>
+          <th class="text-center" style="width: 20%;">Workflow Status</th>
+          <th class="text-right" style="width: 20%;">Order Amount</th>
         </tr>
       </thead>
       <tbody>
@@ -374,10 +455,53 @@
         <tr>
           <td>{{ po.supplier_name }}</td>
           <td>{{ po.order_date|date:"Y-m-d"|default:po.order_date }}</td>
-          <td>{{ po.status }}</td>
-          <td class="text-right">₹{{ po.total_amount|floatformat:2|intcomma }}</td>
+          <td class="text-center">
+            <span style="font-weight: bold; color: #475569;">{{ po.status|upper }}</span>
+          </td>
+          <td class="text-right value-negative">₹{{ po.total_amount|floatformat:2|intcomma }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="empty-row">No procurement purchase orders logged.</td>
         </tr>
         {% endfor %}
+        
+        {% if branch.purchase_order.orders %}
+        <tr class="table-total-row">
+          <td colspan="2">Consolidated Procurement Value</td>
+          <td class="text-center">{{ branch.purchase_order.summary.total_orders|intcomma }} Orders</td>
+          <td class="text-right value-negative">₹{{ branch.purchase_order.summary.total_po_amount|floatformat:2|intcomma }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <!-- 5. Branch GST Overview -->
+    {% if branch.gst %}
+    <div class="subsection-title">Indirect Tax Compliance Ledger (GST)</div>
+    <table class="data-table" style="width: 60%; margin-bottom: 30px;">
+      <thead>
+        <tr>
+          <th>Tax Type</th>
+          <th class="text-right" style="width: 45%;">Calculated Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Output GST (Sales liability collected)</td>
+          <td class="text-right value-negative">₹{{ branch.gst.output_gst|floatformat:2|intcomma }}</td>
+        </tr>
+        <tr>
+          <td>Input GST (Tax credits claimed)</td>
+          <td class="text-right value-positive">₹{{ branch.gst.input_gst|floatformat:2|intcomma }}</td>
+        </tr>
+        <tr class="table-total-row">
+          <td>Net GST Payable / (Credit Carryover)</td>
+          <td class="text-right {% if branch.gst.net_payable >= 0 %}value-negative{% else %}value-positive{% endif %}">
+            ₹{{ branch.gst.net_payable|floatformat:2|intcomma }}
+          </td>
+        </tr>
       </tbody>
     </table>
     {% endif %}

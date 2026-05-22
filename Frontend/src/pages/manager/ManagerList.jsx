@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { managerService } from "@/features/manager/services/managerService";
 import { branchService } from "@/features/business/services/branchService";
 import OwnerHeader from "@/components/layout/OwnerHeader";
-import { UserPlusIcon } from "@heroicons/react/24/outline";
+import { HiOutlineUserPlus } from "react-icons/hi2";
 import { FaUserTie, FaCodeBranch } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
@@ -178,7 +178,7 @@ export default function ManagerList() {
               to="/manager/new"
               className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition shadow-lg shadow-slate-200"
             >
-              <UserPlusIcon className="h-5 w-5" />
+              <HiOutlineUserPlus className="h-5 w-5" />
               Add Manager
             </Link>
           </div>

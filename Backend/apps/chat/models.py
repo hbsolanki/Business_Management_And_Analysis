@@ -1,5 +1,6 @@
 from apps.base.models import BaseModel
 from django.db import models
+from apps.master.utils.text_choices import MessageType as ChatMessageType
 from apps.user.models import User
 from apps.chat.utils.file_type import detect_message_type
 import uuid
@@ -62,11 +63,7 @@ class Message(BaseModel):
     
     objects = MessageManager()
 
-    class MessageType(models.TextChoices):
-        TEXT = "TEXT", "Text"
-        IMAGE = "IMAGE", "Image"
-        VIDEO = "VIDEO", "Video"
-        FILE = "FILE", "File"
+    MessageType = ChatMessageType
 
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     conversation = models.ForeignKey(

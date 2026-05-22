@@ -1,5 +1,6 @@
 from django.db import models
 from apps.base.models import BaseModel, BaseAddress
+from apps.master.utils.text_choices import GSTRegistrationType, GenderType
 
 
 class BranchAddress(BaseAddress):
@@ -20,11 +21,6 @@ class Business(BaseModel):
         permissions = [
             ("update_business", "Can update business"),
         ]
-
-class GSTRegistrationType(models.TextChoices):
-    REGULAR = "REGULAR", "Regular"
-    COMPOSITION = "COMPOSITION", "Composition"
-    UNREGISTERED = "UNREGISTERED", "Unregistered"
 
 class BusinessGSTProfile(BaseModel):
     business = models.OneToOneField(Business, on_delete=models.CASCADE, related_name="gst_profile")
@@ -78,11 +74,6 @@ class Branch(BaseModel):
     def __str__(self):
         return f"{self.name} ({self.business.name})"
 
-
-class GenderType(models.TextChoices):
-    MALE = "MALE", "Male"
-    FEMALE = "FEMALE", "Female"
-    OTHER = "OTHER", "Other"
 
 class BusinessCustomer(BaseModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="business_customers")

@@ -5,14 +5,18 @@ from apps.base.serializers.gst import GSTSerializer
 from apps.base.models import GST
 from apps.cost.models import Expense, CostCategory
 from apps.business.models import Branch
+from apps.cost.serializers.cost_category import CostCategorySerializer
+from apps.business.serializers.branch import BranchSerializer
 
 class ExpenseSerializer(BaseSerializer):
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=CostCategory.objects.all(), source="category", required=False, allow_null=True
     )
+    category = CostCategorySerializer(read_only=True)
     branch_id = serializers.PrimaryKeyRelatedField(
         queryset=Branch.objects.all(), source="branch", required=False, allow_null=True
     )
+    branch = BranchSerializer(read_only=True)
     gst_details = GSTSerializer(source="gst", read_only=True)
     
     # Flattened fields for frontend
@@ -23,7 +27,7 @@ class ExpenseSerializer(BaseSerializer):
     class Meta(BaseSerializer.Meta):
         model = Expense
         fields = BaseSerializer.Meta.fields + [
-            "branch_id", "category_id", "title", "description",
+            "branch_id", "branch", "category_id", "category", "title", "description",
             "amount", "gst_rate", "gst_amount", "total_amount", "itc_type", "gst_details", "date", "receipt_image"
         ]
 

@@ -1,73 +1,67 @@
+import re
+from rest_framework import serializers
 from apps.ai_agent.models import AiChatSession, AiChatMessage, AiChartRef
 from apps.base.serializers.base import BaseSerializer
-from rest_framework import serializers
-import re
-
 
 class AiChatSessionSerializer(BaseSerializer):
-
     class Meta(BaseSerializer.Meta):
         model = AiChatSession
         fields = BaseSerializer.Meta.fields + ['title']
         read_only_fields = BaseSerializer.Meta.read_only_fields
 
-
 class AiChatMessageSerializer(BaseSerializer):
     content = serializers.SerializerMethodField()
+    reasoning = serializers.SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = AiChatMessage
-        fields = BaseSerializer.Meta.fields + ['sender', 'content', 'embedding']
+        fields = BaseSerializer.Meta.fields + ['sender', 'content', 'has_chart', 'thinking_duration', 'reasoning']
         read_only_fields = BaseSerializer.Meta.read_only_fields + ['sender']
 
-    def get_content(self, obj):
-        content_text = obj.content or ""
+    def get_reasoning(self, message):
+        if message.sender != "assistant" or message.thinking_duration is None:
+            return None
+        return {
+            "label": "Reasoning total time",
+            "total_time": message.thinking_duration,
+            "tool_calls": 0,
+        }
+
+    def get_content(self, message):
+        raw_text = message.content or ""
+        if not raw_text:
+            return []
+
+        session_charts = AiChartRef.objects.filter(message__session=message.session)
+        chart_map = {str(chart.id).lower(): chart for chart in session_charts}
         
-        # 1. Permissive Regex: Match tags with variable length to handle LLM errors
-        tag_pattern = re.compile(r'(<ChartRef:[0-9a-fA-F-]+>)', re.IGNORECASE)
-        parts = tag_pattern.split(content_text)
+        tag_regex = re.compile(r'(<?ChartRef:[a-f0-9-]{36}>?)', re.IGNORECASE)
+        segments = tag_regex.split(raw_text)
         
-        # 2. Build map of all charts in the current session for robust lookup
-        session_charts = AiChartRef.objects.filter(message__session=obj.session)
-        
-        # Exact map for perfect matches
-        chart_map = {str(c.id).lower(): c for c in session_charts}
-        
-        # Prefix map for recovering from minor hallucination (first 16 chars)
-        prefix_map = {str(c.id).lower()[:16]: c for c in session_charts}
-        
-        structured_content = []
-        for part in parts:
-            if not part:
+        final_result = []
+        for segment in segments:
+            if not segment:
                 continue
             
-            # Use regex search on the segment to extract the identifier if it's a tag
-            match = tag_pattern.search(part)
+            match = re.search(r'ChartRef:([a-f0-9-]{36})', segment, re.IGNORECASE)
             if match:
-                # Extract the identifier (UUID or similar handle) from the tag
-                uuid_match = re.search(r':([0-9a-fA-F-]+)', part)
-                if uuid_match:
-                    chart_id_raw = uuid_match.group(1).lower()
+                ref_id = match.group(1).lower()
+                chart = chart_map.get(ref_id)
+                if chart:
+                    # Return the structured data consistent with chart_intent_tool
+                    # We prioritize the 'config' field if it holds the full payload
+                    chart_payload = chart.config or {}
                     
-                    # Strategy 1: Exact Match
-                    chart_obj = chart_map.get(chart_id_raw)
-                    
-                    # Strategy 2: Prefix-based Recovery (handle minor character errors at end of UUID)
-                    if not chart_obj and len(chart_id_raw) >= 16:
-                        chart_obj = prefix_map.get(chart_id_raw[:16])
-                    
-                    if chart_obj:
-                        structured_content.append({
-                            "type": "chart",
-                            "id": str(chart_obj.id),
-                            "html": chart_obj.html,
-                        })
-                        continue
+                    final_result.append({
+                        "type": "chart",
+                        "id": str(chart.id),
+                        "title": chart.title or chart_payload.get("title", ""),
+                        "chart_type": chart.chart_type or chart_payload.get("chart_type", ""),
+                        "option": chart.option or chart_payload.get("option", {}),
+                        "data": chart.data or chart_payload # Flattening or nested as per frontend
+                    })
+                    continue
 
-            # Fallback for text parts or tags with missing objects
-            structured_content.append({
-                "type": "text",
-                "value": part
-            })
-        
-        return structured_content
+            final_result.append({"type": "text", "value": segment})
+            
+        return final_result

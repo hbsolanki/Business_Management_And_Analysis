@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 from apps.base.tests import BaseTestCase
-from apps.chat.models import BroadcastGroup, Message, Conversation
+from apps.chat.models import BroadcastGroup
 
 class BroadcastTestCase(BaseTestCase):
 

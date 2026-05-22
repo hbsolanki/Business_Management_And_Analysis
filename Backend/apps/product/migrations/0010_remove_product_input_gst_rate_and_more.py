@@ -5,29 +5,40 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('base', '0005_initial'),
-        ('product', '0009_product_hsn_code'),
+        ("base", "0005_initial"),
+        ("product", "0009_product_hsn_code"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='product',
-            name='input_gst_rate',
+            model_name="product",
+            name="input_gst_rate",
         ),
         migrations.RemoveField(
-            model_name='product',
-            name='output_gst_rate',
+            model_name="product",
+            name="output_gst_rate",
         ),
         migrations.AddField(
-            model_name='product',
-            name='input_gst',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='input_products', to='base.gst'),
+            model_name="product",
+            name="input_gst",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="input_products",
+                to="base.gst",
+            ),
         ),
         migrations.AddField(
-            model_name='product',
-            name='output_gst',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='output_products', to='base.gst'),
+            model_name="product",
+            name="output_gst",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="output_products",
+                to="base.gst",
+            ),
         ),
     ]

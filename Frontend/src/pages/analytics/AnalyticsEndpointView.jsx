@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { BarChart } from "@mui/x-charts/BarChart";
-import { LineChart } from "@mui/x-charts/LineChart";
-import { ScatterChart } from "@mui/x-charts/ScatterChart";
-import { Gauge } from "@mui/x-charts/Gauge";
-import { RadarChart } from "@mui/x-charts/RadarChart";
-import { FunnelChart } from "@mui/x-charts-pro/FunnelChart";
+import { useSelector } from "react-redux";
+import EChartRenderer from "@/components/charts/EChartRenderer";
 import {
     FaArrowLeft,
     FaCodeBranch,
@@ -24,8 +20,6 @@ import {
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import api from "@/services/api";
 import { branchService } from "@/features/business/services/branchService";
-import { useSelector } from "react-redux";
-import AppPieChart from "@/components/charts/AppPieChart";
 import {
     ANALYTICS_ENDPOINTS,
     getAnalyticsEndpoint,
@@ -1143,6 +1137,55 @@ function buildCustomerProductListDashboard(payload) {
     return dashboard;
 }
 
+function buildGstComplianceSummaryDashboard(payload) {
+    const rows = readRows(payload);
+    const dashboard = baseDashboard();
+    
+    // Sort by date to show trend correctly
+    const sorted = [...rows].sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.month - b.month;
+    });
+
+    const latest = sorted[sorted.length - 1] || {};
+    
+    dashboard.cards = [
+        { label: "Total Sales", value: formatCurrency(latest.total_sales), hint: "Latest period", tone: "slate" },
+        { label: "Total Purchases", value: formatCurrency(latest.total_purchases), hint: "Latest period", tone: "sky" },
+        { label: "Total Tax Collected", value: formatCurrency(latest.total_tax_collected), hint: "Output GST", tone: "amber" },
+        { label: "Net GST Payable", value: formatCurrency(latest.net_gst_payable), hint: "After deductions", tone: latest.net_gst_payable >= 0 ? "rose" : "emerald" },
+    ];
+
+    if (sorted.length > 0) {
+        dashboard.charts.push({
+            id: "gst-compliance-bars",
+            type: "bar",
+            title: "Sales vs Purchases",
+            subtitle: "Monthly tax-base comparison",
+            labels: sorted.map(r => `${getMonthLabel(r.month)} ${r.year}`),
+            series: [
+                { label: "Sales", data: sorted.map(r => toNumber(r.total_sales)), color: "#0ea5e9" },
+                { label: "Purchases", data: sorted.map(r => toNumber(r.total_purchases)), color: "#f59e0b" }
+            ],
+            valueType: "currency"
+        });
+
+        const collectionRatio = latest.total_sales > 0 ? (toNumber(latest.total_tax_collected) / toNumber(latest.total_sales)) * 100 : 0;
+        dashboard.charts.push({
+            id: "gst-efficiency-gauge",
+            type: "gauge",
+            title: "Tax Collection Intensity",
+            subtitle: "Percentage of revenue captured as tax",
+            gaugeValue: Math.round(collectionRatio),
+            gaugeMax: 30, // GST usually maxes at 28%
+            gaugeLabel: "Collection %"
+        });
+    }
+
+    dashboard.table = { title: "Monthly Compliance Records", rows: sorted };
+    return dashboard;
+}
+
 function buildCustomerSpendDashboard(payload) {
     const rows = readRows(payload);
     const dashboard = baseDashboard();
@@ -1247,6 +1290,8 @@ function buildDashboardData(endpointId, payload, options = {}) {
             return buildCustomerProductListDashboard(payload);
         case "customer-spend":
             return buildCustomerSpendDashboard(payload);
+        case "gst-compliance-summary":
+            return buildGstComplianceSummaryDashboard(payload);
         default:
             return buildGenericDashboard(payload);
     }
@@ -2091,15 +2136,19 @@ function ChartCard({ chart }) {
                 <h3 className="text-base font-semibold text-slate-900">{chart.title}</h3>
                 <p className="text-xs text-slate-500 mt-1">{chart.subtitle}</p>
             </div>
-            <div className="p-4 overflow-x-auto">
-                {chart.type === "bar" && <BarChartPanel chart={chart} />}
-                {chart.type === "line" && <LineChartPanel chart={chart} />}
-                {chart.type === "pie" && <PieChartPanel chart={chart} />}
-                {chart.type === "scatter" && <ScatterChartPanel chart={chart} />}
-                {chart.type === "gauge" && <GaugeChartPanel chart={chart} />}
-                {chart.type === "radar" && <RadarChartPanel chart={chart} />}
-                {chart.type === "bar3d" && <Bar3DChartPanel chart={chart} />}
-                {chart.type === "funnel" && <FunnelChartPanel chart={chart} />}
+            <div className="p-0">
+                <EChartRenderer
+                    config={{
+                        ...chart,
+                        chart_type: chart.type === 'bar' ? 'vertical_bar' :
+                            chart.type === 'line' ? 'line_chart' :
+                                chart.type === 'pie' ? 'pie_chart' :
+                                    chart.type === 'bar3d' ? 'vertical_bar' : chart.type,
+                        datasets: chart.series,
+                        title: "" // Title is already in the card header
+                    }}
+                    height="350px"
+                />
             </div>
         </div>
     );
@@ -2111,349 +2160,7 @@ function formatChartValue(value, type) {
     return formatInteger(value);
 }
 
-function BarChartPanel({ chart }) {
-    const labelRotation = chart.labels.length > 6 ? -25 : 0;
-    const marginBottom = chart.labels.length > 6 ? 80 : 50;
-
-    return (
-        <div className="min-w-[360px]">
-            <BarChart
-                xAxis={[
-                    {
-                        scaleType: "band",
-                        data: chart.labels,
-                        tickLabelStyle: {
-                            angle: labelRotation,
-                            textAnchor: labelRotation ? "end" : "middle",
-                            fontSize: 11,
-                            fontWeight: 500,
-                        },
-                    },
-                ]}
-                series={chart.series.map((item) => ({
-                    ...item,
-                    valueFormatter: (value) => formatChartValue(value, chart.valueType),
-                }))}
-                height={320}
-                grid={{ horizontal: true }}
-                margin={{ left: 70, right: 20, top: 20, bottom: marginBottom }}
-                slotProps={{ legend: { hidden: chart.series.length < 2 } }}
-                sx={{
-                    ".MuiBarElement-root": {
-                        rx: 4,
-                    },
-                }}
-            />
-        </div>
-    );
-}
-
-function FunnelChartPanel({ chart }) {
-    const primarySeries = chart.series?.[0];
-    if (!primarySeries) return <EmptyResult label="No funnel data available." />;
-
-    const funnelData = chart.labels
-        .map((label, index) => ({
-            value: toNumber(primarySeries.data[index]),
-            label,
-        }))
-        .sort((a, b) => b.value - a.value);
-
-    return (
-        <div className="min-w-[360px]">
-            <FunnelChart
-                series={[
-                    {
-                        data: funnelData,
-                        variant: "outlined",
-                    },
-                ]}
-                height={320}
-                margin={{ left: 10, right: 10, top: 16, bottom: 16 }}
-                slotProps={{ legend: { hidden: true } }}
-            />
-        </div>
-    );
-}
-
-function LineChartPanel({ chart }) {
-    const labelRotation = chart.labels.length > 7 ? -25 : 0;
-    const marginBottom = chart.labels.length > 7 ? 80 : 45;
-
-    return (
-        <div className="min-w-[360px]">
-            <LineChart
-                xAxis={[
-                    {
-                        data: chart.labels,
-                        scaleType: "point",
-                        tickLabelStyle: {
-                            angle: labelRotation,
-                            textAnchor: labelRotation ? "end" : "middle",
-                            fontSize: 11,
-                            fontWeight: 500,
-                        },
-                    },
-                ]}
-                series={chart.series.map((item) => ({
-                    ...item,
-                    showMark: false,
-                    valueFormatter: (value) => formatChartValue(value, chart.valueType),
-                }))}
-                height={320}
-                margin={{ left: 70, right: 20, top: 20, bottom: marginBottom }}
-                grid={{ horizontal: true }}
-                slotProps={{ legend: { hidden: chart.series.length < 2 } }}
-            />
-        </div>
-    );
-}
-
-function PieChartPanel({ chart }) {
-    const pieData = chart.pieData.map((item, index) => ({
-        ...item,
-        value: toNumber(item.value),
-        color: item.color || CHART_COLORS[index % CHART_COLORS.length],
-    }));
-
-    return (
-        <div className="min-w-[360px]">
-            <AppPieChart
-                data={pieData}
-                colors={CHART_COLORS}
-                height={320}
-                showLegend
-                seriesProps={{
-                    innerRadius: 55,
-                    outerRadius: 120,
-                    paddingAngle: 2,
-                    cornerRadius: 4,
-                    valueFormatter: (item) => formatChartValue(item.value, chart.valueType),
-                }}
-            />
-        </div>
-    );
-}
-
-function ScatterChartPanel({ chart }) {
-    return (
-        <div className="min-w-[360px]">
-            <ScatterChart
-                height={400}
-                series={[
-                    {
-                        data: chart.scatterData,
-                        markerSize: 10,
-                        label: "Products",
-                        highlightScope: { highlight: 'item', fade: 'global' },
-                        valueFormatter: ({ x, y }) => {
-                            const point = chart.scatterData.find(p => p.x === x && p.y === y);
-                            return `${point?.label || 'Product'}\nQty: ${formatInteger(x)}\nRevenue: ${formatChartValue(y, chart.valueType)}`;
-                        },
-                    },
-                ]}
-                xAxis={[
-                    {
-                        label: chart.xAxisLabel || "X Axis",
-                        valueFormatter: (value) => formatInteger(value),
-                        tickLabelStyle: {
-                            fontSize: 11,
-                            fontWeight: 500,
-                        },
-                    },
-                ]}
-                yAxis={[
-                    {
-                        label: chart.yAxisLabel || "Y Axis",
-                        valueFormatter: (value) => formatChartValue(value, chart.valueType),
-                        tickLabelStyle: {
-                            fontSize: 11,
-                            fontWeight: 500,
-                        },
-                    },
-                ]}
-                grid={{ horizontal: true, vertical: true }}
-                margin={{ left: 90, right: 20, top: 20, bottom: 70 }}
-                slotProps={{
-                    legend: {
-                        hidden: false,
-                        position: { vertical: 'top', horizontal: 'end' },
-                    },
-                }}
-            />
-            <div className="mt-4 text-center">
-                <p className="text-xs text-slate-600">
-                    <span className="font-semibold">Hover over points</span> to see product details
-                </p>
-            </div>
-        </div>
-    );
-}
-
-function GaugeChartPanel({ chart }) {
-    const value = toNumber(chart.gaugeValue);
-    const maxValue = toNumber(chart.gaugeMax) || 100;
-
-    // Determine color based on value
-    const getColor = (val) => {
-        if (val < 0) return "#ef4444"; // red for negative
-        if (val < 20) return "#f59e0b"; // amber for low
-        if (val < 50) return "#eab308"; // yellow for medium
-        return "#16a34a"; // green for good
-    };
-
-    return (
-        <div className="flex flex-col items-center justify-center py-6">
-            <Gauge
-                value={value}
-                valueMax={maxValue}
-                startAngle={-110}
-                endAngle={110}
-                width={300}
-                height={200}
-                sx={{
-                    [`& .MuiGauge-valueArc`]: {
-                        fill: getColor(value),
-                    },
-                    [`& .MuiGauge-referenceArc`]: {
-                        fill: '#e2e8f0',
-                    },
-                }}
-                text={({ value }) => `${value.toFixed(1)}%`}
-            />
-            <div className="mt-4 text-center">
-                <p className="text-sm font-semibold text-slate-700">
-                    {chart.gaugeLabel || "Value"}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                    {value >= 0 ? "Positive margin" : "Negative margin"}
-                </p>
-            </div>
-        </div>
-    );
-}
-
-function RadarChartPanel({ chart }) {
-    if (!chart?.radarData || !chart?.radarMetrics || chart.radarMetrics.length < 3) {
-        return (
-            <div className="h-[400px] flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                <p className="text-slate-400 text-sm italic">Insufficient data for metric comparison</p>
-            </div>
-        );
-    }
-
-    // Normalize metric labels and force uniqueness to prevent radar scale collisions.
-    const seenMetricLabels = new Map();
-    const metrics = chart.radarMetrics.map((metric, index) => {
-        const baseLabel = String(metric || `Metric ${index + 1}`).trim() || `Metric ${index + 1}`;
-        const count = (seenMetricLabels.get(baseLabel) || 0) + 1;
-        seenMetricLabels.set(baseLabel, count);
-        return count === 1 ? baseLabel : `${baseLabel} (${count})`;
-    });
-
-    // Safety: align each series length with metrics length and sanitize values.
-    const series = chart.radarData
-        .map((item, index) => {
-            const raw = Array.isArray(item.data) ? item.data : [];
-            const normalizedData = metrics.map((_, metricIndex) => Math.max(0, toNumber(raw[metricIndex])));
-            return {
-                id: item.id || `radar-series-${index}`,
-                label: item.label || `Series ${index + 1}`,
-                type: "radar",
-                data: normalizedData,
-                valueFormatter: (value) => formatChartValue(value, chart.valueType),
-            };
-        })
-        .filter((s) => s.data.length === metrics.length);
-
-    if (series.length === 0) return null;
-
-    const maxMetricValue = Math.max(1, ...series.flatMap((s) => s.data));
-    const radarConfig = {
-        metrics,
-        max: maxMetricValue,
-    };
-
-    return (
-        <div className="flex flex-col items-center justify-center py-4 w-full h-full overflow-hidden">
-            <RadarChart
-                height={400}
-                series={series}
-                radar={radarConfig}
-                slotProps={{
-                    legend: {
-                        hidden: series.length < 2,
-                        position: { vertical: 'bottom', horizontal: 'center' },
-                    },
-                }}
-                margin={{ top: 20, right: 80, bottom: 80, left: 80 }}
-                sx={{
-                    '& .MuiChartsLegend-series text': {
-                        fontSize: '12px !important',
-                        fontWeight: 500,
-                    },
-                }}
-            />
-            <div className="mt-4 text-center">
-                <p className="text-xs text-slate-600">
-                    Comparing <span className="font-semibold">{metrics.length} metrics</span> across categories
-                </p>
-            </div>
-        </div>
-    );
-}
-
-function Bar3DChartPanel({ chart }) {
-    const labelRotation = chart.labels.length > 6 ? -25 : 0;
-    const marginBottom = chart.labels.length > 6 ? 80 : 50;
-
-    return (
-        <div className="min-w-[360px]" style={{ perspective: '1000px' }}>
-            <div style={{
-                transform: 'rotateX(5deg) rotateY(-5deg)',
-                transformStyle: 'preserve-3d',
-                transition: 'transform 0.3s ease',
-            }}>
-                <BarChart
-                    xAxis={[
-                        {
-                            scaleType: "band",
-                            data: chart.labels,
-                            tickLabelStyle: {
-                                angle: labelRotation,
-                                textAnchor: labelRotation ? "end" : "middle",
-                                fontSize: 11,
-                                fontWeight: 500,
-                            },
-                        },
-                    ]}
-                    series={chart.series.map((item) => ({
-                        ...item,
-                        valueFormatter: (value) => formatChartValue(value, chart.valueType),
-                    }))}
-                    height={320}
-                    grid={{ horizontal: true }}
-                    margin={{ left: 70, right: 20, top: 20, bottom: marginBottom }}
-                    slotProps={{ legend: { hidden: chart.series.length < 2 } }}
-                    sx={{
-                        ".MuiBarElement-root": {
-                            rx: 4,
-                            filter: 'drop-shadow(4px 4px 6px rgba(0,0,0,0.3))',
-                        },
-                        '& .MuiChartsAxis-line': {
-                            strokeWidth: 2,
-                        },
-                    }}
-                />
-            </div>
-            <div className="mt-4 text-center">
-                <p className="text-xs text-slate-600">
-                    <span className="font-semibold">3D Visualization</span> - Hover to see depth effect
-                </p>
-            </div>
-        </div>
-    );
-}
+// Removed legacy MUI chart panels
 
 function EmptyResult({ label }) {
     return (

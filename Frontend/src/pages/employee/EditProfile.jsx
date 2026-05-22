@@ -95,20 +95,26 @@ export default function EditProfile() {
 
     try {
       const payload = new FormData();
+      const userPayload = {};
       const fieldsToCheck = ['first_name', 'last_name', 'email', 'username', 'mobile_number', 'bio'];
       let hasChanges = false;
 
       fieldsToCheck.forEach(field => {
         if (formData[field] !== initialData[field]) {
-          payload.append(field, formData[field]);
+          userPayload[field] = formData[field];
           hasChanges = true;
         }
       });
 
 
       if (formData.password) {
-        payload.append("password", formData.password);
+        userPayload.password = formData.password;
         hasChanges = true;
+      }
+
+      // Nesting Fix: Wrap user fields in a JSON string as expected by Serializers
+      if (Object.keys(userPayload).length > 0) {
+        payload.append("user", JSON.stringify(userPayload));
       }
 
       if (formData.profile_picture instanceof File) {

@@ -12,7 +12,7 @@ from apps.user.models import User
 
 from django.utils import timezone
 import calendar
-from datetime import datetime, date
+from datetime import datetime
 
 def aggregate_monthly_data(*, month, year, business_id=None):
     """
@@ -42,7 +42,7 @@ def aggregate_monthly_data(*, month, year, business_id=None):
 
             # 2. Global Business-wide Aggregations
             sales_agg = sales_qs.aggregate(
-                total_rev=Sum('total_amount'), total_tax=Sum('gst__gst_amount'),
+                total_rev=Sum('total_amount'), total_sub_total=Sum('sub_total'), total_tax=Sum(F('total_amount') - F('sub_total')),
                 cgst=Sum('gst__cgst_amount'), sgst=Sum('gst__sgst_amount'), igst=Sum('gst__igst_amount'),
                 inv_count=Count('id')
             )
@@ -69,6 +69,7 @@ def aggregate_monthly_data(*, month, year, business_id=None):
             salary_val = User.objects.filter(business_roles__business=business, is_deleted=False).aggregate(total_sal=Sum('employee_details__salary'))['total_sal'] or Decimal("0.00")
 
             total_out_rev = (sales_agg['total_rev'] or Decimal("0")) + total_so_rev
+            total_out_net_rev = (sales_agg['total_sub_total'] or Decimal("0")) + total_so_rev - (so_tax_agg['tax'] or Decimal("0"))
             total_out_tax = (sales_agg['total_tax'] or Decimal("0")) + (so_tax_agg['tax'] or Decimal("0"))
             total_in_tax = (po_agg['total_tax'] or Decimal("0")) + (exp_agg['total_tax'] or Decimal("0"))
 
@@ -98,7 +99,7 @@ def aggregate_monthly_data(*, month, year, business_id=None):
             fin_summary, _ = MonthlyFinancialSummary.objects.update_or_create(
                 business=business, branch=None, month=month, year=year,
                 defaults={
-                    "total_revenue": total_out_rev,
+                    "total_revenue": total_out_net_rev,
                     "output_gst": total_out_tax,
                     "input_gst": total_in_tax,
                     "operating_expenses": exp_agg['base'] or Decimal("0"),
@@ -128,7 +129,7 @@ def aggregate_monthly_data(*, month, year, business_id=None):
             # 3. Optimized Branch-specific Aggregations (Consolidated Queries)
             branches = Branch.objects.filter(business=business, is_deleted=False)
             b_sales_map = {d['branch']: d for d in sales_qs.values('branch').annotate(
-                total_rev=Sum('total_amount'), total_tax=Sum('gst__gst_amount'), inv_count=Count('id')
+                total_rev=Sum('total_amount'), total_sub_total=Sum('sub_total'), total_tax=Sum(F('total_amount') - F('sub_total')), inv_count=Count('id')
             )}
             
             # Consolidated Branch COGS and Performance data to avoid redundant queries
@@ -141,7 +142,8 @@ def aggregate_monthly_data(*, month, year, business_id=None):
             for d in b_perf_qs:
                 br_id = d['invoice__branch']
                 b_cogs_map[br_id] = b_cogs_map.get(br_id, Decimal("0")) + (d['cost'] or Decimal("0"))
-                if br_id not in b_perf_map: b_perf_map[br_id] = []
+                if br_id not in b_perf_map:
+                    b_perf_map[br_id] = []
                 b_perf_map[br_id].append(d)
 
             b_so_rev_map = {d['branch']: d['total'] for d in so_qs.values('branch').annotate(total=Sum('total_amount'))}
@@ -158,7 +160,7 @@ def aggregate_monthly_data(*, month, year, business_id=None):
                 p_d = b_po_map.get(branch.id, {})
                 e_d = b_exp_map.get(branch.id, {})
                 
-                br_rev = (s_d.get('total_rev') or Decimal("0")) + so_rev
+                br_rev = (s_d.get('total_sub_total') or Decimal("0")) + (so_rev - so_tax)
                 br_out = (s_d.get('total_tax') or Decimal("0")) + so_tax
                 br_in = (p_d.get('total_tax') or Decimal("0")) + (e_d.get('tax') or Decimal("0"))
                 
@@ -208,7 +210,8 @@ def aggregate_monthly_data(*, month, year, business_id=None):
 
             for c_d in cat_expenses:
                 cat_id = c_d['category']
-                if not (cat_id and cat_id in cat_map): continue
+                if not (cat_id and cat_id in cat_map):
+                    continue
                 
                 cat_obj = cat_map[cat_id]
                 base_amt, tax_amt = c_d['base'] or Decimal("0"), c_d['tax'] or Decimal("0")

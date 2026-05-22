@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { BarChart } from "@mui/x-charts/BarChart";
+import EChartRenderer from "@/components/charts/EChartRenderer";
 import {
     FaCalendarAlt,
     FaBoxOpen,
@@ -370,56 +370,24 @@ export default function ProductPerformanceChart() {
                                 </div>
                             </div>
 
-                            <div className="w-full h-[400px]">
-                                <BarChart
-                                    xAxis={[
-                                        {
-                                            scaleType: "band",
-                                            data: chartData.labels,
-                                            tickLabelStyle: {
-                                                angle: -25,
-                                                textAnchor: "end",
-                                                fontSize: 12,
-                                                fontWeight: 500,
-                                            },
-                                        },
-                                    ]}
-                                    yAxis={[
-                                        {
-                                            label: "Amount (₹)",
-                                            tickLabelStyle: { fontSize: 12 },
-                                        },
-                                    ]}
-                                    series={[
-                                        {
-                                            data: chartData.costs,
-                                            label: "Total Cost",
-                                            color: "#f43f5e",
-                                            valueFormatter: (v) => formatCurrency(v),
-                                            highlightScope: { faded: "global", highlighted: "item" },
-                                        },
-                                        {
-                                            data: chartData.revenues,
-                                            label: "Total Revenue",
-                                            color: "#0ea5e9",
-                                            valueFormatter: (v) => formatCurrency(v),
-                                            highlightScope: { faded: "global", highlighted: "item" },
-                                        },
-                                        {
-                                            data: chartData.profits,
-                                            label: "Net Profit",
-                                            color: "#14b8a6",
-                                            valueFormatter: (v) => formatCurrency(v),
-                                            highlightScope: { faded: "global", highlighted: "item" },
-                                        },
-                                    ]}
-                                    height={400}
-                                    grid={{ horizontal: true }}
-                                    margin={{ left: 80, right: 30, top: 20, bottom: 60 }}
-                                    slotProps={{ legend: { hidden: true } }}
-                                    sx={{
-                                        ".MuiBarElement-root": { rx: 4 },
-                                    }}
+                            <div className="w-full">
+                                <EChartRenderer 
+                                    config={{
+                                        chart_type: 'vertical_bar',
+                                        labels: chartData.labels,
+                                        datasets: [
+                                            { label: "Cost", data: chartData.costs },
+                                            { label: "Revenue", data: chartData.revenues },
+                                            { label: "Profit", data: chartData.profits }
+                                        ],
+                                        option: {
+                                            color: ["#f43f5e", "#0ea5e9", "#14b8a6"],
+                                            yAxis: { name: "Amount (₹)" },
+                                            toolbox: { show: true },
+                                            dataZoom: [{ type: 'inside' }, { type: 'slider' }]
+                                        }
+                                    }} 
+                                    height="450px" 
                                 />
                             </div>
                         </div>

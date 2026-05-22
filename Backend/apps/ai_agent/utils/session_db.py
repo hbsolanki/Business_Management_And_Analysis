@@ -44,6 +44,16 @@ def finalize_assistant_message(message_id, content):
 
 
 @database_sync_to_async
+def update_last_assistant_message(session_id, content):
+    msg = AiChatMessage.objects.filter(session_id=session_id, sender=AiChatMessageSenderChoices.ASSISTANT).last()
+    if msg:
+        msg.content = content
+        msg.save(update_fields=["content"])
+        return msg
+    return None
+
+
+@database_sync_to_async
 def get_user_context_data(user_id):
     user = User.all_objects.get(id=user_id)
     branch_id = None
@@ -59,5 +69,11 @@ def get_session_title(session_id):
 
 
 @database_sync_to_async
-def create_chart_ref(message_id, html):
-    return AiChartRef.objects.create(message_id=message_id, html=html)
+def create_chart_ref(message_id, title, chart_type, data, option):
+    return AiChartRef.objects.create(
+        message_id=message_id, 
+        title=title, 
+        chart_type=chart_type, 
+        data=data, 
+        option=option
+    )

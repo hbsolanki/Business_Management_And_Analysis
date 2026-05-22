@@ -2,17 +2,19 @@ import { useState } from "react";
 import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { FaLock, FaExclamationCircle, FaCreditCard } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { paymentService } from "@/services/paymentService";
 
-export default function CheckoutForm({ amount, onClose, onPaymentSuccess }) {
+export default function CheckoutForm({ amount, onClose, onPaymentSuccess, subscriptionId, invoiceId }) {
     const stripe = useStripe();
     const elements = useElements();
     const [message, setMessage] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isStripeReady, setIsStripeReady] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!stripe || !elements) {
+        if (!stripe || !elements || !isStripeReady) {
             return;
         }
 
@@ -20,10 +22,6 @@ export default function CheckoutForm({ amount, onClose, onPaymentSuccess }) {
         setMessage(null);
 
         try {
-            if (!stripe || !elements) {
-                throw new Error("Stripe has not been properly initialized. Please check your internet connection and AdBlocker.");
-            }
-
             const { paymentIntent, error } = await stripe.confirmPayment({
                 elements,
                 redirect: 'if_required',
@@ -33,6 +31,19 @@ export default function CheckoutForm({ amount, onClose, onPaymentSuccess }) {
             });
 
             if (paymentIntent && paymentIntent.status === "succeeded") {
+                // Call backend immediately to confirm secure payment and activate subscription
+                if (subscriptionId) {
+                    try {
+                        await paymentService.confirmSubscriptionPayment({
+                            payment_intent_id: paymentIntent.id
+                        });
+                        toast.success("Subscription activated successfully!");
+                    } catch (confirmErr) {
+                        console.error("Backend payment confirmation failed:", confirmErr);
+                        toast.error("Stripe payment went through, but backend confirmation failed. We're activating it soon.");
+                    }
+                }
+
                 toast.success("Payment successful!");
                 if (onPaymentSuccess) onPaymentSuccess(paymentIntent);
                 if (onClose) onClose();
@@ -75,11 +86,25 @@ export default function CheckoutForm({ amount, onClose, onPaymentSuccess }) {
             </div>
 
             <div className="p-1">
-                <div className="mb-4">
+                <div className="mb-4 min-h-[150px] relative">
                     <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
                         Secure Payment Method
                     </label>
-                    <PaymentElement id="payment-element" options={{ layout: "tabs" }} />
+                    
+                    {!isStripeReady && (
+                        <div className="absolute inset-0 top-6 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10 rounded-xl border border-slate-100">
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-[10px] font-bold text-slate-400 tracking-wider">LOADING SECURE GATEWAY...</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <PaymentElement 
+                        id="payment-element" 
+                        options={{ layout: "accordion" }}
+                        onReady={() => setIsStripeReady(true)}
+                    />
                 </div>
             </div>
 
@@ -91,9 +116,9 @@ export default function CheckoutForm({ amount, onClose, onPaymentSuccess }) {
             )}
 
             <button
-                disabled={isLoading || !stripe || !elements}
+                disabled={isLoading || !stripe || !elements || !isStripeReady}
                 id="submit"
-                className={`btn-primary w-full ${isLoading || !stripe || !elements ? "opacity-70 cursor-not-allowed" : ""}`}
+                className={`btn-primary w-full ${isLoading || !stripe || !elements || !isStripeReady ? "opacity-70 cursor-not-allowed" : ""}`}
             >
                 {isLoading ? (
                     <>

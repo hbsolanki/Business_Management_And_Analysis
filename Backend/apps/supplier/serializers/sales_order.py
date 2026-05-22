@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers, exceptions
+from apps.base.models import GST
 
 from apps.base.serializers.base import BaseSerializer
 from apps.business.models import Branch, BusinessCustomer
@@ -41,8 +42,8 @@ class SalesOrderItemSerializer(serializers.ModelSerializer):
         if sku:
             try:
                 attrs["product"] = Product.objects.get(sku=sku, business=business, is_active=True)
-            except Product.DoesNotExist:
-                raise serializers.ValidationError({"sku": f"SKU {sku} not found."})
+            except Product.DoesNotExist as exc:
+                raise serializers.ValidationError({"sku": f"SKU {sku} not found."}) from exc
 
         return attrs
 
@@ -141,18 +142,10 @@ class SalesOrderSerializer(BaseSerializer):
             "purchase_order",
             "order_date",
             "total_amount",
-            "total_tax",
-            "cgst_total",
-            "sgst_total",
-            "igst_total",
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields + [
             "order_date",
             "total_amount",
-            "total_tax",
-            "cgst_total",
-            "sgst_total",
-            "igst_total",
         ]
 
     def __init__(self, *args, **kwargs):
@@ -165,7 +158,7 @@ class SalesOrderSerializer(BaseSerializer):
         request = self.context.get("request")
         user = getattr(request, 'user', None)
         if user and user.is_authenticated:
-            return user.business
+            return request.user.business
         return self.context.get("business")
 
     def validate_items(self, value):
@@ -187,8 +180,8 @@ class SalesOrderSerializer(BaseSerializer):
         if business and value and value.business != business:
             raise serializers.ValidationError("Branch access denied.")
 
-        if user and user.role_name != UserRole.OWNER:
-            if not user.branches.filter(id=value.id).exists():
+        if user and request.user.role_name != UserRole.OWNER:
+            if not request.user.branches.filter(id=value.id).exists():
                 raise exceptions.PermissionDenied("Branch access denied.")
         return value
 
@@ -197,6 +190,9 @@ class SalesOrderSerializer(BaseSerializer):
         if business and value.business != business:
             raise serializers.ValidationError("Customer ID invalid.")
         return value
+
+    def _calculate_total_amount(self, items):
+        return sum(item.quantity * item.unit_price for item in items)
 
     def validate_status(self, value):
         if self.instance:
@@ -234,37 +230,13 @@ class SalesOrderSerializer(BaseSerializer):
             item_serializer.save()
 
         # Recalculate total
-        total_tax_val = sum(item.tax_amount for item in sales_order.items.all())
-        cgst_total_val = sum(item.cgst_amount for item in sales_order.items.all())
-        sgst_total_val = sum(item.sgst_amount for item in sales_order.items.all())
-        igst_total_val = sum(item.igst_amount for item in sales_order.items.all())
-        total_amount_val = sum(item.quantity * item.unit_price for item in sales_order.items.all()) + total_tax_val
-        
-        # Create/Update GST for the entire order
-        if sales_order.gst:
-            sales_order.gst.gst_rate = 0
-            sales_order.gst.gst_amount = total_tax_val
-            sales_order.gst.cgst_amount = cgst_total_val
-            sales_order.gst.sgst_amount = sgst_total_val
-            sales_order.gst.igst_amount = igst_total_val
-            sales_order.gst.total_amount = total_amount_val
-            sales_order.gst.save()
-        else:
-            sales_order.gst = GST.objects.create(
-                gst_rate=0,
-                gst_amount=total_tax_val,
-                cgst_amount=cgst_total_val,
-                sgst_amount=sgst_total_val,
-                igst_amount=igst_total_val,
-                total_amount=total_amount_val
-            )
-
+        total_amount_val = self._calculate_total_amount(sales_order.items.all())
         sales_order.total_amount = total_amount_val
-        sales_order.save(update_fields=["total_amount", "gst"])
+        sales_order.save(update_fields=["total_amount"])
 
         # Trigger synchronization
         from apps.supplier.tasks.sales_order_tasks import synchronize_sales_order_to_customer_task
-        transaction.on_commit(lambda: synchronize_sales_order_to_customer_task.delay(sales_order.id))
+        transaction.on_commit(lambda: synchronize_sales_order_to_customer_task.delay(sales_order.pk))
 
         return sales_order
 
@@ -315,31 +287,9 @@ class SalesOrderSerializer(BaseSerializer):
                     item_serializer.save()
 
             # 4. Final steps
-            total_tax_val = sum(item.tax_amount for item in instance.items.all())
-            cgst_total_val = sum(item.cgst_amount for item in instance.items.all())
-            sgst_total_val = sum(item.sgst_amount for item in instance.items.all())
-            igst_total_val = sum(item.igst_amount for item in instance.items.all())
-            total_amount_val = sum(item.quantity * item.unit_price for item in instance.items.all()) + total_tax_val
-            
-            if instance.gst:
-                instance.gst.gst_amount = total_tax_val
-                instance.gst.cgst_amount = cgst_total_val
-                instance.gst.sgst_amount = sgst_total_val
-                instance.gst.igst_amount = igst_total_val
-                instance.gst.total_amount = total_amount_val
-                instance.gst.save()
-            else:
-                instance.gst = GST.objects.create(
-                    gst_rate=0,
-                    gst_amount=total_tax_val,
-                    cgst_amount=cgst_total_val,
-                    sgst_amount=sgst_total_val,
-                    igst_amount=igst_total_val,
-                    total_amount=total_amount_val
-                )
-
+            total_amount_val = self._calculate_total_amount(instance.items.all())
             instance.total_amount = total_amount_val
-            instance.save(update_fields=["total_amount", "gst"])
+            instance.save(update_fields=["total_amount"])
 
             if was_delivered:
                 instance.status = OrderStatus.PENDING
@@ -349,11 +299,11 @@ class SalesOrderSerializer(BaseSerializer):
         # Sync Triggers
         if instance.status != old_status:
             from apps.supplier.tasks.sales_order_tasks import synchronize_purchase_order_status_update_to_customer_task
-            transaction.on_commit(lambda: synchronize_purchase_order_status_update_to_customer_task.delay(instance.id))
+            transaction.on_commit(lambda: synchronize_purchase_order_status_update_to_customer_task.delay(instance.pk))
 
         if items_data is not None:
             from apps.supplier.tasks.sales_order_tasks import synchronize_sales_order_items_update_to_customer_task
-            transaction.on_commit(lambda: synchronize_sales_order_items_update_to_customer_task.delay(instance.id))
+            transaction.on_commit(lambda: synchronize_sales_order_items_update_to_customer_task.delay(instance.pk))
 
         return instance
 

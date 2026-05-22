@@ -1,8 +1,6 @@
-import os
 import boto3
 from storages.backends.s3boto3 import S3Boto3Storage
 from django.conf import settings
-from apps.chat.utils.file_type import detect_message_type
 
 
 class MessageMediaS3Storage(S3Boto3Storage):

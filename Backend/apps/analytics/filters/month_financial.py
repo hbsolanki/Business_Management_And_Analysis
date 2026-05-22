@@ -1,6 +1,5 @@
 import django_filters
 from apps.cost.models import MonthlyFinancialSummary
-from datetime import datetime
 from django.db.models import Q
 
 class MonthlySummaryMonthYearFilter(django_filters.FilterSet):

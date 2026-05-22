@@ -6,7 +6,6 @@ from apps.business.serializers.business import BusinessBasicDetailsSerializer
 from apps.user.serializers.user import UserSerializer
 from apps.employee.serializers.employee_details import EmployeeDetailsSerializer
 from apps.employee.serializers.user_branch import UserBranchSerializer
-from apps.employee.serializers.user_business_role import UserBusinessRoleSerializer
 from apps.employee.models import UserBusinessRole, EmployeeDetails, UserBranch, UserRole
 from apps.employee.utils.permission_utils import sync_user_role_permissions
 
@@ -15,7 +14,7 @@ class ManagerSerializer(serializers.Serializer):
     employee_details = EmployeeDetailsSerializer()
     assigned_branches = UserBranchSerializer(many=True, required=False)
     role = serializers.CharField(source="role_name", read_only=True)
-    business=BusinessBasicDetailsSerializer(read_only=True)
+    business = BusinessBasicDetailsSerializer(read_only=True)
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -35,7 +34,7 @@ class ManagerSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         request = self.context.get("request")
-        business =request.user.business
+        business = request.user.business if request else None
 
         user_data = self.initial_data.get("user")
         if not user_data:

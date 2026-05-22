@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { useProducts } from "@/features/product/hooks/useProducts";
 import { useCategories } from "@/features/product/hooks/useCategories";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
@@ -11,6 +12,7 @@ const ProductSection = lazy(() => import("@/features/product/components/product/
 const CategoryList = lazy(() => import("@/features/product/components/Category/CategoryList"));
 
 export default function ProductList() {
+    const navigate = useNavigate();
     const {
         products,
         loading,
@@ -30,10 +32,7 @@ export default function ProductList() {
         loadMore: loadMoreCategories,
         hasMore: hasMoreCategories,
         loadingMore: loadingMoreCategories,
-        openAdd,
-        openEdit,
         removeCategory,
-        CategoryModalUI,
     } =
         useCategories();
 
@@ -81,8 +80,8 @@ export default function ProductList() {
                             hasMore={hasMoreCategories}
                             loadingMore={loadingMoreCategories}
                             onLoadMore={loadMoreCategories}
-                            onAdd={openAdd}
-                            onEdit={openEdit}
+                            onAdd={() => navigate("/product/category/add")}
+                            onEdit={(cat) => navigate(`/product/category/${cat.id}/edit`)}
                             onDelete={(id) => openDeleteModal("CATEGORY", id)}
                         />
                     </Suspense>
@@ -116,7 +115,6 @@ export default function ProductList() {
                 </section>
             </main>
 
-            {CategoryModalUI}
 
             <Suspense fallback={null}>
                 <Modal

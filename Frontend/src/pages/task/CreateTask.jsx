@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import { FaSave, FaSearch, FaTimes, FaUserPlus, FaClipboardList } from 'react-icons/fa';
+import { FaSave, FaSearch, FaTimes, FaUserPlus, FaClipboardList, FaInfoCircle } from 'react-icons/fa';
 import ProtectedHeader from '@/components/layout/ProtectedHeader';
 import BackButton from '@/components/shared/BackButton';
 import { tokenService } from '@/services/tokenService';
@@ -18,12 +18,17 @@ const CreateTask = () => {
     const [remarks, setRemarks] = useState('');
     const [status] = useState('PENDING');
     const [assigneeId, setAssigneeId] = useState(null);
+    const [deadline, setDeadline] = useState('');
 
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [loadingSearch, setLoadingSearch] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [saving, setSaving] = useState(false);
+
+    // Errors
+    const [errors, setErrors] = useState({});
+    const [formError, setFormError] = useState('');
 
     const getUserInitials = (user) => {
         if (!user) return "U";
@@ -71,6 +76,9 @@ const CreateTask = () => {
         setAssigneeId(user.id);
         setSearchQuery(`${user.first_name || ''} ${user.last_name || ''} (${user.username})`.trim());
         setSearchResults([]);
+        if (errors.assignee_id) {
+            setErrors(p => ({ ...p, assignee_id: null }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -78,6 +86,8 @@ const CreateTask = () => {
         if (!title || !description || !assigneeId) return;
 
         setSaving(true);
+        setErrors({});
+        setFormError('');
         try {
             await taskService.createTask({
                 title,
@@ -85,16 +95,56 @@ const CreateTask = () => {
                 remarks: remarks || undefined,
                 status,
                 assignee_id: assigneeId,
+                deadline: deadline || undefined,
             });
             toast.success('Task created successfully');
             navigate(-1);
         } catch (error) {
             console.error('Failed to create task', error);
+            if (error.response && error.response.data) {
+                const responseData = error.response.data;
+                if (typeof responseData === 'object' && !Array.isArray(responseData)) {
+                    setErrors(responseData);
+                    if (responseData.non_field_errors) {
+                        setFormError(responseData.non_field_errors[0]);
+                    } else if (responseData.detail) {
+                        setFormError(responseData.detail);
+                    }
+                } else {
+                    setFormError("An unexpected validation error occurred.");
+                }
+            } else {
+                setFormError("Failed to connect to the server. Please try again.");
+            }
             toast.error('Failed to create task');
         } finally {
             setSaving(false);
         }
     };
+
+    const titleClass = `w-full px-4 py-2.5 rounded-xl transition-all outline-none text-sm font-medium placeholder-slate-400 focus:ring-4 focus:ring-slate-100 ${
+        errors.title 
+            ? "border border-rose-400 bg-rose-50 text-rose-955 focus:border-rose-500 focus:ring-rose-500/5" 
+            : "bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-slate-900"
+    }`;
+
+    const assigneeClass = `w-full pl-10 pr-4 py-2.5 rounded-xl transition-all outline-none text-sm font-medium placeholder-slate-400 focus:ring-4 focus:ring-slate-100 ${
+        errors.assignee_id 
+            ? "border border-rose-400 bg-rose-50 text-rose-955 focus:border-rose-500 focus:ring-rose-500/5" 
+            : "bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-slate-900"
+    }`;
+
+    const descriptionClass = `w-full px-4 py-3 rounded-xl transition-all outline-none text-sm font-medium placeholder-slate-400 min-h-[110px] resize-none focus:ring-4 focus:ring-slate-100 ${
+        errors.description 
+            ? "border border-rose-400 bg-rose-50 text-rose-955 focus:border-rose-500 focus:ring-rose-500/5" 
+            : "bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-slate-900"
+    }`;
+
+    const remarksClass = `w-full px-4 py-3 rounded-xl transition-all outline-none text-sm font-medium placeholder-slate-400 min-h-[80px] resize-none focus:ring-4 focus:ring-slate-100 ${
+        errors.remarks 
+            ? "border border-rose-400 bg-rose-50 text-rose-955 focus:border-rose-500 focus:ring-rose-500/5" 
+            : "bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-slate-900"
+    }`;
 
     return (
         <div className="min-h-screen font-sans bg-transparent">
@@ -118,18 +168,33 @@ const CreateTask = () => {
                         </div>
                     </div>
 
+                    {formError && (
+                        <div className="mx-6 mt-4 flex items-start gap-3 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+                            <FaInfoCircle className="text-rose-500 mt-0.5" size={14} />
+                            <p className="text-xs font-bold text-rose-900">{formError}</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
                         {/* Task Title */}
                         <div>
                             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Title <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
-                                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white transition-all outline-none text-sm font-medium text-slate-900 placeholder-slate-400 focus:ring-4 focus:ring-slate-100"
+                                className={titleClass}
                                 placeholder="Brief title of the task"
                                 value={title}
-                                onChange={(e) => setTitle(e.target.value)}
+                                onChange={(e) => {
+                                    setTitle(e.target.value);
+                                    if (errors.title) setErrors(p => ({ ...p, title: null }));
+                                }}
                                 required
                             />
+                            {errors.title && (
+                                <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">
+                                    {errors.title[0]}
+                                </p>
+                            )}
                         </div>
 
                         {/* Assignee */}
@@ -158,6 +223,7 @@ const CreateTask = () => {
                                             setSelectedUser(null);
                                             setAssigneeId(null);
                                             setSearchQuery('');
+                                            if (errors.assignee_id) setErrors(p => ({ ...p, assignee_id: null }));
                                         }}
                                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-slate-400 hover:text-red-500 transition-all shadow-sm"
                                     >
@@ -169,10 +235,13 @@ const CreateTask = () => {
                                     <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" size={12} />
                                     <input
                                         type="text"
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white transition-all outline-none text-sm font-medium text-slate-900 placeholder-slate-400 focus:ring-4 focus:ring-slate-100"
+                                        className={assigneeClass}
                                         placeholder="Search teammate by name..."
                                         value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            if (errors.assignee_id) setErrors(p => ({ ...p, assignee_id: null }));
+                                        }}
                                         required={!selectedUser}
                                     />
                                     {loadingSearch && (
@@ -181,6 +250,11 @@ const CreateTask = () => {
                                         </div>
                                     )}
                                 </div>
+                            )}
+                            {errors.assignee_id && (
+                                <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">
+                                    {errors.assignee_id[0]}
+                                </p>
                             )}
 
                             {searchResults.length > 0 && !selectedUser && (
@@ -215,23 +289,58 @@ const CreateTask = () => {
                         <div>
                             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Description <span className="text-red-500">*</span></label>
                             <textarea
-                                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white transition-all outline-none text-sm font-medium text-slate-900 placeholder-slate-400 min-h-[110px] resize-none focus:ring-4 focus:ring-slate-100"
+                                className={descriptionClass}
                                 placeholder="Details and instructions..."
                                 value={description}
-                                onChange={(e) => setDescription(e.target.value)}
+                                onChange={(e) => {
+                                    setDescription(e.target.value);
+                                    if (errors.description) setErrors(p => ({ ...p, description: null }));
+                                }}
                                 required
                             />
+                            {errors.description && (
+                                <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">
+                                    {errors.description[0]}
+                                </p>
+                            )}
                         </div>
 
                         {/* Remarks */}
                         <div>
                             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Remarks</label>
                             <textarea
-                                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white transition-all outline-none text-sm font-medium text-slate-900 placeholder-slate-400 min-h-[80px] resize-none focus:ring-4 focus:ring-slate-100"
+                                className={remarksClass}
                                 placeholder="Additional notes (optional)"
                                 value={remarks}
-                                onChange={(e) => setRemarks(e.target.value)}
+                                onChange={(e) => {
+                                    setRemarks(e.target.value);
+                                    if (errors.remarks) setErrors(p => ({ ...p, remarks: null }));
+                                }}
                             />
+                            {errors.remarks && (
+                                <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">
+                                    {errors.remarks[0]}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Deadline */}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Deadline</label>
+                            <input
+                                type="datetime-local"
+                                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-slate-900 transition-all outline-none text-sm font-medium placeholder-slate-400 focus:ring-4 focus:ring-slate-100"
+                                value={deadline}
+                                onChange={(e) => {
+                                    setDeadline(e.target.value);
+                                    if (errors.deadline) setErrors(p => ({ ...p, deadline: null }));
+                                }}
+                            />
+                            {errors.deadline && (
+                                <p className="text-rose-500 text-[10px] font-bold mt-1 ml-1 uppercase tracking-wider">
+                                    {errors.deadline[0]}
+                                </p>
+                            )}
                         </div>
 
                         {/* Actions */}
@@ -264,7 +373,7 @@ const CreateTask = () => {
                     </form>
                 </div>
             </main>
-        </div >
+        </div>
     );
 };
 

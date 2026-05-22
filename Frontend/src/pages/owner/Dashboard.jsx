@@ -117,15 +117,15 @@ function OwnerDashboard() {
 
   const businessShortcut = businessData?.id
     ? {
-      label: "Business Settings",
-      desc: "Edit your business profile",
-      path: `/business/edit/${businessData.id}`,
-    }
+        label: "Business Settings",
+        desc: "Edit your business profile",
+        path: `/business/edit/${businessData.id}`,
+      }
     : {
-      label: "Business Register",
-      desc: "Create your business profile",
-      path: "/business/new",
-    };
+        label: "Business Register",
+        desc: "Create your business profile",
+        path: "/business/new",
+      };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -323,7 +323,6 @@ function OwnerDashboard() {
             <div className="relative mb-6 pt-2">
               <div className="max-w-4xl mx-auto text-center space-y-4">
                 <div className="flex flex-col items-center gap-1">
-                  <span className="px-3 py-1 rounded-full bg-slate-100 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 border border-slate-200">Executive Console</span>
                   <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 animate-gradient-x">
                       {user.first_name}
@@ -393,10 +392,11 @@ function OwnerDashboard() {
                             key={item.label}
                             onClick={() => handleSearchSelect(item)}
                             onMouseEnter={() => setSelectedIndex(index)}
-                            className={`w-full text-left px-5 py-3 flex items-center gap-4 transition-all group border-l-4 ${selectedIndex === index
-                              ? "bg-brand-50/50 border-brand-500"
-                              : "hover:bg-slate-50 border-transparent"
-                              }`}
+                            className={`w-full text-left px-5 py-3 flex items-center gap-4 transition-all group border-l-4 ${
+                              selectedIndex === index
+                                ? "bg-brand-50/50 border-brand-500"
+                                : "hover:bg-slate-50 border-transparent"
+                            }`}
                           >
                             <div
                               className={`h-10 w-10 rounded-xl flex items-center justify-center ${item.bg || "bg-slate-50"} ${item.color || "text-slate-600"} shadow-sm group-hover:scale-110 transition-transform duration-300`}
@@ -417,7 +417,7 @@ function OwnerDashboard() {
                                     );
                                     return parts.map((part, i) =>
                                       part.toLowerCase() ===
-                                        debouncedQuery.toLowerCase() ? (
+                                      debouncedQuery.toLowerCase() ? (
                                         <span
                                           key={i}
                                           className="bg-brand-100 text-brand-700 rounded-sm px-0.5"
@@ -630,8 +630,8 @@ function OwnerDashboard() {
                             <p className="font-semibold text-slate-900">
                               {subscription.start_date
                                 ? new Date(
-                                  subscription.start_date,
-                                ).toLocaleDateString()
+                                    subscription.start_date,
+                                  ).toLocaleDateString()
                                 : "—"}
                             </p>
                           </div>
@@ -642,8 +642,8 @@ function OwnerDashboard() {
                             <p className="font-semibold text-slate-900">
                               {subscription.end_date
                                 ? new Date(
-                                  subscription.end_date,
-                                ).toLocaleDateString()
+                                    subscription.end_date,
+                                  ).toLocaleDateString()
                                 : "—"}
                             </p>
                           </div>
@@ -853,10 +853,11 @@ function OwnerDashboard() {
                 <button
                   type="submit"
                   disabled={businessSaving}
-                  className={`px-5 py-2 rounded-xl text-white font-semibold transition ${businessSaving
-                    ? "bg-slate-300 cursor-not-allowed"
-                    : "bg-slate-900 hover:bg-slate-800"
-                    }`}
+                  className={`px-5 py-2 rounded-xl text-white font-semibold transition ${
+                    businessSaving
+                      ? "bg-slate-300 cursor-not-allowed"
+                      : "bg-slate-900 hover:bg-slate-800"
+                  }`}
                 >
                   {businessSaving ? "Saving..." : "Create Business"}
                 </button>
@@ -883,10 +884,11 @@ function AppCard({
   return (
     <Link
       to={to}
-      className={`group rounded-[2rem] transition-all duration-500 ${featured
-        ? "col-span-2 sm:col-span-3 md:col-span-4 flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-8 bg-white border border-white/60 shadow-sm hover:shadow-xl hover:bg-white/80"
-        : "flex flex-col items-center justify-center gap-4 p-5 text-center bg-white/40 border border-transparent hover:bg-white/80 hover:border-slate-100 hover:shadow-sm"
-        }`}
+      className={`group rounded-[2rem] transition-all duration-500 ${
+        featured
+          ? "col-span-2 sm:col-span-3 md:col-span-4 flex flex-col md:flex-row md:items-center md:justify-between gap-6 p-8 bg-white border border-white/60 shadow-sm hover:shadow-xl hover:bg-white/80"
+          : "flex flex-col items-center justify-center gap-4 p-5 text-center bg-white/40 border border-transparent hover:bg-white/80 hover:border-slate-100 hover:shadow-sm"
+      }`}
     >
       <div
         className={`flex ${featured ? "items-center gap-6" : "flex-col items-center gap-4"} min-w-0`}
@@ -897,7 +899,9 @@ function AppCard({
           <Icon />
         </div>
         <div className={`${featured ? "text-left" : "text-center"}`}>
-          <span className={`block font-black tracking-tight transition-colors ${featured ? "text-xl text-slate-900" : "text-[13px] text-slate-700 uppercase tracking-widest group-hover:text-brand-600"}`}>
+          <span
+            className={`block font-black tracking-tight transition-colors ${featured ? "text-xl text-slate-900" : "text-[13px] text-slate-700 uppercase tracking-widest group-hover:text-brand-600"}`}
+          >
             {label}
           </span>
           {description ? (
@@ -946,17 +950,25 @@ function QuickActionCard({
           {action.icon}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-black text-slate-900 text-[13px] uppercase tracking-tight">{action.label}</p>
-          <p className="text-xs font-bold text-slate-500 truncate opacity-60">{action.desc}</p>
+          <p className="font-black text-slate-900 text-[13px] uppercase tracking-tight">
+            {action.label}
+          </p>
+          <p className="text-xs font-bold text-slate-500 truncate opacity-60">
+            {action.desc}
+          </p>
         </div>
-        {!isChat && <div className="p-1.5 rounded-lg bg-slate-50 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
-          <FaArrowRight size={10} />
-        </div>}
+        {!isChat && (
+          <div className="p-1.5 rounded-lg bg-slate-50 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+            <FaArrowRight size={10} />
+          </div>
+        )}
       </div>
 
       {isChat && (
         <div className="mt-5 pt-4 border-t border-slate-100">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 ml-1">{chatStatus}</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 ml-1">
+            {chatStatus}
+          </p>
           <div className="flex gap-2">
             <button
               onClick={onOpen}

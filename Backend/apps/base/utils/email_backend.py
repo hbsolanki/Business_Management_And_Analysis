@@ -1,4 +1,7 @@
+import os
 import logging
+from django.conf import settings
+from django.core.mail.backends.filebased import EmailBackend as FileEmailBackend
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 from celery import shared_task
 from django.conf import settings
-import sib_api_v3_sdk
+from django.core.mail import EmailMultiAlternatives
+import base64
 
 
 @shared_task(
@@ -18,25 +19,19 @@ def send_email_task(
     html_content: str | None = None,
     attachments: list | None = None,
 ):
-    configuration = sib_api_v3_sdk.Configuration()
-    configuration.api_key["api-key"] = settings.BREVO_API_KEY
-
-    api_client = sib_api_v3_sdk.ApiClient(configuration)
-    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(api_client)
-
-    email = sib_api_v3_sdk.SendSmtpEmail(
-        to=[{"email": to_email}],
+    email_msg = EmailMultiAlternatives(
         subject=subject,
-        text_content=text_content,
-        html_content=html_content,
-        sender={
-            "email": settings.DEFAULT_FROM_EMAIL,
-            "name": settings.DEFAULT_FROM_EMAIL,
-        },
-        attachment=attachments,
+        body=text_content or "",
+        from_email=f"{settings.DEFAULT_FROM_NAME_EMAIL} <{settings.DEFAULT_FROM_EMAIL}>",
+        to=[to_email],
     )
 
-    try:
-        api_instance.send_transac_email(email)
-    except Exception as e:
-        raise e
+    if html_content:
+        email_msg.attach_alternative(html_content, "text/html")
+
+    if attachments:
+        for attachment in attachments:
+            content_bytes = base64.b64decode(attachment["content"])
+            email_msg.attach(attachment["name"], content_bytes, "application/pdf")
+
+    email_msg.send(fail_silently=False)

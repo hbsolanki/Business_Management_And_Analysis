@@ -642,7 +642,7 @@ body {{
 
 def _check_advanced_analytics() -> bool:
     """Return True if the current user's subscription includes advanced analytics."""
-    from apps.ai_agent.agent import current_user_context
+    from apps.ai_agent.utils.context import current_user_context
     from apps.subscription.utils.entitlements import can_use_feature
     from apps.business.models import Business
     ctx = current_user_context.get()
@@ -721,7 +721,7 @@ def generate_chart(
         html = builder()
         final_html = _prepare_html(html)
 
-        from apps.ai_agent.agent import current_message_id
+        from apps.ai_agent.utils.context import current_message_id
         from apps.ai_agent.models import AiChartRef
         msg_id = current_message_id.get()
 

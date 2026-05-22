@@ -8,5 +8,7 @@ export const productService = {
     delete: (id) => api.delete(`/product/${id}/`),
 
     getCategories: (url = "/product/category/") => api.get(url),
+    createCategory: (data) => api.post("/product/category/", data),
+    updateCategory: (id, data) => api.patch(`/product/category/${id}/`, data),
     deleteCategory: (id) => api.delete(`/product/category/${id}/`),
 };

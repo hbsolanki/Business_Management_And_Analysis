@@ -5,10 +5,10 @@ import {
     DialogTitle,
 } from "@headlessui/react";
 import {
-    ExclamationTriangleIcon,
-    InformationCircleIcon,
-    CheckCircleIcon
-} from "@heroicons/react/24/outline";
+    HiOutlineExclamationTriangle,
+    HiOutlineInformationCircle,
+    HiOutlineCheckCircle,
+} from "react-icons/hi2";
 
 export default function Modal({
     isOpen,
@@ -30,25 +30,25 @@ export default function Modal({
 
     const typeConfig = {
         danger: {
-            icon: ExclamationTriangleIcon,
+            icon: HiOutlineExclamationTriangle,
             iconBg: "bg-red-100/80",
             iconColor: "text-red-600",
             buttonBg: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
         },
         info: {
-            icon: InformationCircleIcon,
+            icon: HiOutlineInformationCircle,
             iconBg: "bg-brand-100",
             iconColor: "text-brand-600",
             buttonBg: "bg-brand-600 hover:bg-brand-700 focus:ring-brand-500",
         },
         success: {
-            icon: CheckCircleIcon,
+            icon: HiOutlineCheckCircle,
             iconBg: "bg-emerald-100/80",
             iconColor: "text-emerald-600",
             buttonBg: "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500",
         },
         form: {
-            icon: CustomIcon || InformationCircleIcon,
+            icon: CustomIcon || HiOutlineInformationCircle,
             iconBg: "bg-brand-100",
             iconColor: "text-brand-600",
             buttonBg: "bg-brand-600 hover:bg-brand-700 focus:ring-brand-500",

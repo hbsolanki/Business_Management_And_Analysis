@@ -19,7 +19,7 @@ class ActivityLogTestCase(BaseTestCase):
         response = self.client.get(self.url_logs)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Owner should see both logs for business A
-        logs = [l['message'] for l in response.data['results']]
+        logs = [log_item['message'] for log_item in response.data['results']]
         self.assertIn("Log A1", logs)
         self.assertIn("Log A2", logs)
     
@@ -32,7 +32,7 @@ class ActivityLogTestCase(BaseTestCase):
         response = self.client.get(self.url_logs)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
-        messages = [l['message'] for l in response.data['results']]
+        messages = [log_item['message'] for log_item in response.data['results']]
         self.assertIn("Log A1", messages)
         self.assertNotIn("Log A2", messages)
 
@@ -58,7 +58,7 @@ class ActivityLogTestCase(BaseTestCase):
         response = self.client.get(self.url_logs)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # owner_b should NOT see logs from business A
-        messages = [l['message'] for l in response.data['results']]
+        messages = [log_item['message'] for log_item in response.data['results']]
         self.assertNotIn("Business A Log", messages)
 
     def test_activity_log_read_by_manager_on_assigned_branch_other_business(self):
@@ -67,7 +67,7 @@ class ActivityLogTestCase(BaseTestCase):
         self.client.force_authenticate(user=self.manager_b1)
         response = self.client.get(self.url_logs)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        messages = [l['message'] for l in response.data['results']]
+        messages = [log_item['message'] for log_item in response.data['results']]
         self.assertNotIn("Secret A", messages)
 
     def test_activity_log_read_by_manager_on_unassigned_branch_other_business(self):

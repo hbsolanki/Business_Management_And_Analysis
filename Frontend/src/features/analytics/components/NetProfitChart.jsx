@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart } from "@mui/x-charts/BarChart";
+import EChartRenderer from "@/components/charts/EChartRenderer";
 import {
     FaChartLine,
     FaSync,
@@ -247,43 +247,24 @@ export default function NetProfitChart({ branchId = "" }) {
                     </div>
 
                     <div className="mb-8">
-                        <div className="w-full h-[350px]">
-                            <BarChart
-                                xAxis={[
-                                    {
-                                        scaleType: "band",
-                                        data: chartData.labels,
-                                        tickLabelStyle: {
-                                            fontSize: 12,
-                                            fontWeight: 500,
-                                            fill: '#64748b'
-                                        },
-                                    },
-                                ]}
-                                yAxis={[
-                                    {
-                                        label: "Amount (₹)",
-                                        tickLabelStyle: { fontSize: 12, fill: '#64748b' },
-                                        labelStyle: { fill: '#64748b', fontSize: 12 }
-                                    },
-                                ]}
-                                series={[
-                                    {
-                                        data: chartData.values,
-                                        label: "Net Profit",
-                                        color: "#10b981", // Emerald 500
-                                        valueFormatter: (v) => formatCurrency(v),
-                                    },
-                                ]}
-                                height={350}
-                                grid={{ horizontal: true }}
-                                margin={{ left: 80, right: 30, top: 20, bottom: 50 }}
-                                slotProps={{ legend: { hidden: true } }}
-                                sx={{
-                                    ".MuiBarElement-root": {
-                                        rx: 4,
-                                    },
-                                }}
+                        <div className="w-full">
+                            <EChartRenderer 
+                                config={{
+                                    chart_type: 'vertical_bar',
+                                    labels: chartData.labels,
+                                    datasets: [
+                                        {
+                                            label: "Net Profit",
+                                            data: chartData.values,
+                                        }
+                                    ],
+                                    option: {
+                                        color: ["#10b981"],
+                                        yAxis: { name: "Amount (₹)" },
+                                        toolbox: { show: true }
+                                    }
+                                }} 
+                                height="380px" 
                             />
                         </div>
                     </div>

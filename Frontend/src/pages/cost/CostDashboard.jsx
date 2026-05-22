@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-    FaLayerGroup, FaPlus, FaMoneyBillWave, FaFileInvoiceDollar,
+    FaLayerGroup, FaPlus, FaMoneyBillWave, FaFileInvoiceDollar, FaFileInvoice,
     FaRegCalendarAlt,
     FaChartPie,
     FaPen,
@@ -23,7 +23,9 @@ import {
     FaCaretDown,
     FaPercent,
     FaCheckCircle,
-    FaInfoCircle
+    FaInfoCircle,
+    FaBell,
+    FaEllipsisV
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "react-hot-toast";
@@ -35,6 +37,7 @@ import ProtectedHeader from "@/components/layout/ProtectedHeader";
 
 const CostCategoryModal = lazy(() => import("@/features/costCategory/components/CostCategoryModal"));
 const Modal = lazy(() => import("@/components/ui/Modal"));
+const EntityReminderModal = lazy(() => import("@/features/reminder/components/EntityReminderModal"));
 
 export default function CostDashboard() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -46,7 +49,7 @@ export default function CostDashboard() {
     const [hasLoadedCategories, setHasLoadedCategories] = useState(false);
     const [branchContextReady, setBranchContextReady] = useState(false);
     const [categories, setCategories] = useState([]);
-    const [monthData, setMonthData] = useState([]); 
+    const [monthData, setMonthData] = useState([]);
 
     // Category Management State
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -61,6 +64,12 @@ export default function CostDashboard() {
     const [showEditCostModal, setShowEditCostModal] = useState(false);
     const [costToDelete, setCostToDelete] = useState(null);
     const [showDeleteCostModal, setShowDeleteCostModal] = useState(false);
+    const [costToRemind, setCostToRemind] = useState(null);
+    const [showCostReminderModal, setShowCostReminderModal] = useState(false);
+
+    // Category Reminder State
+    const [categoryToRemind, setCategoryToRemind] = useState(null);
+    const [showCategoryReminderModal, setShowCategoryReminderModal] = useState(false);
 
     const { profile } = useSelector((state) => state.user);
     const [branches, setBranches] = useState([]);
@@ -196,7 +205,7 @@ export default function CostDashboard() {
     const handleUpdateCost = async () => {
         if (!costToEdit) return;
         try {
-            const payload = { 
+            const payload = {
                 cost: Number(editCostValue),
                 gst_rate: Number(editGstRateValue)
             };
@@ -266,198 +275,186 @@ export default function CostDashboard() {
     const editGstPrice = (Number(editCostValue || 0) * (Number(editGstRateValue || 0) / 100)).toFixed(2);
 
     return (
-        <div className="min-h-screen pb-20 bg-slate-50">
+        <div className="min-h-screen pb-20 bg-slate-50/50">
             <ProtectedHeader />
-
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-                <div className="space-y-5">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
-                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-                            <div className="space-y-1">
-                                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-                                    <span className="p-2 bg-slate-900 rounded-lg text-white shadow-sm">
-                                        <FaChartPie className="text-xl" />
-                                    </span>
-                                    Cost Dashboard
-                                </h1>
-                                <p className="text-slate-500 text-sm font-medium ml-1">
-                                    Expense overview for {displayedPeriod}
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2.5">
-                                <div className="relative min-w-[140px]">
-                                    <select
-                                        value={selectedMonth}
-                                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                        className="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 transition-all appearance-none cursor-pointer shadow-sm"
-                                    >
-                                        {months.map(m => (
-                                            <option
-                                                key={m.value}
-                                                value={m.value}
-                                                disabled={selectedYear === currentYear && m.value > currentMonthNum}
-                                            >
-                                                {m.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <div className="bg-slate-100 rounded-[2rem] overflow-hidden relative shadow-sm border border-slate-200">
+                    {/* Background decorations */}
+                    <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none transform translate-x-1/4 -translate-y-1/4 text-slate-900">
+                        <FaChartPie size={300} />
+                    </div>
+                    <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-slate-200/40 to-transparent pointer-events-none"></div>
+
+                    <div className="p-8 lg:p-10 relative z-10">
+                        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-10">
+                            <div className="space-y-6">
+                                <div>
+                                    <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                                        <FaLayerGroup className="text-slate-500" /> Cost Management
+                                    </h1>
+                                    <p className="text-slate-600 font-medium mt-1">Track and manage your operational expenditures</p>
                                 </div>
 
-                                <div className="relative min-w-[100px]">
-                                    <select
-                                        value={selectedYear}
-                                        onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                        className="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 transition-all appearance-none cursor-pointer shadow-sm"
-                                    >
-                                        {years.map(y => (
-                                            <option key={y} value={y}>{y}</option>
-                                        ))}
-                                    </select>
-                                    <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        if (canApplyFilter && !isRefreshing) {
-                                            fetchMonthlyData(selectedBranch, selectedMonth, selectedYear);
-                                        }
-                                    }}
-                                    disabled={!canApplyFilter || isRefreshing}
-                                    className={`inline-flex items-center gap-2 font-semibold text-sm px-4 py-2.5 rounded-lg border shadow-sm transition-all active:scale-95 ${canApplyFilter
-                                        ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
-                                        : "bg-slate-50 text-slate-400 border-slate-200 cursor-default"
-                                        } ${isRefreshing ? "opacity-75 cursor-wait" : ""}`}
-                                >
-                                    {isRefreshing ? (
-                                        <div className="h-3 w-3 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
-                                    ) : (
-                                        <FaFilter size={12} />
+                                <div className="inline-flex flex-wrap items-center gap-2 bg-white/60 backdrop-blur-md p-1.5 rounded-2xl border border-slate-300/50">
+                                    {(typeof profile?.role === 'object' ? profile.role.role : profile?.role) === "OWNER" && (
+                                        <>
+                                            <div className="relative">
+                                                <select
+                                                    value={selectedBranch}
+                                                    onChange={(e) => {
+                                                        const newBranchId = e.target.value;
+                                                        setSelectedBranch(newBranchId);
+                                                        setSearchParams((prev) => {
+                                                            const params = new URLSearchParams(prev);
+                                                            if (newBranchId) params.set("branch_id", newBranchId);
+                                                            else params.delete("branch_id");
+                                                            return params;
+                                                        });
+                                                    }}
+                                                    className="px-4 py-2 pr-8 bg-transparent text-sm font-bold text-slate-900 outline-none cursor-pointer hover:bg-slate-100/50 rounded-xl transition-colors appearance-none"
+                                                    disabled={fetchingBranches}
+                                                >
+                                                    <option value="" className="bg-white">Select Branch</option>
+                                                    {branches.map(b => (
+                                                        <option key={b.id} value={b.id} className="bg-white">{b.name} {b.is_default ? "(Main)" : ""}</option>
+                                                    ))}
+                                                </select>
+                                                <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                            </div>
+                                            <div className="h-5 w-px bg-slate-300"></div>
+                                        </>
                                     )}
-                                    {isRefreshing ? "Filtering..." : "Filter"}
-                                </button>
 
-                                 <Link
-                                    to="/cost/expenses/add"
-                                    className="group inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-900 text-slate-900 font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all"
+                                    <div className="relative">
+                                        <select
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                            className="px-4 py-2 pr-8 bg-transparent text-sm font-bold text-slate-900 outline-none cursor-pointer hover:bg-slate-100/50 rounded-xl transition-colors appearance-none"
+                                        >
+                                            {months.map(m => (
+                                                <option key={m.value} value={m.value} disabled={selectedYear === currentYear && m.value > currentMonthNum} className="bg-white">
+                                                    {m.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                    <div className="h-5 w-px bg-slate-300"></div>
+                                    <div className="relative">
+                                        <select
+                                            value={selectedYear}
+                                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                            className="px-4 py-2 pr-8 bg-transparent text-sm font-bold text-slate-900 outline-none cursor-pointer hover:bg-slate-100/50 rounded-xl transition-colors appearance-none"
+                                        >
+                                            {years.map(y => (
+                                                <option key={y} value={y} className="bg-white">{y}</option>
+                                            ))}
+                                        </select>
+                                        <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            if (canApplyFilter && !isRefreshing) {
+                                                fetchMonthlyData(selectedBranch, selectedMonth, selectedYear);
+                                            }
+                                        }}
+                                        disabled={!canApplyFilter || isRefreshing}
+                                        className={`ml-1 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${canApplyFilter
+                                            ? "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm active:scale-95"
+                                            : "bg-slate-200 text-slate-400 cursor-default"
+                                            } ${isRefreshing ? "opacity-75 cursor-wait" : ""}`}
+                                    >
+                                        {isRefreshing ? (
+                                            <div className="h-3 w-3 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <FaFilter size={12} />
+                                        )}
+                                        {isRefreshing ? "Filtering" : "Filter"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                                <button
+                                    onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
+                                    className="px-5 py-3 rounded-2xl bg-white/80 hover:bg-white border border-slate-300 text-slate-700 hover:text-slate-900 font-bold text-sm transition-all flex items-center gap-2 backdrop-blur-sm shadow-sm"
                                 >
-                                    <FaPlus size={12} className="group-hover:rotate-90 transition-transform text-slate-400 group-hover:text-slate-900" />
-                                    Add Expense
+                                    <FaPlus size={12} className="text-slate-400" /> New Category
+                                </button>
+                                <Link
+                                    to="/cost/expenses"
+                                    className="px-5 py-3 rounded-2xl bg-white/80 hover:bg-white border border-slate-300 text-slate-700 hover:text-slate-900 font-bold text-sm transition-all flex items-center gap-2 backdrop-blur-sm shadow-sm"
+                                >
+                                    <FaFileInvoice size={12} className="text-slate-400" /> Registry
                                 </Link>
-
+                                <Link
+                                    to="/cost/expenses/add"
+                                    className="px-5 py-3 rounded-2xl bg-white/80 hover:bg-white border border-slate-300 text-slate-700 hover:text-slate-900 font-bold text-sm transition-all flex items-center gap-2 backdrop-blur-sm shadow-sm"
+                                >
+                                    <FaPlus size={12} className="text-slate-400" /> Add Expense
+                                </Link>
                                 <Link
                                     to={recordExpensePath}
-                                    className="group inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all"
+                                    className="px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm transition-all flex items-center gap-2 shadow-md hover:-translate-y-0.5"
                                 >
-                                    <FaPlus size={12} className="group-hover:rotate-90 transition-transform" />
-                                    Record Expenses
+                                    <FaCheckCircle size={14} className="text-emerald-400" /> Record Period
                                 </Link>
                             </div>
                         </div>
-                    </div>
 
-                    {(typeof profile?.role === 'object' ? profile.role.role : profile?.role) === "OWNER" && (
-                        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                <div className="flex items-center gap-2 text-slate-500 min-w-max">
-                                    <FaCodeBranch className="text-sm" />
-                                    <span className="text-xs font-semibold uppercase tracking-wider">Viewing Branch</span>
-                                </div>
-                                <div className="relative flex-1 sm:max-w-sm">
-                                    <select
-                                        value={selectedBranch}
-                                        onChange={(e) => {
-                                            const newBranchId = e.target.value;
-                                            setSelectedBranch(newBranchId);
-                                            setSearchParams((prev) => {
-                                                const params = new URLSearchParams(prev);
-                                                if (newBranchId) params.set("branch_id", newBranchId);
-                                                else params.delete("branch_id");
-                                                return params;
-                                            });
-                                        }}
-                                        className="w-full pl-3 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-slate-100 transition-all appearance-none cursor-pointer"
-                                        disabled={fetchingBranches}
-                                    >
-                                        <option value="">Select Branch</option>
-                                        {branches.map(b => (
-                                            <option key={b.id} value={b.id}>{b.name} {b.is_default ? "(Main)" : ""}</option>
-                                        ))}
-                                    </select>
-                                    <FaCaretDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
+                        {/* Unified Stats Strip */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-slate-300/60">
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-1.5 flex items-center gap-2">
+                                    <FaMoneyBillWave /> Total Spend
+                                </p>
+                                <p className="text-3xl md:text-4xl font-black text-slate-900 tabular-nums tracking-tight">{totalMonthlyCostFormatted}</p>
                             </div>
-                        </div>
-                    )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Month Total</p>
-                                    <h3 className="text-2xl font-bold text-slate-900">{totalMonthlyCostFormatted}</h3>
+                            <div>
+                                <div className="flex items-center gap-3 mb-1.5">
+                                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                        <FaChartPie /> Coverage
+                                    </p>
+                                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">{coveragePercent}%</span>
                                 </div>
-                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
-                                    <FaMoneyBillWave className="text-lg" />
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1 w-full">
-                                    <div className="flex justify-between items-center pr-2">
-                                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Coverage</p>
-                                        <span className="text-xs font-bold text-slate-700">{coveragePercent}%</span>
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-slate-900">{recordedCount}/{totalCategories}</h3>
-                                    <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                                        <div className="h-full bg-slate-700 rounded-full transition-all duration-1000" style={{ width: `${coveragePercent}%` }}></div>
+                                <div className="flex items-end gap-4">
+                                    <p className="text-3xl md:text-4xl font-black text-slate-900 tabular-nums tracking-tight leading-none">{recordedCount} <span className="text-slate-400 text-xl">/ {totalCategories}</span></p>
+                                    <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden mb-1.5">
+                                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 relative" style={{ width: `${coveragePercent}%` }}>
+                                            <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending</p>
-                                    <h3 className="text-2xl font-bold text-slate-900">{remainingCount}</h3>
-                                </div>
-                                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
-                                    <FaRegCalendarAlt className="text-lg" />
-                                </span>
+                            <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-1.5 flex items-center gap-2">
+                                    <FaRegCalendarAlt /> Pending Actions
+                                </p>
+                                <p className="text-3xl md:text-4xl font-black text-slate-900 tabular-nums tracking-tight">{remainingCount}</p>
                             </div>
                         </div>
-
-                        <button
-                            onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
-                            className="bg-slate-50 rounded-xl p-5 border border-dashed border-slate-300 group hover:bg-white hover:border-slate-900 transition-all flex items-center justify-center gap-3"
-                        >
-                            <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-slate-400 group-hover:text-slate-900 transition-colors shadow-sm border border-slate-200">
-                                <FaPlus size={12} />
-                            </div>
-                            <span className="text-sm font-bold text-slate-500 group-hover:text-slate-900">New Category</span>
-                        </button>
                     </div>
                 </div>
 
                 <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-opacity duration-300 ${isRefreshing ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
                     <div className="lg:col-span-2">
-                        <section className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px] overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 rounded-t-xl">
+                        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[480px] overflow-hidden">
+                            <div className="px-6 py-5 border-b border-slate-100 bg-white rounded-t-2xl">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h2 className="text-base font-bold text-slate-900">Monthly Expenditures</h2>
-                                        <p className="text-xs text-slate-500 mt-0.5">Verified expenses for {displayedPeriod}</p>
+                                        <h2 className="text-lg font-black text-slate-900 tracking-tight">Recorded Expenditures</h2>
+                                        <p className="text-xs font-medium text-slate-500 mt-0.5">Verified expenses for {displayedPeriod}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spend</p>
-                                        <p className="text-lg font-bold text-slate-900">{totalMonthlyCostFormatted}</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Summary</p>
+                                        <p className="text-xl font-black text-slate-900 tracking-tight">{totalMonthlyCostFormatted}</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex-1 p-0">
+                            <div className="flex-1 overflow-auto">
                                 {(!monthData || monthData.length === 0) ? (
                                     <div className="h-[320px] flex items-center justify-center text-center px-6">
                                         <div>
@@ -475,114 +472,108 @@ export default function CostDashboard() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="h-[320px] overflow-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="border-b border-slate-100 bg-slate-50/95 sticky top-0 z-10">
-                                                    <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-1/2">Category</th>
-                                                    <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
-                                                    <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-24">Actions</th>
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-slate-100 bg-slate-50/95 sticky top-0 z-10">
+                                                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-1/2">Category</th>
+                                                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                                                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-16"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {monthData.map((item) => (
+                                                <tr key={item.id} className="h-16 group hover:bg-slate-50/80 transition-colors">
+                                                    <td className="px-6 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 bg-white text-slate-700 rounded-lg flex items-center justify-center border border-slate-200 shadow-sm">
+                                                                {(() => {
+                                                                    const Icon = getCategoryIcon(item.cost_category?.name);
+                                                                    return <Icon size={14} />;
+                                                                })()}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="font-semibold text-slate-900 text-sm">{item.cost_category?.display_name || item.cost_category?.name || "Uncategorized"}</p>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    {Number(item.gst_amount) > 0 && (
+                                                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">
+                                                                            GST ({item.gst_rate}%): ₹{Number(item.gst_amount).toFixed(2)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-right">
+                                                        <span className="font-bold text-slate-900 text-sm tabular-nums">
+                                                            {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(item.cost))}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-right">
+                                                        <div className="relative group/menu inline-block text-left opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                            <button className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-slate-900 rounded-md transition-colors">
+                                                                <FaEllipsisV size={12} />
+                                                            </button>
+                                                            <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 shadow-lg rounded-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-20">
+                                                                <div className="py-1 flex flex-col text-[11px] font-bold">
+                                                                    <button onClick={() => openEditCostModal(item)} className="w-full text-left px-3 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"><FaPen className="text-slate-400" /> Edit Cost</button>
+                                                                    <button onClick={() => { setCostToRemind(item.cost_category); setShowCostReminderModal(true); }} className="w-full text-left px-3 py-2 text-amber-600 hover:bg-amber-50 flex items-center gap-2"><FaBell className="text-amber-500" /> Set Reminder</button>
+                                                                    <button onClick={() => { setCostToDelete(item); setShowDeleteCostModal(true); }} className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2"><FaTrash className="text-rose-500" /> Delete Cost</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-50">
-                                                {monthData.map((item) => (
-                                                    <tr key={item.id} className="h-16 group hover:bg-slate-50/80 transition-colors">
-                                                        <td className="px-6 py-3">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 bg-white text-slate-700 rounded-lg flex items-center justify-center border border-slate-200 shadow-sm">
-                                                                    {(() => {
-                                                                        const Icon = getCategoryIcon(item.cost_category?.name);
-                                                                        return <Icon size={14} />;
-                                                                    })()}
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <p className="font-semibold text-slate-900 text-sm">{item.cost_category?.display_name || item.cost_category?.name || "Uncategorized"}</p>
-                                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                                        {Number(item.gst_amount) > 0 && (
-                                                                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">
-                                                                                GST ({item.gst_rate}%): ₹{Number(item.gst_amount).toFixed(2)}
-                                                                            </span>
-                                                                        )}
-                                                                        {item.cost_category?.description ? (
-                                                                            <p className="text-[11px] text-slate-500 truncate">{item.cost_category.description}</p>
-                                                                        ) : null}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-3 text-right">
-                                                            <span className="font-bold text-slate-900 text-sm tabular-nums">
-                                                                {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(item.cost))}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-3 text-right">
-                                                            <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                                                <button
-                                                                    onClick={() => openEditCostModal(item)}
-                                                                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-white rounded-md transition-all border border-transparent hover:border-slate-200"
-                                                                    aria-label={`Edit ${item.cost_category?.name || "cost entry"}`}
-                                                                >
-                                                                    <FaPen size={10} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => { setCostToDelete(item); setShowDeleteCostModal(true); }}
-                                                                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all border border-transparent hover:border-rose-100"
-                                                                    aria-label={`Delete ${item.cost_category?.name || "cost entry"}`}
-                                                                >
-                                                                    <FaTrash size={10} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 )}
                             </div>
                         </section>
                     </div>
 
-                    <div className="lg:col-span-1 space-y-6">
-                        <section className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
-                            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 rounded-t-xl flex items-center justify-between">
-                                <h2 className="text-sm font-bold text-slate-900">Cost Categories</h2>
-                                <button
-                                    onClick={() => { setSelectedCategory(null); setShowCategoryModal(true); }}
-                                    className="text-[9px] font-bold uppercase tracking-widest text-slate-600 bg-white hover:bg-slate-50 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200 shadow-sm"
-                                >
-                                    + New
-                                </button>
+                    <div className="lg:col-span-1">
+                        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[480px] overflow-hidden">
+                            <div className="px-6 py-5 border-b border-slate-100 bg-white rounded-t-2xl">
+                                <h2 className="text-lg font-black text-slate-900 tracking-tight">Cost Categories</h2>
+                                <p className="text-xs font-medium text-slate-500 mt-0.5">Manage expense types</p>
                             </div>
-                            <div className="h-[340px] overflow-y-auto p-1.5 scrollbar-thin space-y-0.5">
+                            <div className="flex-1 overflow-y-auto p-3 scrollbar-thin space-y-1">
                                 {!Array.isArray(categories) || categories.length === 0 ? (
                                     <div className="h-full flex items-center justify-center text-center px-4">
                                         <p className="text-slate-400 text-[10px] italic">No categories defined.</p>
                                     </div>
                                 ) : (
                                     categories.map(category => (
-                                        <div key={category.id} className="group min-h-[48px] flex justify-between items-center px-3 py-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 transition-all">
-                                            <div className="flex items-center gap-2.5 min-w-0">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-slate-200 group-hover:bg-slate-900 transition-colors"></div>
+                                        <div key={category.id} className="group min-h-[56px] flex justify-between items-center px-4 py-3 rounded-xl border border-transparent hover:bg-slate-50 hover:border-slate-200 transition-all cursor-pointer">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="h-2 w-2 rounded-full bg-slate-300 group-hover:bg-slate-900 group-hover:scale-110 transition-all"></div>
                                                 <div className="min-w-0">
-                                                    <p className="font-bold text-slate-700 text-[11px] group-hover:text-slate-900 transition-colors truncate">{category.display_name || category.name}</p>
+                                                    <p className="font-bold text-slate-800 text-xs group-hover:text-slate-900 transition-colors truncate">{category.display_name || category.name}</p>
                                                     {category.description ? (
-                                                        <p className="text-[10px] text-slate-400 group-hover:text-slate-500 transition-colors truncate">{category.description}</p>
+                                                        <p className="text-[10px] font-medium text-slate-400 group-hover:text-slate-500 transition-colors truncate">{category.description}</p>
                                                     ) : null}
                                                 </div>
                                             </div>
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all items-center">
                                                 <button
-                                                    onClick={() => { setSelectedCategory(category); setShowCategoryModal(true); }}
-                                                    className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-slate-900 rounded bg-white border border-slate-100 shadow-sm"
+                                                    onClick={(e) => { e.stopPropagation(); setCategoryToRemind(category); setShowCategoryReminderModal(true); }}
+                                                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                                    title="Set Reminder"
                                                 >
-                                                    <FaPen size={8} />
+                                                    <FaBell size={12} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedCategory(category); setShowCategoryModal(true); }}
+                                                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                                    title="Edit Category"
+                                                >
+                                                    <FaPen size={12} />
                                                 </button>
                                                 <button
                                                     onClick={() => { setCategoryToDelete(category); setShowDeleteModal(true); }}
-                                                    className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-rose-600 rounded bg-white border border-slate-100 shadow-sm"
+                                                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                                                 >
-                                                    <FaTrash size={8} />
+                                                    <FaTrash size={12} />
                                                 </button>
                                             </div>
                                         </div>
@@ -620,8 +611,8 @@ export default function CostDashboard() {
             {showEditCostModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-200 animate-in fade-in zoom-in duration-200 relative">
-                        <button 
-                            onClick={() => setShowEditCostModal(false)} 
+                        <button
+                            onClick={() => setShowEditCostModal(false)}
                             className="absolute top-5 right-5 p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:rotate-90"
                         >
                             <FaPlus className="rotate-45" size={12} />
@@ -636,7 +627,7 @@ export default function CostDashboard() {
                                 <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{costToEdit?.cost_category?.name}</p>
                             </div>
                         </div>
-                        
+
                         <div className="space-y-4 mb-6">
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="relative group">
@@ -652,7 +643,7 @@ export default function CostDashboard() {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 <div className="relative group">
                                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">GST Rate</label>
                                     <div className="relative">
@@ -707,6 +698,30 @@ export default function CostDashboard() {
                     confirmText="Delete"
                 />
             </Suspense>
+
+            {showCostReminderModal && costToRemind && (
+                <Suspense fallback={null}>
+                    <EntityReminderModal
+                        isOpen={showCostReminderModal}
+                        onClose={() => { setShowCostReminderModal(false); setCostToRemind(null); }}
+                        entityType="cost.monthlycostcategory"
+                        entityId={costToRemind.id}
+                        entityTitle={`${costToRemind.cost_category?.name || 'Cost Entry'} - ${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`}
+                    />
+                </Suspense>
+            )}
+
+            {showCategoryReminderModal && categoryToRemind && (
+                <Suspense fallback={null}>
+                    <EntityReminderModal
+                        isOpen={showCategoryReminderModal}
+                        onClose={() => { setShowCategoryReminderModal(false); setCategoryToRemind(null); }}
+                        entityType="cost.costcategory"
+                        entityId={categoryToRemind.id}
+                        entityTitle={categoryToRemind.name || "Category"}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 }

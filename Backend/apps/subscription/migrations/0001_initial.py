@@ -4,74 +4,107 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Plan',
+            name="Plan",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('is_deleted', models.BooleanField(default=False)),
-                ('name', models.CharField(max_length=50)),
-                ('price', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('duration_days', models.IntegerField()),
-                ('max_products', models.IntegerField(blank=True, null=True)),
-                ('max_invoices', models.IntegerField(blank=True, null=True)),
-                ('max_staff', models.IntegerField(blank=True, null=True)),
-                ('has_advanced_analytics', models.BooleanField(default=False)),
-                ('has_chat', models.BooleanField(default=False)),
-                ('has_api_access', models.BooleanField(default=False)),
-                ('is_active', models.BooleanField(default=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("is_deleted", models.BooleanField(default=False)),
+                ("name", models.CharField(max_length=50)),
+                ("price", models.DecimalField(decimal_places=2, max_digits=8)),
+                ("duration_days", models.IntegerField()),
+                ("max_products", models.IntegerField(blank=True, null=True)),
+                ("max_invoices", models.IntegerField(blank=True, null=True)),
+                ("max_staff", models.IntegerField(blank=True, null=True)),
+                ("has_advanced_analytics", models.BooleanField(default=False)),
+                ("has_chat", models.BooleanField(default=False)),
+                ("has_api_access", models.BooleanField(default=False)),
+                ("is_active", models.BooleanField(default=True)),
             ],
             options={
-                'db_table': 'bma_subscription_plan',
+                "db_table": "bma_subscription_plan",
             },
         ),
         migrations.CreateModel(
-            name='Subscription',
+            name="Subscription",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('is_deleted', models.BooleanField(default=False)),
-                ('price', models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True)),
-                ('plan_name', models.CharField(blank=True, max_length=50, null=True)),
-                ('duration_days', models.IntegerField(blank=True, null=True)),
-                ('max_products', models.IntegerField(blank=True, null=True)),
-                ('max_invoices', models.IntegerField(blank=True, null=True)),
-                ('max_staff', models.IntegerField(blank=True, null=True)),
-                ('has_advanced_analytics', models.BooleanField(null=True)),
-                ('has_chat', models.BooleanField(null=True)),
-                ('has_api_access', models.BooleanField(null=True)),
-                ('start_date', models.DateTimeField()),
-                ('end_date', models.DateTimeField()),
-                ('payment_mode', models.CharField(blank=True, max_length=10, null=True)),
-                ('transaction_id', models.IntegerField(blank=True, null=True)),
-                ('payment_date', models.DateTimeField(blank=True, null=True)),
-                ('is_trial', models.BooleanField(default=False)),
-                ('is_active', models.BooleanField(default=True)),
-                ('payment_reference', models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("is_deleted", models.BooleanField(default=False)),
+                (
+                    "price",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=8, null=True
+                    ),
+                ),
+                ("plan_name", models.CharField(blank=True, max_length=50, null=True)),
+                ("duration_days", models.IntegerField(blank=True, null=True)),
+                ("max_products", models.IntegerField(blank=True, null=True)),
+                ("max_invoices", models.IntegerField(blank=True, null=True)),
+                ("max_staff", models.IntegerField(blank=True, null=True)),
+                ("has_advanced_analytics", models.BooleanField(null=True)),
+                ("has_chat", models.BooleanField(null=True)),
+                ("has_api_access", models.BooleanField(null=True)),
+                ("start_date", models.DateTimeField()),
+                ("end_date", models.DateTimeField()),
+                (
+                    "payment_mode",
+                    models.CharField(blank=True, max_length=10, null=True),
+                ),
+                ("transaction_id", models.IntegerField(blank=True, null=True)),
+                ("payment_date", models.DateTimeField(blank=True, null=True)),
+                ("is_trial", models.BooleanField(default=False)),
+                ("is_active", models.BooleanField(default=True)),
+                (
+                    "payment_reference",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
             ],
             options={
-                'db_table': 'bma_subscription',
+                "db_table": "bma_subscription",
             },
         ),
         migrations.CreateModel(
-            name='Usage',
+            name="Usage",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('product_created', models.IntegerField(default=0)),
-                ('invoices_created', models.IntegerField(default=0)),
-                ('staff_created', models.IntegerField(default=0)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("product_created", models.IntegerField(default=0)),
+                ("invoices_created", models.IntegerField(default=0)),
+                ("staff_created", models.IntegerField(default=0)),
             ],
             options={
-                'db_table': 'bma_plan_usage',
+                "db_table": "bma_plan_usage",
             },
         ),
     ]

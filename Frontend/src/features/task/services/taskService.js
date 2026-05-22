@@ -39,6 +39,11 @@ const taskService = {
         const response = await api.get(`/task/${id}/`);
         return response.data;
     },
+
+    createTaskReminder: async (id, data) => {
+        const response = await api.post(`/task/${id}/create-reminder/`, data);
+        return response.data;
+    },
 };
 
 export default taskService;

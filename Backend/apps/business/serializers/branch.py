@@ -17,8 +17,9 @@ class BranchSerializer(BaseSerializer):
         read_only_fields = BaseSerializer.Meta.read_only_fields
 
     def validate_name(self, value):
-        user = self.context["request"].user
-        qs = Branch.objects.filter(business=user.business, name__iexact=value)
+        request = self.context["request"]
+        user = request.user
+        qs = Branch.objects.filter(business=request.user.business, name__iexact=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         
@@ -28,7 +29,8 @@ class BranchSerializer(BaseSerializer):
 
     def validate_is_default(self, value):
         if value:
-            user = self.context["request"].user
+            request = self.context["request"]
+            user = request.user
             qs = Branch.objects.filter(business=user.business, is_default=True)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)

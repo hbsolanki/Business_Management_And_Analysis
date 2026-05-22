@@ -1,4 +1,4 @@
-from django.db.models.signals import pre_save, post_delete
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from .models import Message
 from apps.chat.services.s3_storage import delete_media

@@ -75,7 +75,7 @@ def synchronize_purchase_order_to_supplier_task(purchase_order_id):
                             title="Product Request Alert",
                             content=f"Customer {purchase_order.business.name} requested {product_name} (Category: {category_name}) via SKU {sku}, but it is not in your inventory.",
                             action_type="TASK_CREATED",
-                            action_link=f"/supplier/sales-orders/" # Link to list since ID not yet known
+                            action_link="/supplier/sales-orders/" # Link to list since ID not yet known
                         )
 
             if not items_data:

@@ -16,8 +16,23 @@ class InventoryTransactionItemSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "product"]
 
     def validate(self, attrs):
-        inventory = self.context.get('inventory')
-        action = self.context.get('action')
+        # Climb up to the absolute root serializer to retrieve root context
+        parent = getattr(self, 'parent', None)
+        root = parent
+        while parent is not None:
+            root = parent
+            parent = getattr(parent, 'parent', None)
+            
+        context = root.context if root else self.context
+        inventory = context.get('inventory')
+        action = context.get('action')
+        
+        # Fallbacks for updates (where action or inventory are already in instance)
+        if not action and root and getattr(root, 'instance', None):
+            action = root.instance.action
+        if not inventory and root and getattr(root, 'instance', None):
+            inventory = root.instance.inventory
+
         product_id = attrs.get('product_id')
         quantity = attrs.get('quantity')
 
@@ -74,10 +89,58 @@ class InventoryTransactionSerializer(BaseSerializer):
         fields = ["id", "action", "description", "items", "created_at", "created_by", "branch", "branch_name", "branch_id", "purchase_order"]
         read_only_fields = ["id", "created_at", "created_by", "branch", "branch_name", "purchase_order"]
 
+    def _get_inventory(self, user, branch_id):
+        if not user or not branch_id:
+            return None
+        
+        try:
+            branch_id = int(branch_id)
+        except (ValueError, TypeError):
+            return None
+
+        from apps.employee.models import UserRole, WorkType
+        from apps.business.models import Branch
+
+        # 1. First, check if the branch actually belongs to the user's business
+        try:
+            branch = Branch.objects.get(id=branch_id, business=user.business, is_active=True)
+        except Branch.DoesNotExist:
+            return None
+
+        # 2. Check Role-based permissions to see if they can access this branch
+        has_permission = False
+        if user.is_superuser or user.role_name == UserRole.OWNER:
+            has_permission = True
+        elif user.role_name == UserRole.MANAGER:
+            if user.branches.filter(id=branch_id).exists():
+                has_permission = True
+        elif user.role_name == UserRole.EMPLOYEE:
+            if user.branch_works.filter(branch_id=branch_id, work_type=WorkType.INVENTORY).exists():
+                has_permission = True
+
+        if not has_permission:
+            return None
+
+        # 3. Get or create the Inventory record dynamically
+        inventory, _ = Inventory.objects.get_or_create(
+            branch=branch,
+            defaults={"business": user.business}
+        )
+        return inventory
+
     def to_internal_value(self, data):
         # Inject action into context so nested items can validate stock if action is 'OUT'
         if 'action' in data:
             self.context['action'] = data.get('action')
+        
+        # Inject inventory into context if not already present
+        if 'inventory' not in self.context:
+            request = self.context.get('request')
+            branch_id = data.get('branch_id') or data.get('branch')
+            if request and request.user and branch_id:
+                inventory = self._get_inventory(request.user, branch_id)
+                if inventory:
+                    self.context['inventory'] = inventory
         return super().to_internal_value(data)
 
     def validate_items(self, items):

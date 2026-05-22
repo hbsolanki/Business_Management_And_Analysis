@@ -16,7 +16,4 @@ class ActivityLogViewSet(BaseViewSet, ListModelMixin):
     permission_classes = [IsOwnerOrManager]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        if self.request.user.is_superuser:
-            return queryset.select_related('actor').order_by('-created_at')
-        return queryset.select_related('actor').order_by('-created_at')
+        return super().get_queryset().select_related('actor').order_by('-created_at')

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { HiOutlineXMark } from "react-icons/hi2";
 import { FaTags } from "react-icons/fa";
 import api from "@/services/api";
 
@@ -92,7 +92,7 @@ export default function CategoryModal({ category, onClose, onSaved }) {
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 rounded-full p-1 transition-colors"
           >
-            <XMarkIcon className="h-6 w-6" />
+            <HiOutlineXMark className="h-6 w-6" />
           </button>
         </div>
 

@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  CurrencyRupeeIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  PencilSquareIcon,
-  ArrowTrendingUpIcon,
-  ReceiptPercentIcon,
-  DocumentChartBarIcon,
-  BanknotesIcon,
-  PowerIcon,
-  ArrowDownIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+  HiOutlineCurrencyRupee,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
+  HiOutlinePencilSquare,
+  HiOutlineArrowTrendingUp,
+  HiOutlineReceiptPercent,
+  HiOutlineDocumentChartBar,
+  HiOutlineBanknotes,
+  HiOutlinePower,
+  HiOutlineArrowDown,
+  HiOutlineTrash,
+} from "react-icons/hi2";
 import { Link } from "react-router-dom";
 import InfoTooltip from "../InfoTooltip.jsx";
 import PRODUCT_TERMS from "../constants/productTerms.js";
@@ -95,7 +95,7 @@ export default function ProductCard({
                   to={`/product/${product.id}/edit`}
                   className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600 font-medium transition-colors"
                 >
-                  <PencilSquareIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
+                  <HiOutlinePencilSquare className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
                   Edit Product
                 </Link>
                 {onToggleStatus && (
@@ -106,7 +106,7 @@ export default function ProductCard({
                     }}
                     className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-600 font-medium transition-colors"
                   >
-                    <PowerIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
+                    <HiOutlinePower className="h-4 w-4 mr-3 text-slate-400 group-hover:text-brand-500" />
                     {product.is_active !== false ? 'Mark Inactive' : 'Mark Active'}
                   </button>
                 )}
@@ -118,7 +118,7 @@ export default function ProductCard({
                   }}
                   className="w-full flex items-center px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 font-medium transition-colors"
                 >
-                  <TrashIcon className="h-4 w-4 mr-3 text-rose-500" />
+                  <HiOutlineTrash className="h-4 w-4 mr-3 text-rose-500" />
                   Delete Product
                 </button>
               </div>
@@ -140,12 +140,12 @@ export default function ProductCard({
           >
             {expanded ? (
               <>
-                <ChevronUpIcon className="h-3.5 w-3.5" />
+                <HiOutlineChevronUp className="h-3.5 w-3.5" />
                 Read less
               </>
             ) : (
               <>
-                <ChevronDownIcon className="h-3.5 w-3.5" />
+                <HiOutlineChevronDown className="h-3.5 w-3.5" />
                 Read more
               </>
             )}
@@ -158,7 +158,7 @@ export default function ProductCard({
           <div className="mt-5 pt-4 border-t border-slate-100 space-y-2.5 text-[13px] animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-slate-500">
-                <CurrencyRupeeIcon className="h-4 w-4" />
+                <HiOutlineCurrencyRupee className="h-4 w-4" />
                 <InfoTooltip label="Cost Price" description={PRODUCT_TERMS.costPrice} />
               </span>
               <span className="font-bold text-slate-900">₹{costPrice.toLocaleString()}</span>
@@ -166,7 +166,7 @@ export default function ProductCard({
 
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-slate-500">
-                <ArrowDownIcon className="h-4 w-4" />
+                <HiOutlineArrowDown className="h-4 w-4" />
                 <InfoTooltip label="Base Price" description={PRODUCT_TERMS.basePrice} />
               </span>
               <span className="font-bold text-slate-900">₹{basePrice.toLocaleString()}</span>
@@ -175,7 +175,7 @@ export default function ProductCard({
             {product.output_gst_rate > 0 && (
               <div className="flex items-center justify-between text-[11px] text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <DocumentChartBarIcon className="h-3.5 w-3.5" />
+                  <HiOutlineDocumentChartBar className="h-3.5 w-3.5" />
                   <InfoTooltip
                     label={`Output GST (${product.output_gst_rate}%)`}
                     description={PRODUCT_TERMS.outputGST}
@@ -187,7 +187,7 @@ export default function ProductCard({
 
             <div className="flex items-center justify-between pt-2.5 border-t border-dashed border-slate-100">
               <span className="flex items-center gap-1.5 text-slate-900 font-bold uppercase tracking-wider text-[11px]">
-                <BanknotesIcon className="h-4 w-4 text-emerald-600" />
+                <HiOutlineBanknotes className="h-4 w-4 text-emerald-600" />
                 <InfoTooltip label="Final Selling Price" description={PRODUCT_TERMS.finalPrice} />
               </span>
               <span className="font-black text-emerald-600 text-sm">
@@ -197,7 +197,7 @@ export default function ProductCard({
 
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-slate-900 font-bold uppercase tracking-wider text-[11px]">
-                <ArrowTrendingUpIcon className="h-4 w-4 text-blue-600" />
+                <HiOutlineArrowTrendingUp className="h-4 w-4 text-blue-600" />
                 <InfoTooltip label="Net Profit" description={PRODUCT_TERMS.netProfit} />
               </span>
               <span
@@ -210,7 +210,7 @@ export default function ProductCard({
             {product.input_gst_rate > 0 && (
               <div className="flex items-center justify-between text-[11px] text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <ReceiptPercentIcon className="h-3.5 w-3.5" />
+                  <HiOutlineReceiptPercent className="h-3.5 w-3.5" />
                   <InfoTooltip
                     label={`Input GST (${product.input_gst_rate}%)`}
                     description={PRODUCT_TERMS.inputGST}

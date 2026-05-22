@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlusIcon } from "@heroicons/react/24/outline";
+import { HiOutlineUserPlus, HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import { FaIdCard, FaUsers, FaCodeBranch, FaSearch, FaUserTag, FaMoneyBillWave, FaBriefcase, FaFilter, FaTimes } from "react-icons/fa";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+
 
 import { employeeService } from "@/features/employee/services/employeeService";
 import { branchService } from "@/features/business/services/branchService";
@@ -213,7 +213,7 @@ function EmployeeManage() {
               to="/employee/new"
               className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition shadow-lg shadow-slate-200"
             >
-              <UserPlusIcon className="h-5 w-5" />
+              <HiOutlineUserPlus className="h-5 w-5" />
               Add Employee
             </Link>
           </div>

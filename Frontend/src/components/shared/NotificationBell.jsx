@@ -1,8 +1,22 @@
 import { useState, useRef, useEffect } from "react";
-import { FaBell, FaLink, FaTrashAlt } from 'react-icons/fa';
+import { FaBell, FaLink, FaTrashAlt, FaClock, FaClipboardList } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import useNotification from '@/hooks/useNotification';
 import { getProfileImageUrl } from "@/utils/imageUtils";
+
+const getNotificationIcon = (notification) => {
+    if (!notification) return <FaBell className="text-slate-600" size={16} />;
+    const title = notification.title?.toLowerCase() || "";
+    const actionType = notification.action_type?.toUpperCase() || "";
+
+    if (title.includes("reminder") || actionType.includes("REMINDER")) {
+        return <FaClock className="text-indigo-600" size={16} />;
+    }
+    if (actionType.includes("TASK")) {
+        return <FaClipboardList className="text-sky-600" size={16} />;
+    }
+    return <FaBell className="text-slate-500" size={16} />;
+};
 
 const NotificationBell = () => {
     const { notifications, fetchNotifications, markAsRead, clearNotifications, deleteNotification, bulkDeleteNotifications } = useNotification();
@@ -160,8 +174,8 @@ const NotificationBell = () => {
                                                     className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border border-white shadow-sm"
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-xs border border-white shadow-sm">
-                                                    {notification.actor?.username?.charAt(0).toUpperCase() || 'S'}
+                                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm">
+                                                    {getNotificationIcon(notification)}
                                                 </div>
                                             )}
                                         </div>

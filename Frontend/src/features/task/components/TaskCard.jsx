@@ -109,6 +109,20 @@ const TaskCard = ({ task, onDelete }) => {
                 {task.description}
             </p>
 
+            {task.deadline && (
+                <div className="mb-4 pl-2 flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Deadline:</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                        new Date(task.deadline) < new Date()
+                            ? "bg-rose-50 text-rose-600 border border-rose-100"
+                            : "bg-slate-100 text-slate-700 border border-slate-200"
+                    }`}>
+                        <FaClock size={8} className="text-current" />
+                        {format(new Date(task.deadline), 'MMM d, h:mm a')}
+                    </span>
+                </div>
+            )}
+
             <div className="mt-auto pl-2 pt-3 border-t border-slate-200 flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
                     <FaClock size={10} />

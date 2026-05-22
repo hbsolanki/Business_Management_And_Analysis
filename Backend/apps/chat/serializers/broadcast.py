@@ -8,10 +8,11 @@ class MessageBroadcastUserSerializer(serializers.Serializer):
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     def validate_user_id(self, value):
-        request_user = self.context["request"].user
+        request = self.context["request"]
+        user = request.user
         if not value.is_active:
             raise serializers.ValidationError("User is not active")
-        if value.business_id != request_user.business_id:
+        if value.business_id != user.business_id:
             raise serializers.ValidationError("User does not belong to your business")
         return value
 
@@ -38,18 +39,13 @@ class BroadcastGroupMemberSerializer(serializers.ModelSerializer):
         read_only_fields = ["user"]
 
     def validate_user_id(self, value):
-        request_user = self.context["request"].user
+        request = self.context["request"]
+        user = request.user
         if not value.is_active:
             raise serializers.ValidationError("User is not active")
-        if value.business_id != request_user.business_id:
+        if value.business_id != user.business_id:
             raise serializers.ValidationError("User does not belong to your business")
         return value
-
-    def validate(self, attrs):
-        # Prevent duplicate users in the same group member list
-        user_id = attrs.get("user_member")
-        # This is handled by many=True in the parent serializer's validation
-        return attrs
 
 class BroadcastGroupSerializer(serializers.ModelSerializer):
     users = BroadcastGroupMemberSerializer(
@@ -63,8 +59,9 @@ class BroadcastGroupSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate_name(self, value):
-        request_user = self.context["request"].user
-        qs = BroadcastGroup.objects.filter(user=request_user, name__iexact=value)
+        request = self.context["request"]
+        user = request.user
+        qs = BroadcastGroup.objects.filter(user=user, name__iexact=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         
@@ -80,11 +77,12 @@ class BroadcastGroupSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        request_user = self.context["request"].user
+        request = self.context["request"]
+        user = request.user
         users_data = validated_data.pop("broadcast_group_members", [])
 
         with transaction.atomic():
-            group = BroadcastGroup.objects.create(user=request_user, **validated_data)
+            group = BroadcastGroup.objects.create(user=user, **validated_data)
 
             members_data = [{'user_id': item['user_member'].id} for item in users_data]
             member_serializer = BroadcastGroupMemberSerializer(

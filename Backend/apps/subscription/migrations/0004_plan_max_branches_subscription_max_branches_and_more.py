@@ -4,25 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('subscription', '0003_alter_plan_duration_days'),
+        ("subscription", "0003_alter_plan_duration_days"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='plan',
-            name='max_branches',
+            model_name="plan",
+            name="max_branches",
             field=models.IntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='subscription',
-            name='max_branches',
+            model_name="subscription",
+            name="max_branches",
             field=models.IntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='usage',
-            name='branches_created',
+            model_name="usage",
+            name="branches_created",
             field=models.IntegerField(default=0),
         ),
     ]

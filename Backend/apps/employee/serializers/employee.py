@@ -8,7 +8,6 @@ from apps.user.serializers.user import UserSerializer
 from apps.employee.serializers.employee_details import EmployeeDetailsSerializer
 from apps.employee.serializers.user_branch import UserBranchSerializer
 from apps.employee.serializers.user_branch_work import UserBranchWorkSerializer
-from apps.employee.serializers.user_business_role import UserBusinessRoleSerializer
 from apps.employee.models import UserBusinessRole, EmployeeDetails, UserBranch, UserBranchWork, UserRole
 from apps.employee.utils.permission_utils import sync_user_role_permissions
 
@@ -38,7 +37,7 @@ class EmployeeSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         request = self.context.get("request")
-        business = request.user.business
+        business = request.user.business if request else None
 
         user_data = self.initial_data.get("user")
         if not user_data:

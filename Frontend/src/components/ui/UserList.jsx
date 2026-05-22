@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import {
-    PencilSquareIcon,
-    TrashIcon,
-    ChevronRightIcon,
-    MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
+    HiOutlinePencilSquare,
+    HiOutlineTrash,
+    HiOutlineChevronRight,
+    HiOutlineMagnifyingGlass,
+} from "react-icons/hi2";
 import { FaUserTie, FaIdCard, FaEnvelope, FaPhone, FaCircle, FaComments, FaPowerOff, FaEllipsisV, FaTimes } from "react-icons/fa";
 import { getProfileImageUrl } from "@/utils/imageUtils";
 
@@ -165,7 +165,7 @@ export default function UserList({
                 </div>
 
                 <div className="relative w-full md:max-w-md">
-                    <MagnifyingGlassIcon className="h-5 w-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <HiOutlineMagnifyingGlass className="h-5 w-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
                         placeholder={`Search ${isManager ? "managers" : "employees"}...`}
@@ -178,7 +178,7 @@ export default function UserList({
 
             {filteredUsers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center py-12">
-                    <MagnifyingGlassIcon className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                    <HiOutlineMagnifyingGlass className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                     <p className="text-slate-500">{`No results found for "${searchTerm}"`}</p>
                 </div>
             ) : (
@@ -403,7 +403,7 @@ export default function UserList({
                                     {rowClickable && (
                                         <div className="flex items-center justify-end mt-4 text-xs font-medium text-slate-500 border-t border-slate-200 pt-4">
                                             <span className="flex items-center gap-1 text-slate-600">
-                                                View Profile <ChevronRightIcon className="w-3 h-3" />
+                                                View Profile <HiOutlineChevronRight className="w-3 h-3" />
                                             </span>
                                         </div>
                                     )}
@@ -434,7 +434,7 @@ export default function UserList({
                             }}
                             className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-bold transition-colors"
                         >
-                            <ChevronRightIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
+                            <HiOutlineChevronRight className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
                             View Profile
                         </button>
                     )}
@@ -446,7 +446,7 @@ export default function UserList({
                             }}
                             className="w-full flex items-center px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-bold transition-colors"
                         >
-                            <PencilSquareIcon className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
+                            <HiOutlinePencilSquare className="h-4 w-4 mr-3 text-slate-400 group-hover:text-slate-900" />
                             Edit {isManager ? "Manager" : "Employee"}
                         </button>
                     )}
@@ -485,7 +485,7 @@ export default function UserList({
                                 }}
                                 className="w-full flex items-center px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 font-medium transition-colors"
                             >
-                                <TrashIcon className="h-4 w-4 mr-3 text-rose-500" />
+                                <HiOutlineTrash className="h-4 w-4 mr-3 text-rose-500" />
                                 Delete {isManager ? "Manager" : "Employee"}
                             </button>
                         </>

@@ -45,9 +45,6 @@ function Header() {
                             alt="BizVisionary Logo"
                             className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
                         />
-                        <span className="text-2xl font-display font-semibold text-slate-900 tracking-tight group-hover:text-brand-700 transition-colors">
-                            BizVisionary
-                        </span>
                     </Link>
 
                     {/* Desktop Menu */}

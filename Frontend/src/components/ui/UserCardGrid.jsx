@@ -1,10 +1,10 @@
 import {
-  PencilSquareIcon,
-  TrashIcon,
-  UserIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-} from "@heroicons/react/24/outline";
+  HiOutlinePencilSquare,
+  HiOutlineTrash,
+  HiOutlineUser,
+  HiOutlineEnvelope,
+  HiOutlinePhone,
+} from "react-icons/hi2";
 
 function UserCardGrid({
   title,
@@ -34,17 +34,17 @@ function UserCardGrid({
               />
 
               <h3 className="mt-4 text-lg font-semibold text-slate-900 flex items-center gap-1">
-                <UserIcon className="h-5 w-5 text-slate-500" />
+              <HiOutlineUser className="h-5 w-5 text-slate-500" />
                 {user.first_name} {user.last_name}
               </h3>
 
               <div className="mt-2 space-y-1 text-sm text-slate-600">
                 <p className="flex items-center gap-1">
-                  <EnvelopeIcon className="h-4 w-4" />
+                  <HiOutlineEnvelope className="h-4 w-4" />
                   {user.email || "N/A"}
                 </p>
                 <p className="flex items-center gap-1">
-                  <PhoneIcon className="h-4 w-4" />
+                  <HiOutlinePhone className="h-4 w-4" />
                   {user.mobile_number}
                 </p>
                 <p>
@@ -57,7 +57,7 @@ function UserCardGrid({
                   href={`${editPath}/${user.id}/edit`}
                   className="text-brand-700 hover:text-brand-800 flex items-center gap-1 font-semibold"
                 >
-                  <PencilSquareIcon className="h-4 w-4" />
+                  <HiOutlinePencilSquare className="h-4 w-4" />
                   Edit
                 </a>
 
@@ -66,7 +66,7 @@ function UserCardGrid({
                     onClick={() => onDelete(user.id)}
                     className="text-red-600 hover:text-red-700 flex items-center gap-1 font-semibold"
                   >
-                    <TrashIcon className="h-4 w-4" />
+                    <HiOutlineTrash className="h-4 w-4" />
                     Delete
                   </button>
                 )}

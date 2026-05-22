@@ -1,19 +1,8 @@
 from django.db import models
 from apps.base.models import BaseModel, BaseAddress
+from apps.master.utils.text_choices import UserRole, WorkType
 
 from apps.business.models import Business, Branch
-
-class UserRole(models.TextChoices):
-    OWNER = "OWNER", "Owner"
-    MANAGER = "MANAGER", "Manager"
-    EMPLOYEE = "EMPLOYEE", "Employee"
-
-class WorkType(models.TextChoices):
-    PRODUCT = "PRODUCT", "Production"
-    INVENTORY = "INVENTORY", "Inventory"
-    ANALYTICS = "ANALYTICS", "Analytics"
-    INVOICE = "INVOICE", "Invoice"
-    SUPPLIER = "SUPPLIER", "Supplier"
 
 class UserBusinessRole(BaseModel):
     user = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name="business_roles")

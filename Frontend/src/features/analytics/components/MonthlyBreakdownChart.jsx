@@ -10,7 +10,7 @@ import {
     FaSync,
 } from "react-icons/fa";
 import api from "@/services/api";
-import AppPieChart from "@/components/charts/AppPieChart";
+import EChartRenderer from "@/components/charts/EChartRenderer";
 
 const MONTHS = [
     { value: 1, label: "January" },
@@ -245,27 +245,22 @@ export default function MonthlyBreakdownChart({ branchId = "" }) {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                         <div className="flex items-center justify-center relative">
-                            <AppPieChart
-                                data={sortedPieData}
-                                colors={COLORS}
-                                height={320}
-                                showLegend={false}
-                                seriesProps={{
-                                    highlightScope: { fade: "global", highlight: "item" },
-                                    faded: { innerRadius: 30, additionalRadius: -20, color: "gray" },
-                                    innerRadius: 80,
-                                    outerRadius: 150,
-                                    paddingAngle: 2,
-                                    cornerRadius: 6,
-                                    cx: 170,
-                                    cy: 160,
-                                    valueFormatter: (v) => formatCurrency(v.value),
-                                }}
+                            <EChartRenderer 
+                                config={{
+                                    chart_type: 'donut_chart',
+                                    pieData: sortedPieData,
+                                    title: "Expense Distribution",
+                                    option: {
+                                        legend: { show: false },
+                                        toolbox: { show: true }
+                                    }
+                                }} 
+                                height="380px" 
                             />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="text-center mt-2">
-                                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total</p>
-                                    <p className="text-xl font-bold text-slate-900">{formatCurrency(totalExpenses)}</p>
+                                <div className="text-center mt-6">
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Total</p>
+                                    <p className="text-2xl font-black text-slate-900">{formatCurrency(totalExpenses)}</p>
                                 </div>
                             </div>
                         </div>

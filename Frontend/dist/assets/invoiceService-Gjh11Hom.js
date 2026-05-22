@@ -1,0 +1,1 @@
+import{u as i}from"./index-BWBm6xbs.js";const c={getAll:(e="")=>i.get(`/invoice/${e}`),getByUrl:e=>i.get(e),getById:e=>i.get(`/invoice/${e}/`),create:e=>i.post("/invoice/",e),checkCustomer:(e,t)=>{let o=`/business/customer/?mobile_number=${e}`;return t&&(o+=`&branch_id=${t}`),i.get(o)}};export{c as i};

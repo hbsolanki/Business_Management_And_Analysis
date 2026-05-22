@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from apps.base.tests import BaseTestCase
-from apps.chat.models import Message, Conversation
+from apps.chat.models import Message
 
 class MessageTestCase(BaseTestCase):
 
@@ -130,7 +130,7 @@ class MessageTestCase(BaseTestCase):
         # Message for Owner A
         msg_a = Message.objects.create_message(self.conv_a1, self.owner_a, "Owner A messsage")
         # Meesage for Owner B
-        msg_b = Message.objects.create_message(self.conv_b1, self.owner_b, "Owner B Message")
+        Message.objects.create_message(self.conv_b1, self.owner_b, "Owner B Message")
         
         # Manager B (Business B) tries to delete Owner A's message
         self.client.force_authenticate(user=self.manager_b1)

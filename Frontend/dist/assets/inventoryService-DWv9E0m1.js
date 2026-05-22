@@ -1,0 +1,1 @@
+import{u as n}from"./index-BWBm6xbs.js";const o={getStock:(t="")=>n.get(`/inventory/stock/${t}`),getById:t=>n.get(`/inventory/${t}/`),getStockByUrl:t=>n.get(t),getTransactions:(t="")=>n.get(`/inventory/transaction/${t}`),getTransactionsByUrl:t=>n.get(t),createTransaction:t=>n.post("/inventory/transaction/",t)};export{o as i};

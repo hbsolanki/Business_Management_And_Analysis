@@ -3,7 +3,6 @@ from apps.supplier.models import SalesOrder, SalesOrderItem
 from apps.invoice.models import Invoice
 from apps.inventory.models import InventoryTransaction
 from apps.supplier.tasks.sales_order_invoice_tasks import create_invoice_from_sales_order_task
-from apps.inventory.models import InventoryProduct
 
 class SalesOrderToInvoiceTaskTests(BaseTestCase):
     def setUp(self):

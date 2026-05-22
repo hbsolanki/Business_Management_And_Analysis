@@ -2,6 +2,7 @@ from django.db import models
 from apps.base.models import BaseModel, GST
 from apps.business.models import Business, Branch
 from apps.product.models import Product
+from apps.master.utils.text_choices import ITCType
 from decimal import Decimal
 from django.utils import timezone
 
@@ -123,11 +124,6 @@ class MonthlyCostCategory(BaseModel):
             models.Index(fields=["monthly_summary"])
         ]
 
-
-class ITCType(models.TextChoices):
-    INPUTS = "INPUTS", "Inputs"
-    INPUT_SERVICES = "INPUT_SERVICES", "Input Services"
-    CAPITAL_GOODS = "CAPITAL_GOODS", "Capital Goods"
 
 class Expense(BaseModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="expenses")

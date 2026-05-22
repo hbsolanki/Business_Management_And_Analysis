@@ -36,8 +36,9 @@ class MonthlyCostCategorySerializer(BaseSerializer):
         ]
 
     def validate_cost_category_id(self, value):
-        user = self.context["request"].user
-        if value.business_id != user.business.id:
+        request = self.context["request"]
+        user = request.user
+        if value.business_id != user.business_id:
             raise serializers.ValidationError("Cost category must belong to your business.")
         return value
 
@@ -57,7 +58,8 @@ class MonthlyCostCategorySerializer(BaseSerializer):
         return attrs
 
     def create(self, validated_data):
-        user = self.context["request"].user
+        request = self.context["request"]
+        user = request.user
         today = timezone.now()
 
         month = self.context.get('month') or today.month
@@ -102,7 +104,8 @@ class MonthlyCostCategorySerializer(BaseSerializer):
         )
 
     def update(self, instance, validated_data):
-        user = self.context["request"].user
+        request = self.context["request"]
+        user = request.user
         tax_data = validated_data.pop("tax_data", None)
         gst_rate = validated_data.pop("gst_rate", None)
         gst_obj = validated_data.pop("gst", None)
@@ -165,8 +168,9 @@ class MonthlyCostCategoryBulkSerializer(BaseSerializer):
         fields = ['cost_category_items', 'month', 'year', 'branch_id']
 
     def validate_branch_id(self, value):
-        user = self.context["request"].user
-        if value.business_id != user.business.id:
+        request = self.context["request"]
+        user = request.user
+        if value.business_id != user.business_id:
             raise serializers.ValidationError("Branch must belong to your business.")
         return value
 
@@ -174,8 +178,8 @@ class MonthlyCostCategoryBulkSerializer(BaseSerializer):
         if not value:
             raise serializers.ValidationError("At least one cost category item is required.")
         
-        unique_items = {item["cost_category"].id: item for item in value}
-        return list(unique_items.values())
+        # Deduplicate by category id, last one wins
+        return list({item["cost_category"].id: item for item in value}.values())
 
     def create(self, validated_data):
         items_data = validated_data.pop('cost_category_items')

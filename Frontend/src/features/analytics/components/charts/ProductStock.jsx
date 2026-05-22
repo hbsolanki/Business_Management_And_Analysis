@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BarChart } from "@mui/x-charts/BarChart";
+import EChartRenderer from "@/components/charts/EChartRenderer";
 import { FaBoxOpen, FaExclamationTriangle } from "react-icons/fa";
 
 export default function ProductStock({ products = [] }) {
@@ -33,38 +33,25 @@ export default function ProductStock({ products = [] }) {
         </div>
       </div>
 
-      <div className="w-full h-[400px]">
-        <BarChart
-          dataset={sortedProducts}
-          xAxis={[
-            {
-              scaleType: "band",
-              dataKey: "name",
-              tickLabelStyle: {
-                fontSize: 11,
-                angle: -45,
-                textAnchor: 'end',
-                fill: '#64748b'
-              },
-            },
-          ]}
-          series={[
-            {
-              dataKey: "stock",
-              label: "Stock Quantity",
-              color: "#6366f1", // Indigo 500
-              valueFormatter: (v) => `${v} units`,
-            },
-          ]}
-          layout="vertical"
-          grid={{ horizontal: true }}
-          margin={{ left: 50, right: 20, top: 20, bottom: 80 }}
-          slotProps={{ legend: { hidden: true } }}
-          sx={{
-            ".MuiBarElement-root": {
-              rx: 4,
+      <div className="w-full">
+        <EChartRenderer 
+          config={{
+            chart_type: 'vertical_bar',
+            labels: sortedProducts.map(p => p.name),
+            datasets: [
+              {
+                label: "Stock Quantity",
+                data: sortedProducts.map(p => p.stock || 0),
+              }
+            ],
+            option: {
+              color: ["#6366f1"],
+              yAxis: { name: "Units" },
+              toolbox: { show: true },
+              dataZoom: [{ type: 'inside' }, { type: 'slider' }]
             }
-          }}
+          }} 
+          height="400px" 
         />
       </div>
 

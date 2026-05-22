@@ -1,9 +1,11 @@
 from datetime import timedelta
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
 from apps.base.serializers.base import BaseSerializer
 from apps.subscription.models import Usage, Subscription, Plan
+from apps.subscription.utils.entitlements import get_active_subscription
 
 
 class PlanReadSerializer(BaseSerializer):
@@ -27,7 +29,9 @@ class PlanReadSerializer(BaseSerializer):
 class SubscriptionSerializer(BaseSerializer):
     status = serializers.SerializerMethodField()
     remaining_days = serializers.SerializerMethodField()
-    plan_id = serializers.IntegerField(write_only=True, required=True)
+    plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.all(), source="plan", write_only=True, required=True
+    )
 
     class Meta(BaseSerializer.Meta):
         model = Subscription
@@ -74,75 +78,110 @@ class SubscriptionSerializer(BaseSerializer):
         return max(delta.days, 0)
 
     def get_status(self, obj):
-        if not obj.is_active:
-            return "cancelled"
+        return obj.status.lower()
 
-        if obj.end_date < timezone.now():
-            return "expired"
 
-        return "active"
-
-    def validate_plan_id(self, value):
-        plan_obj = Plan.objects.filter(id=value).first()
-        if not plan_obj:
-            raise serializers.ValidationError("Plan does not exist")
-        self.context["plan_obj"] = plan_obj
-        return value
 
     def create(self, validated_data):
-        plan_obj = self.context["plan_obj"]
+        plan_obj = validated_data.pop("plan")
         request = self.context.get("request")
         business = request.user.business
-        business_id = business.id
 
         now = timezone.now()
-        existing_subscription = Subscription.objects.filter(business_id=business_id).first()
+        existing_subscription = get_active_subscription(business)
 
-        #Calculate Limits
-        limits = self._calculate_limits(plan_obj, existing_subscription)
+        # 1. Handle Renewals (Same Plan)
+        if existing_subscription and existing_subscription.plan_id == plan_obj.id:
+            if float(plan_obj.price) == 0:
+                with transaction.atomic():
+                    # Extend the existing subscription's end_date
+                    existing_subscription.end_date += timedelta(
+                        days=plan_obj.duration_days
+                    )
 
-        #Cleanup Old Subscription
-        if existing_subscription:
-            self._cleanup_old_subscription(business_id)
-        
-        #Create New Subscription
-        subscription = self._create_subscription(business, plan_obj, limits, now)
-        return subscription
+                    # Cumulative limit calculation for the same plan renewal
+                    if (
+                        plan_obj.max_products is not None
+                        and existing_subscription.max_products is not None
+                    ):
+                        existing_subscription.max_products += plan_obj.max_products
+                    if (
+                        plan_obj.max_invoices is not None
+                        and existing_subscription.max_invoices is not None
+                    ):
+                        existing_subscription.max_invoices += plan_obj.max_invoices
+                    if (
+                        plan_obj.max_staff is not None
+                        and existing_subscription.max_staff is not None
+                    ):
+                        existing_subscription.max_staff += plan_obj.max_staff
 
-    def _calculate_limits(self, plan_obj, existing_subscription):
-        max_products = plan_obj.max_products
-        max_invoices = plan_obj.max_invoices
-        max_staff = plan_obj.max_staff
-        max_branch = plan_obj.max_branches
+                    existing_subscription.save()
+                    return existing_subscription
+            else:
+                # Paid Renewal: create a PENDING_PAYMENT subscription queued to start after the active subscription ends
+                limits = {
+                    "max_products": plan_obj.max_products,
+                    "max_invoices": plan_obj.max_invoices,
+                    "max_staff": plan_obj.max_staff,
+                    "max_branches": plan_obj.max_branches,
+                }
+                start_date = existing_subscription.end_date
+                return self._create_subscription(
+                    business, plan_obj, limits, start_date, is_free_plan=False
+                )
 
-        if existing_subscription and existing_subscription.is_valid():
-            if max_products is not None and existing_subscription.max_products is not None:
-                max_products += existing_subscription.max_products
-            elif existing_subscription.max_products is None:
-                max_products = None
+        # 2. Handle Plan Transitions (Different Plan)
+        is_free_plan = float(plan_obj.price) == 0
+        is_upgrade = (
+            existing_subscription is None
+            or plan_obj.price >= existing_subscription.price
+        )
 
-            if max_invoices is not None and existing_subscription.max_invoices is not None:
-                max_invoices += existing_subscription.max_invoices
-            elif existing_subscription.max_invoices is None:
-                max_invoices = None
+        if is_upgrade:
+            # Immediate Upgrade (non-cumulative limits)
+            limits = {
+                "max_products": plan_obj.max_products,
+                "max_invoices": plan_obj.max_invoices,
+                "max_staff": plan_obj.max_staff,
+                "max_branches": plan_obj.max_branches,
+            }
+            with transaction.atomic():
+                if existing_subscription:
+                    existing_subscription.is_active = False
+                    existing_subscription.status = (
+                        Subscription.SubscriptionStatus.SUPERSEDED
+                    )
+                    existing_subscription.cancelled_at = now
+                    existing_subscription.save(
+                        update_fields=["is_active", "status", "cancelled_at"]
+                    )
 
-            if max_staff is not None and existing_subscription.max_staff is not None:
-                max_staff += existing_subscription.max_staff
-            elif existing_subscription.max_staff is None:
-                max_staff = None
+                return self._create_subscription(
+                    business, plan_obj, limits, now, is_free_plan=is_free_plan
+                )
+        else:
+            # Queued Downgrade (start after current subscription ends)
+            limits = {
+                "max_products": plan_obj.max_products,
+                "max_invoices": plan_obj.max_invoices,
+                "max_staff": plan_obj.max_staff,
+                "max_branches": plan_obj.max_branches,
+            }
+            start_date = existing_subscription.end_date
+            return self._create_subscription(
+                business, plan_obj, limits, start_date, is_free_plan=False
+            )
 
-        return {
-            "max_products": max_products,
-            "max_invoices": max_invoices,
-            "max_staff": max_staff,
-            "max_branch": max_branch,
-        }
-
-    def _cleanup_old_subscription(self, business_id):
-        Subscription.objects.filter(business_id=business_id).delete()
-
-    def _create_subscription(self, business, plan_obj, limits, now):
-        end_date = now + timedelta(days=plan_obj.duration_days)
+    def _create_subscription(
+        self, business, plan_obj, limits, start_date, is_free_plan=False
+    ):
+        end_date = start_date + timedelta(days=plan_obj.duration_days)
+        status = (
+            Subscription.SubscriptionStatus.ACTIVE
+            if is_free_plan
+            else Subscription.SubscriptionStatus.PENDING_PAYMENT
+        )
         return Subscription.objects.create(
             business=business,
             plan=plan_obj,
@@ -152,19 +191,28 @@ class SubscriptionSerializer(BaseSerializer):
             max_products=limits["max_products"],
             max_invoices=limits["max_invoices"],
             max_staff=limits["max_staff"],
-            max_branches=limits["max_branch"],
+            max_branches=limits["max_branches"],
             has_advanced_analytics=plan_obj.has_advanced_analytics,
             has_chat=plan_obj.has_chat,
             has_api_access=plan_obj.has_api_access,
             has_ai_agent=plan_obj.has_ai_agent,
-            start_date=now,
+            start_date=start_date,
             end_date=end_date,
+            is_active=is_free_plan,
+            status=status,
+            payment_mode="FREE" if is_free_plan else None,
+            payment_date=start_date if is_free_plan else None,
         )
-
-
 
 
 class PlanUsageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usage
-        fields = ["id", "subscription_id", "product_created", "invoices_created", "staff_created", "branches_created"]
+        fields = [
+            "id",
+            "subscription_id",
+            "product_created",
+            "invoices_created",
+            "staff_created",
+            "branches_created",
+        ]

@@ -1,6 +1,6 @@
 import django_filters
 from apps.invoice.models import Invoice
-from apps.supplier.models import SalesOrder, PurchaseOrder
+from apps.supplier.models import PurchaseOrder
 from apps.cost.models import Expense
 
 from apps.gst_management.models import MonthlyGSTSummary

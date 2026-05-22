@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator
 from apps.business.models import Business, Branch
 from apps.base.models import BaseModel
+from apps.master.utils.text_choices import InventoryTransactionAction
 from apps.product.models import Product
 
 class Inventory(models.Model):
@@ -27,10 +28,7 @@ class InventoryProduct(BaseModel):
             models.UniqueConstraint(fields=["inventory", "product"],name="unique_inventory_product") ]
 
 class InventoryTransaction(BaseModel):
-
-    class Action(models.TextChoices):
-        IN = "IN", "Stock In"
-        OUT = "OUT", "Stock Out"
+    Action = InventoryTransactionAction
 
     action=models.CharField(max_length=10,choices=Action.choices)
     description=models.CharField(max_length=200)

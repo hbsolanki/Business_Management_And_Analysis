@@ -1,5 +1,7 @@
 import uuid
 import pickle
+from decimal import Decimal
+import datetime
 from typing import Any, Optional
 import redis.asyncio as redis
 
@@ -7,6 +9,34 @@ from google.adk.sessions.base_session_service import BaseSessionService, GetSess
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.sessions.session import Session
 from google.adk.events.event import Event
+
+
+def _json_safe(obj: Any) -> Any:
+    """Recursively convert Decimal/UUID/date to JSON-serializable primitives."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (uuid.UUID, datetime.date, datetime.datetime)):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(i) for i in obj]
+    return obj
+
+
+def _sanitize_event(event: Event) -> Event:
+    """Walk an ADK Event's function responses and sanitize non-JSON-safe values."""
+    try:
+        if not event.content or not event.content.parts:
+            return event
+        for part in event.content.parts:
+            if hasattr(part, 'function_response') and part.function_response:
+                fr = part.function_response
+                if hasattr(fr, 'response') and isinstance(fr.response, dict):
+                    fr.response = _json_safe(fr.response)
+    except Exception:
+        pass  # Never crash on sanitization — better to have unclean data than no data
+    return event
 
 
 class RedisSessionService(BaseSessionService):
@@ -65,6 +95,9 @@ class RedisSessionService(BaseSessionService):
         if not data:
             return None
         session = pickle.loads(data)
+        # Sanitize all event content — Decimal/UUID/date objects stored via pickle
+        # will crash the ADK's JSON serialization when sending history to Gemini.
+        session.events = [_sanitize_event(e) for e in session.events]
         if config:
             if config.num_recent_events:
                 session.events = session.events[-config.num_recent_events:]

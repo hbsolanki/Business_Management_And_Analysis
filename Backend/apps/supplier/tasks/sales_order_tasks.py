@@ -70,7 +70,7 @@ def synchronize_sales_order_to_customer_task(sales_order_id):
                             title="Inventory Match Alert",
                             content=f"Supplier {sales_order.business.name} created a Purchase Order for you, but it includes {product_name} (Category: {category_name}) with SKU {sku}, which is not in your inventory.",
                             action_type="TASK_CREATED",
-                            action_link=f"supplier/purchase-orders/" # Link to list since ID not yet known
+                            action_link="supplier/purchase-orders/" # Link to list since ID not yet known
                         )
 
             if not po_items:
@@ -132,7 +132,6 @@ def synchronize_purchase_order_status_update_to_customer_task(sales_order_id):
     Otherwise, pushes to their external API.
     """
     try:
-        from apps.supplier.models import PurchaseOrder
         sales_order = SalesOrder.objects.get(id=sales_order_id)
         
         if sales_order.customer and sales_order.customer.same_platform:
@@ -181,7 +180,7 @@ def synchronize_sales_order_items_update_to_customer_task(sales_order_id):
     If same_platform, updates the linked Purchase Order items.
     """
     try:
-        from apps.supplier.models import PurchaseOrder, PurchaseOrderItem
+        from apps.supplier.models import PurchaseOrderItem
         from apps.product.models import Product
         
         sales_order = SalesOrder.objects.get(id=sales_order_id)

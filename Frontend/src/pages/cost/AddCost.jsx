@@ -115,6 +115,24 @@ export default function AddCost() {
         }
     };
 
+    // Deep linking logic for reminder action link
+    useEffect(() => {
+        if (!loading && categories.length > 0) {
+            const catId = searchParams.get('category_id');
+            if (catId) {
+                // Short timeout to ensure DOM is fully rendered
+                setTimeout(() => {
+                    const el = document.getElementById(`category-${catId}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('ring-4', 'ring-amber-400', 'ring-offset-2');
+                        setTimeout(() => el.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-2'), 3000);
+                    }
+                }, 100);
+            }
+        }
+    }, [loading, categories, searchParams]);
+
     const handleInputChange = (categoryId, field, value) => {
         setCosts((prev) => ({
             ...prev,
@@ -279,7 +297,7 @@ export default function AddCost() {
                                         const gstPrice = (amount * (rate / 100)).toFixed(2);
                                         
                                         return (
-                                            <div key={category.id} className="group p-5 bg-slate-50/30 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300">
+                                            <div key={category.id} id={`category-${category.id}`} className="group p-5 bg-slate-50/30 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300">
                                                 <div className="flex flex-col lg:flex-row gap-6">
                                                     {/* Info Section */}
                                                     <div className="flex items-center gap-4 min-w-[200px]">

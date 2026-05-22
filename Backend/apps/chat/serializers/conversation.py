@@ -2,7 +2,6 @@ from apps.master.serializers.user import UserBasicDetailsSerializer
 from rest_framework import serializers
 from apps.user.models import User
 from apps.chat.models import Conversation
-from django.db.models import Q
 
 
 class ConversationGetOrCreateSerializer(serializers.ModelSerializer):

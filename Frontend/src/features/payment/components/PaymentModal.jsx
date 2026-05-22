@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { FaTimes, FaShieldAlt } from "react-icons/fa";
 import { paymentService } from "@/services/paymentService";
 import CheckoutForm from "./CheckoutForm";
+import { toast } from "react-hot-toast";
 
 // Initialize Stripe
 // Initialize Stripe - added catch to prevent unhandled promise rejections from AdBlockers
@@ -12,10 +13,51 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY).ca
     return null;
 });
 
+const appearance = {
+    theme: 'stripe',
+    variables: {
+        colorPrimary: '#0f172a',
+        colorBackground: '#ffffff',
+        colorText: '#1e293b',
+        colorDanger: '#ef4444',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        spacingUnit: '4px',
+        borderRadius: '12px',
+    },
+    rules: {
+        '.Input': {
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            transition: 'all 0.2s ease',
+        },
+        '.Input:focus': {
+            border: '1px solid #0f172a',
+            boxShadow: '0 0 0 4px rgba(15, 23, 42, 0.1)',
+        },
+        '.Label': {
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#64748b',
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.025em',
+        },
+        '.Tab': {
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        },
+        '.Tab--selected': {
+            border: '1px solid #0f172a',
+            boxShadow: '0 0 0 1px #0f172a',
+        },
+    }
+};
+
 export default function PaymentModal({ isOpen, onClose, invoiceId, subscriptionId, amount, onPaymentSuccess }) {
     const [clientSecret, setClientSecret] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [confirmingMock, setConfirmingMock] = useState(false);
 
     useEffect(() => {
         if (isOpen && (invoiceId || subscriptionId)) {
@@ -61,51 +103,31 @@ export default function PaymentModal({ isOpen, onClose, invoiceId, subscriptionI
         }
     }, [isOpen, invoiceId, subscriptionId]);
 
-    if (!isOpen) return null;
-
-    const appearance = {
-        theme: 'stripe',
-        variables: {
-            colorPrimary: '#0f172a',
-            colorBackground: '#ffffff',
-            colorText: '#1e293b',
-            colorDanger: '#ef4444',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            spacingUnit: '4px',
-            borderRadius: '12px',
-        },
-        rules: {
-            '.Input': {
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                transition: 'all 0.2s ease',
-            },
-            '.Input:focus': {
-                border: '1px solid #0f172a',
-                boxShadow: '0 0 0 4px rgba(15, 23, 42, 0.1)',
-            },
-            '.Label': {
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#64748b',
-                marginBottom: '8px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.025em',
-            },
-            '.Tab': {
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-            },
-            '.Tab--selected': {
-                border: '1px solid #0f172a',
-                boxShadow: '0 0 0 1px #0f172a',
-            },
+    const handleMockPayment = async () => {
+        if (!subscriptionId) return;
+        setConfirmingMock(true);
+        try {
+            await paymentService.confirmSubscriptionPayment({
+                subscription_id: subscriptionId,
+                mock: true
+            });
+            toast.success("Mock payment simulated successfully!");
+            if (onPaymentSuccess) onPaymentSuccess({ status: "succeeded", mock: true });
+            if (onClose) onClose();
+        } catch (err) {
+            console.error("Mock payment simulation failed:", err);
+            toast.error(err?.response?.data?.error || "Mock payment confirmation failed");
+        } finally {
+            setConfirmingMock(false);
         }
     };
-    const options = {
+
+    const options = useMemo(() => ({
         clientSecret,
         appearance,
-    };
+    }), [clientSecret]);
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -132,7 +154,7 @@ export default function PaymentModal({ isOpen, onClose, invoiceId, subscriptionI
                     </div>
 
                     {/* Content */}
-                    <div className="px-6 py-6">
+                    <div className="px-6 py-6 pb-2">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <div className="w-10 h-10 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -152,10 +174,45 @@ export default function PaymentModal({ isOpen, onClose, invoiceId, subscriptionI
                             </div>
                         ) : clientSecret ? (
                             <Elements options={options} stripe={stripePromise}>
-                                <CheckoutForm amount={amount} onClose={onClose} onPaymentSuccess={onPaymentSuccess} />
+                                <CheckoutForm 
+                                    amount={amount} 
+                                    onClose={onClose} 
+                                    onPaymentSuccess={onPaymentSuccess} 
+                                    subscriptionId={subscriptionId}
+                                    invoiceId={invoiceId}
+                                />
                             </Elements>
                         ) : null}
                     </div>
+
+                    {/* Developer Simulation Section */}
+                    {subscriptionId && (
+                        <div className="px-6 pb-6 pt-0">
+                            <div className="bg-slate-50/80 border border-slate-100 rounded-2xl p-4 flex flex-col gap-2">
+                                <div className="flex items-center justify-between text-slate-500">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-xs">🛠️</span>
+                                        <span className="text-[9px] font-black uppercase tracking-[0.1em]">Local Simulation Mode</span>
+                                    </div>
+                                    <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-200/50 text-slate-500 font-bold uppercase">Stripe Bypass</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">
+                                    Testing offline or locally without stripe CLI webhook listener? Simulate a successful gateway signal to activate your subscription instantly.
+                                </p>
+                                <button
+                                    onClick={handleMockPayment}
+                                    disabled={confirmingMock}
+                                    className="w-full mt-1.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all text-center flex items-center justify-center shadow-sm shadow-emerald-500/5 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+                                >
+                                    {confirmingMock ? (
+                                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        "Simulate Instant Payment"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

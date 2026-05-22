@@ -6,7 +6,6 @@ import {
     FaEnvelope,
     FaPhone,
     FaSearch,
-    FaSave,
     FaSpinner,
     FaTimes,
     FaUser,
@@ -35,9 +34,10 @@ function getErrorText(value) {
     return String(value);
 }
 
-export default function AddCustomer() {
+export default function AddCustomer({ isEmbed = false, id: embedId = null, onComplete = null, initialData = null }) {
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id: routeId } = useParams();
+    const id = embedId || routeId;
     const isEditMode = Boolean(id);
 
     const [formData, setFormData] = useState(INITIAL_FORM);
@@ -111,6 +111,20 @@ export default function AddCustomer() {
     }, [businessSearch, formData.same_platform, loadBusinesses]);
 
     useEffect(() => {
+        if (initialData && !isEditMode) {
+            setFormData({
+                name: initialData.name || "",
+                mobile_number: initialData.mobile_number || "",
+                gender: initialData.gender || "",
+                age: initialData.age ? String(initialData.age) : "",
+                email: initialData.email || "",
+                same_platform: Boolean(initialData.same_platform),
+                supplier_business_id: initialData.supplier_business_id ? String(initialData.supplier_business_id) : "",
+            });
+        }
+    }, [initialData, isEditMode]);
+
+    useEffect(() => {
         if (!isEditMode) return;
 
         let isMounted = true;
@@ -154,6 +168,7 @@ export default function AddCustomer() {
                 }
             } catch (error) {
                 toast.error(extractFirstError(error, "Failed to load customer"));
+                if (isEmbed && onComplete) { onComplete(null); return; }
                 navigate(-1);
             } finally {
                 if (isMounted) setLoadingForm(false);
@@ -263,11 +278,13 @@ export default function AddCustomer() {
                     return;
                 }
 
-                await customerService.update(id, changedFields);
+                const res = await customerService.update(id, changedFields);
                 toast.success("Customer updated successfully");
+                if (isEmbed && onComplete) { onComplete(res.data); return; }
             } else {
-                await customerService.create(payload);
+                const res = await customerService.create(payload);
                 toast.success("Customer created successfully");
+                if (isEmbed && onComplete) { onComplete(res.data); return; }
             }
             navigate(-1);
         } catch (error) {
@@ -290,37 +307,30 @@ export default function AddCustomer() {
 
     const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2";
 
-    return (
-        <div className="min-h-screen bg-transparent">
-            <ProtectedHeader />
+    const formContent = (
+        <div className={`bg-white ${isEmbed ? "" : "rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50"} overflow-hidden`}>
+            {!isEmbed && (
+                <header className="px-8 sm:px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg">
+                            <FaUser />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-900">{isEditMode ? "Edit Customer" : "Create Customer"}</h1>
+                            <p className="text-sm text-slate-500">Manage customer identity and platform mapping.</p>
+                        </div>
+                    </div>
+                </header>
+            )}
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-                <BackButton label="Back" />
-
-                <div className="max-w-3xl mx-auto">
-                    <section className="form-card overflow-visible">
-                        <header className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-                                <FaUser />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900">
-                                    {isEditMode ? "Edit Customer" : "Create Customer"}
-                                </h1>
-                                <p className="text-sm text-slate-500">
-                                    Manage customer identity and platform mapping.
-                                </p>
-                            </div>
-                        </header>
-
-                        {loadingForm ? (
-                            <div className="p-10 flex items-center justify-center text-slate-500">
-                                <FaSpinner className="animate-spin mr-2" />
-                                Loading customer details...
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="form-section p-8 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {loadingForm ? (
+                <div className="p-10 flex items-center justify-center text-slate-500">
+                    <FaSpinner className="animate-spin mr-2" />
+                    Loading customer details...
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className={`${isEmbed ? "p-4 space-y-4" : "form-section p-8 space-y-6"}`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Name field kept in UI for UX, but excluded from payload as per request */}
                                     <div>
                                         <label className={labelClass}>Customer Name <span className="text-red-500">*</span></label>
@@ -515,29 +525,39 @@ export default function AddCustomer() {
                                             {getErrorText(errors.customer_business || errors.supplier_business_id) && <p className="text-red-500 text-xs mt-2 font-medium">{getErrorText(errors.customer_business || errors.supplier_business_id)}</p>}
                                         </div>
                                     )}
-                                </div>
+                    </div>
 
-                                <div className="form-actions">
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate(-1)}
-                                        className="btn-secondary"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className={`btn-primary inline-flex items-center gap-2 ${saving ? "opacity-70 cursor-not-allowed" : ""}`}
-                                    >
-                                        <FaSave />
-                                        {saving ? "Saving..." : isEditMode ? "Update Customer" : "Create Customer"}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </section>
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={() => { if (isEmbed && onComplete) { onComplete(null); } else { navigate(-1); } }}
+                            className="px-5 py-2 rounded-lg text-slate-400 font-bold uppercase tracking-widest text-xs hover:text-slate-900 hover:bg-slate-50 transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="px-8 py-2.5 rounded-xl bg-slate-800 text-white font-bold uppercase tracking-widest text-xs shadow-lg hover:bg-slate-700 transition-all disabled:opacity-50"
+                        >
+                            {saving ? "Processing..." : isEditMode ? "Update Customer" : "Create Customer"}
+                        </button>
+                    </div>
+                </form>
+            )}
+        </div>
+    );
+
+    if (isEmbed) return formContent;
+
+    return (
+        <div className="min-h-screen bg-transparent">
+            <ProtectedHeader />
+            <main className="max-w-3xl mx-auto px-4 pt-6 pb-12">
+                <div className="mb-4">
+                    <BackButton label="Back" />
                 </div>
+                {formContent}
             </main>
         </div>
     );

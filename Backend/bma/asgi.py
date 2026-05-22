@@ -10,12 +10,14 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 
 from apps.chat.routing import websocket_urlpatterns as chat_ws
 from apps.activity_log.routing import websocket_urlpatterns as activity_ws
+from apps.ai_agent.routing import websocket_urlpatterns as ai_agent_ws
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
     "websocket": JWTAuthMiddleware(
         URLRouter(
-                chat_ws + activity_ws
+                chat_ws + activity_ws + ai_agent_ws
         )
     ),
 })
+

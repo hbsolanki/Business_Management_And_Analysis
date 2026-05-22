@@ -1,16 +1,8 @@
 from django.db import models
 from apps.base.models import BaseModel, GST
 from apps.business.models import Business, Branch, BusinessCustomer
+from apps.master.utils.text_choices import OrderStatus
 from apps.product.models import Product
-
-
-class OrderStatus(models.TextChoices):
-    PENDING = "PENDING", "Pending"
-    CONFIRMED = "CONFIRMED", "Confirmed"
-    SHIPPED = "SHIPPED", "Shipped"
-    DELIVERED = "DELIVERED", "Delivered"
-    FAILED = "FAILED", "Failed"
-    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class Supplier(BaseModel):

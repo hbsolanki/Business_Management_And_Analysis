@@ -1,24 +1,24 @@
-import { BarChart } from '@mui/x-charts/BarChart';
+import EChartRenderer from "@/components/charts/EChartRenderer";
 
 export default function BasicBars({ xAxis, series, height }) {
+  const labels = xAxis?.[0]?.data || [];
+  const datasets = series.map(s => ({
+    label: s.label,
+    data: s.data
+  }));
+
   return (
-    <BarChart
-      xAxis={xAxis}
-      series={series}
-      height={height}
-      grid={{ horizontal: true }}
-      margin={{ left: 70, right: 20, top: 40, bottom: 40 }}
-      slotProps={{
-        legend: {
-          direction: 'horizontal',
-          position: { vertical: 'top', horizontal: 'center' },
+    <EChartRenderer 
+      config={{
+        chart_type: 'vertical_bar',
+        labels,
+        datasets,
+        option: {
+            toolbox: { show: true },
+            dataZoom: [{ type: 'inside' }, { type: 'slider' }]
         }
-      }}
-      sx={{
-        ".MuiBarElement-root": {
-          rx: 4,
-        }
-      }}
+      }} 
+      height={`${height}px`} 
     />
   );
 }

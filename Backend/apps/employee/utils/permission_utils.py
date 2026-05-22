@@ -36,7 +36,7 @@ def sync_user_work_groups(user):
     if not user.pk:
         return user
 
-    work_types = user.assigned_works.values_list("work_type", flat=True)
+    work_types = user.branch_works.values_list("work_type", flat=True)
 
     group_names = {
         WORK_TO_GROUP[w] for w in work_types if w in WORK_TO_GROUP
@@ -56,16 +56,8 @@ def sync_user_role_permissions(user):
     if not user.pk:
         return user
 
-    # Get the highest role of the user in any business
-    role_obj = user.business_roles.order_by('role').first()  # OWNER < MANAGER < EMPLOYEE? Wait, let's check alphabetically or order.
-    # Actually, let's just use user.role if it's available on the model, or check the related roles.
-    # Based on models.py, User doesn't have role field directly, it has business_roles.
-    # But UserViewSet.get_queryset uses user.role. 
-    # Let me check User model.
-    role = getattr(user, 'role_name', None)
-
-    if not role and user.business_roles.exists():
-        role = user.business_roles.first().role
+    role_obj = user.business_roles.order_by('role').first()
+    role = role_obj.role if role_obj else None
 
     if role in ROLE_TO_PERMISSIONS:
         codenames = ROLE_TO_PERMISSIONS[role]

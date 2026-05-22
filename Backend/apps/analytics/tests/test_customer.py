@@ -1,5 +1,3 @@
-from django.urls import reverse
-from rest_framework import status
 from apps.base.tests import BaseTestCase
 from apps.employee.models import WorkType
 
@@ -26,7 +24,8 @@ class CustomerTestCase(BaseTestCase):
         # Grant permission
         self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.ANALYTICS)
         self.employee_a1 = self.employee_a1.__class__.objects.get(id=self.employee_a1.id)
-        if hasattr(self.employee_a1, '_perm_cache'): del self.employee_a1._perm_cache
+        if hasattr(self.employee_a1, '_perm_cache'):
+            del self.employee_a1._perm_cache
         # Employee allow
         self.client.force_authenticate(user=self.employee_a1)
         self.assertEqual(self.client.get(self.url_leaderboard).status_code, 200)
@@ -38,7 +37,8 @@ class CustomerTestCase(BaseTestCase):
         # Field check
         fields = ['customer_id', 'customer_name', 'total_revenue', 'order_count']
         data = res.data['results'][0]
-        for f in fields: self.assertIn(f, data)
+        for f in fields:
+            self.assertIn(f, data)
         # Value check
         self.assertEqual(float(data['total_revenue']), 1503.0)
 
@@ -67,7 +67,8 @@ class CustomerTestCase(BaseTestCase):
         res = self.client.get(self.url_retention)
         # Field check
         fields = ['total_customers', 'returning_customers', 'retention_rate']
-        for f in fields: self.assertIn(f, res.data)
+        for f in fields:
+            self.assertIn(f, res.data)
         # Value check
         self.assertEqual(res.data['total_customers'], 3)
         self.assertEqual(res.data['retention_rate'], 33.33)
@@ -99,7 +100,8 @@ class CustomerTestCase(BaseTestCase):
         # Field check
         fields = ['customer_id', 'product_id', 'quantity', 'total_revenue']
         data = res.data['results'][0]
-        for f in fields: self.assertIn(f, data)
+        for f in fields:
+            self.assertIn(f, data)
         # Value check
         self.assertEqual(data['quantity'], 13)
 
@@ -161,7 +163,8 @@ class CustomerTestCase(BaseTestCase):
         # Field check
         fields = ['customer_id', 'customer_name', 'total_revenue']
         data = res.data[0]
-        for f in fields: self.assertIn(f, data)
+        for f in fields:
+            self.assertIn(f, data)
         # Value check
         self.assertEqual(float(data['total_revenue']), 1503.0)
 

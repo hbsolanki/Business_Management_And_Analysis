@@ -4,7 +4,6 @@ from django.db import transaction
 from apps.business.serializers.business import BusinessSerializer
 from apps.user.serializers.user import UserSerializer
 from apps.employee.serializers.employee_details import EmployeeDetailsSerializer
-from apps.employee.serializers.user_business_role import UserBusinessRoleSerializer
 from apps.employee.models import UserBusinessRole, EmployeeDetails, UserRole
 
 class OwnerSerializer(serializers.Serializer):

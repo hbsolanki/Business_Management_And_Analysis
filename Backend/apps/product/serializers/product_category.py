@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from apps.base.serializers.base import BaseSerializer
 from apps.product.models import ProductCategory
@@ -16,23 +17,23 @@ class ProductCategorySerializer(BaseSerializer):
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields
 
-    def validate_name(self, value):
-        user = self.context['request'].user
-        
-        qs = ProductCategory.objects.filter(
-            business_id=user.business_id,
-            name=value
-        )
-        
-        if self.instance:
-            qs = qs.exclude(pk=self.instance.pk)
-
-        if qs.exists():
-            raise serializers.ValidationError("Name already exists")
-
-        return value
-
     def create(self, validated_data):
-        user = self.context['request'].user
-        validated_data["business"] = user.business
+        request = self.context["request"]
+        validated_data["business"] = request.user.business
         return super().create(validated_data)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and getattr(request, "user", None):
+            # scope name uniqueness to current business
+            name_validators = [
+                v for v in self.fields["name"].validators if not isinstance(v, UniqueValidator)
+            ]
+            name_validators.append(
+                UniqueValidator(
+                    queryset=ProductCategory.objects.filter(business=request.user.business),
+                    message="Name already exists",
+                )
+            )
+            self.fields["name"].validators = name_validators

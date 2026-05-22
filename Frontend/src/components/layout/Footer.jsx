@@ -1,4 +1,4 @@
-import "@fortawesome/fontawesome-free/css/all.min.css";
+import { FaFacebookF, FaLinkedinIn, FaInstagram } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 const currentYear = new Date().getFullYear();
@@ -25,7 +25,7 @@ function Footer() {
                                     rel="noopener noreferrer"
                                     className="w-10 h-10 flex items-center justify-center bg-brand-600 text-white rounded-full hover:bg-brand-700 transition-colors"
                                 >
-                                    <i className="fab fa-facebook-f"></i>
+                                    <FaFacebookF />
                                 </a>
                                 <a
                                     href="https://www.linkedin.com/in/bizvisionary011/"
@@ -33,7 +33,7 @@ function Footer() {
                                     rel="noopener noreferrer"
                                     className="w-10 h-10 flex items-center justify-center bg-slate-900 text-white rounded-full hover:bg-slate-800 transition-colors"
                                 >
-                                    <i className="fab fa-linkedin-in"></i>
+                                    <FaLinkedinIn />
                                 </a>
                                 <a
                                     href="https://www.instagram.com/bizvisionary011/"
@@ -41,7 +41,7 @@ function Footer() {
                                     rel="noopener noreferrer"
                                     className="w-10 h-10 flex items-center justify-center bg-amber-500 text-white rounded-full hover:bg-amber-600 transition-colors"
                                 >
-                                    <i className="fab fa-instagram"></i>
+                                    <FaInstagram />
                                 </a>
                             </div>
                         </div>
@@ -53,7 +53,7 @@ function Footer() {
                             <div className="text-sm text-slate-600 space-y-2">
                                 <p>Ahmedabad, India</p>
                                 <p>Phone: +91 81600 62665</p>
-                                <p>Email: ethics.vision.connect@gmail.com</p>
+                                <p>Email: contact@alphagentec.in</p>
                             </div>
                         </div>
 

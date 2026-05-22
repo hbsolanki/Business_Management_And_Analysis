@@ -5,24 +5,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('base', '0005_initial'),
-        ('product', '0010_remove_product_input_gst_rate_and_more'),
+        ("base", "0005_initial"),
+        ("product", "0010_remove_product_input_gst_rate_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='product',
-            name='input_gst',
+            model_name="product",
+            name="input_gst",
         ),
         migrations.RemoveField(
-            model_name='product',
-            name='output_gst',
+            model_name="product",
+            name="output_gst",
         ),
         migrations.AddField(
-            model_name='product',
-            name='gst',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='invoice_items', to='base.gst'),
+            model_name="product",
+            name="gst",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="invoice_items",
+                to="base.gst",
+            ),
         ),
     ]

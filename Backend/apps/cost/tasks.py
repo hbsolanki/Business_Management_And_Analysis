@@ -1,7 +1,6 @@
 from celery import shared_task
 from datetime import date, timedelta
 from django.db import transaction
-from apps.cost.utils.financial_summary_update import financial_summary_update
 from apps.gst_management.utils import aggregate_monthly_data
 
 

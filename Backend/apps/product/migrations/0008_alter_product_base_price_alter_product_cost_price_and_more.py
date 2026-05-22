@@ -5,30 +5,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('product', '0007_remove_product_unique_sku_per_business_and_more'),
+        ("product", "0007_remove_product_unique_sku_per_business_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='product',
-            name='base_price',
-            field=models.DecimalField(decimal_places=2, max_digits=12, validators=[django.core.validators.MinValueValidator(0)]),
+            model_name="product",
+            name="base_price",
+            field=models.DecimalField(
+                decimal_places=2,
+                max_digits=12,
+                validators=[django.core.validators.MinValueValidator(0)],
+            ),
         ),
         migrations.AlterField(
-            model_name='product',
-            name='cost_price',
-            field=models.DecimalField(decimal_places=2, max_digits=12, validators=[django.core.validators.MinValueValidator(0)]),
+            model_name="product",
+            name="cost_price",
+            field=models.DecimalField(
+                decimal_places=2,
+                max_digits=12,
+                validators=[django.core.validators.MinValueValidator(0)],
+            ),
         ),
         migrations.AlterField(
-            model_name='product',
-            name='input_gst_rate',
-            field=models.DecimalField(decimal_places=2, max_digits=5, validators=[django.core.validators.MinValueValidator(0)]),
+            model_name="product",
+            name="input_gst_rate",
+            field=models.DecimalField(
+                decimal_places=2,
+                max_digits=5,
+                validators=[django.core.validators.MinValueValidator(0)],
+            ),
         ),
         migrations.AlterField(
-            model_name='product',
-            name='output_gst_rate',
-            field=models.DecimalField(decimal_places=2, max_digits=5, validators=[django.core.validators.MinValueValidator(0)]),
+            model_name="product",
+            name="output_gst_rate",
+            field=models.DecimalField(
+                decimal_places=2,
+                max_digits=5,
+                validators=[django.core.validators.MinValueValidator(0)],
+            ),
         ),
     ]

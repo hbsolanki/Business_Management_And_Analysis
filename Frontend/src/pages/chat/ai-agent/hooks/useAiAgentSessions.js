@@ -11,6 +11,8 @@ export function useAiAgentSessions(routeSessionId, navigate, onNewChat) {
   const [isActionProcessing, setIsActionProcessing] = useState(false);
 
   const [sessionActionsMenu, setSessionActionsMenu] = useState(null);
+  const [selectedSessionIds, setSelectedSessionIds] = useState([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const fetchSessions = useCallback(async (isLoadMore = false) => {
     if (isLoadMore) {
@@ -90,6 +92,40 @@ export function useAiAgentSessions(routeSessionId, navigate, onNewChat) {
     }
   };
 
+  const handleBulkDeleteSelected = async () => {
+    if (isActionProcessing || selectedSessionIds.length === 0) return;
+    
+    const count = selectedSessionIds.length;
+    setIsActionProcessing(true);
+    try {
+      await Promise.all(selectedSessionIds.map(id => aiAgentService.deleteSession(id)));
+      setSessions((prev) => prev.filter((s) => !selectedSessionIds.includes(s.id)));
+      if (selectedSessionIds.includes(currentSessionId)) {
+        onNewChat();
+      }
+      toast.success(`${count} sessions deleted`);
+      setSelectedSessionIds([]);
+      setIsSelectionMode(false);
+      return true;
+    } catch (error) {
+      console.error("Failed to delete sessions:", error);
+      toast.error("Failed to delete some sessions");
+      // Refresh to be safe
+      fetchSessions();
+      return false;
+    } finally {
+      setIsActionProcessing(false);
+    }
+  };
+
+  const toggleSessionSelection = (sessionId) => {
+    setSelectedSessionIds((prev) =>
+      prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId]
+    );
+  };
+
   useEffect(() => {
     if (routeSessionId && routeSessionId !== "new") {
       setCurrentSessionId(routeSessionId);
@@ -111,5 +147,11 @@ export function useAiAgentSessions(routeSessionId, navigate, onNewChat) {
     isActionProcessing,
     sessionActionsMenu,
     setSessionActionsMenu,
+    selectedSessionIds,
+    setSelectedSessionIds,
+    isSelectionMode,
+    setIsSelectionMode,
+    toggleSessionSelection,
+    handleBulkDeleteSelected,
   };
 }

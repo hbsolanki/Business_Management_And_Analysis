@@ -19,6 +19,7 @@ class UserBranchSerializer(serializers.Serializer):
         branch = attrs.get('branch')
         
         if request and user:
+            # Check the target user's role, not the requester's role
             target_role = user.role_name
             if target_role == UserRole.OWNER and not request.user.has_perm('employee.change_owner_role'):
                 raise serializers.ValidationError("You do not have permission to change branches for an owner.")

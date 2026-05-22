@@ -6,7 +6,7 @@ def make_cache_key(request, prefix, user):
     params = request.query_params.dict()
 
     raw = {
-        "business": user.business_id,
+        "business": request.user.business_id,
         "endpoint": prefix,
         "params": params,
     }

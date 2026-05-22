@@ -16,10 +16,9 @@ from apps.business.serializers.branch import BranchSerializer
 from apps.business.serializers.customer import BusinessCustomerSerializer
 from apps.employee.serializers.manager import ManagerSerializer
 from apps.employee.serializers.employee import EmployeeSerializer
-from apps.employee.utils.permission_utils import sync_user_work_groups as sync_user_work_group
 from apps.subscription.decorators.limits import limit_required
 from apps.subscription.utils.usage import staff_usage_subscription
-from apps.subscription.models import Subscription,Usage
+from apps.subscription.utils.entitlements import get_active_subscription, increment_usage
 from apps.business.filters import BranchFilter, BusinessCustomerFilter, BusinessFilter
 
 
@@ -68,7 +67,8 @@ class BusinessViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
             
             # Run Business-specific logic if the instance is a Business
             if isinstance(instance, Business):
-                user = self.request.user
+                request = self.request
+                user = request.user
                 from apps.employee.models import UserBusinessRole, UserRole
                 # Instead of get_or_create, fetch the owner role (which currently has no business attached)
                 owner_role = UserBusinessRole.objects.filter(user=user, role=UserRole.OWNER, business__isnull=True).first()
@@ -100,8 +100,8 @@ class BusinessViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     @transaction.atomic
     def manager(self, request):
         if not request.user.has_perm('employee.can_create_manager'):
-             from rest_framework.exceptions import PermissionDenied
-             raise PermissionDenied("You do not have permission to create a manager.")
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You do not have permission to create a manager.")
              
         self.activity_module = ActivityLog.Module.USER
         serializer = self.get_serializer(data=request.data)
@@ -117,8 +117,8 @@ class BusinessViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     @transaction.atomic
     def employee(self, request):
         if not request.user.has_perm('employee.can_create_employee'):
-             from rest_framework.exceptions import PermissionDenied
-             raise PermissionDenied("You do not have permission to create an employee.")
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You do not have permission to create an employee.")
 
         self.activity_module = ActivityLog.Module.USER
         serializer = self.get_serializer(data=request.data)
@@ -165,12 +165,9 @@ class BranchViewSet(BaseViewSet, ModelViewSet):
         self.perform_create(serializer)
 
         # Usage Update
-        subscription = Subscription.objects.filter(business=request.user.business).first()
+        subscription = get_active_subscription(request.user.business)
         if subscription:
-            usage = Usage.objects.filter(subscription=subscription).first()
-            if usage:
-                usage.branches_created += 1
-                usage.save(update_fields=["branches_created"])
+            increment_usage(subscription, "branches_created")
             
             cache.delete(f"subscription:usage:{subscription.id}")
             

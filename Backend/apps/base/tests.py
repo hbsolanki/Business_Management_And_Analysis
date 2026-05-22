@@ -7,7 +7,7 @@ from datetime import timedelta, datetime
 from django.core.cache import cache
 
 # Model Imports
-from apps.subscription.models import Plan, Subscription, Usage
+from apps.subscription.models import Plan, Subscription
 from apps.user.models import User
 from apps.business.models import Business, Branch
 from apps.inventory.models import Inventory, InventoryProduct
@@ -21,7 +21,7 @@ from apps.employee.models import (
 from apps.cost.models import MonthlyFinancialSummary, CostCategory, MonthlyCostCategory
 from apps.supplier.models import (
     Supplier, PurchaseOrder, SalesOrder, 
-    OrderStatus, PurchaseOrderItem, SalesOrderItem
+    PurchaseOrderItem, SalesOrderItem
 )
 from apps.chat.models import Conversation
 from apps.activity_log.models import ActivityLog

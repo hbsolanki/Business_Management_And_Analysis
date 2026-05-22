@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 from apps.employee.models import UserBranchWork
-from apps.base.serializers.base import BaseSerializer
 from apps.business.models import Branch
 from apps.employee.models import WorkType, UserRole
 
@@ -21,10 +20,13 @@ class UserBranchWorkSerializer(serializers.Serializer):
         work_type = attrs.get('work_type')
         
         if request and user:
-            if user.role_name == UserRole.EMPLOYEE and not request.user.has_perm('employee.change_employee_work'):
+            # Check the target user's role
+            target_role = user.role_name
+
+            if target_role == UserRole.EMPLOYEE and not request.user.has_perm('employee.change_employee_work'):
                 raise PermissionDenied("You do not have permission to change work assignments for an employee.")
             
-            if user.role_name != UserRole.EMPLOYEE and attrs:
+            if target_role != UserRole.EMPLOYEE and attrs:
                 raise serializers.ValidationError("Work assignments are only allowed for employees.")
 
             # Check for existing assignment

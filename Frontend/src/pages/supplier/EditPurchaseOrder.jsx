@@ -44,9 +44,10 @@ function getErrorText(value) {
     return String(value);
 }
 
-export default function EditPurchaseOrder() {
+export default function EditPurchaseOrder({ isEmbed = false, id: embedId = null, onComplete = null, initialData = null }) {
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id: routeId } = useParams();
+    const id = embedId || routeId;
 
     const { profile } = useSelector((state) => state.user);
     const userRole = String(typeof profile?.role === "object" ? profile?.role?.role : profile?.role || "").toUpperCase();
@@ -67,6 +68,19 @@ export default function EditPurchaseOrder() {
 
     const [loadingPage, setLoadingPage] = useState(true);
     const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData((prev) => ({
+                ...prev,
+                supplier: initialData.supplier ? String(initialData.supplier) : prev.supplier,
+                branch_id: initialData.branch_id ? String(initialData.branch_id) : prev.branch_id,
+                status: initialData.status || prev.status,
+                notes: initialData.notes || prev.notes,
+                items: Array.isArray(initialData.items) ? initialData.items : prev.items,
+            }));
+        }
+    }, [initialData]);
 
     useEffect(() => {
         let isMounted = true;
@@ -238,9 +252,13 @@ export default function EditPurchaseOrder() {
         };
 
         try {
-            await supplierService.updatePurchaseOrder(id, requestPayload);
+            const res = await supplierService.updatePurchaseOrder(id, requestPayload);
             toast.success("Purchase order updated successfully");
-            navigate(-1);
+            if (isEmbed && onComplete) {
+                onComplete(res.data);
+            } else {
+                navigate(-1);
+            }
         } catch (error) {
             const responseErrors = error?.response?.data;
             if (responseErrors && typeof responseErrors === "object") {
@@ -264,6 +282,262 @@ export default function EditPurchaseOrder() {
 
     const labelClass = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1";
 
+    const formContent = (
+        <div className={`bg-white ${isEmbed ? "" : "rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50"} overflow-hidden`}>
+            {isEmbed ? (
+                <header className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-4 sticky top-0 z-20">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow">
+                            <FaEdit className="text-xs" />
+                        </div>
+                        <div>
+                            <h1 className="text-sm font-black text-slate-900 leading-none">Edit PO #{id}</h1>
+                        </div>
+                    </div>
+                    <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm flex items-center gap-2">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total:</span>
+                        <span className="text-xs font-black text-slate-900 tabular-nums">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </header>
+            ) : (
+                <header className="px-8 sm:px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="h-14 w-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
+                            <FaEdit className="text-xl" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Edit Purchase Order #{id}</h1>
+                            <p className="text-sm font-medium text-slate-500">Update procurement and tax configuration</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-6 bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm">
+                         <div className="text-right">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Grand Total</p>
+                            <p className="text-2xl font-black text-slate-900 tabular-nums">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                         </div>
+                    </div>
+                </header>
+            )}
+
+            {loadingPage ? (
+                <div className="p-20 flex flex-col items-center justify-center text-slate-400 gap-4">
+                    <FaSpinner className="animate-spin text-3xl text-slate-900" />
+                    <p className="font-bold text-xs uppercase tracking-widest">Retrieving Order Data...</p>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className={`${isEmbed ? "p-5 space-y-6" : "p-8 sm:p-10 space-y-10"}`}>
+                    <div className={`grid grid-cols-1 ${isEmbed ? "gap-6" : "xl:grid-cols-12 gap-10"}`}>
+                        <section className={`${isEmbed ? "" : "xl:col-span-4"} space-y-6`}>
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-l-4 border-slate-900 pl-4">Order Meta</h3>
+                                
+                                <div>
+                                    <label className={labelClass}>Vendor / Supplier</label>
+                                    <div className="relative">
+                                        <select
+                                            name="supplier"
+                                            value={formData.supplier}
+                                            onChange={handleInputChange}
+                                            className={`${inputClass("supplier")} appearance-none cursor-pointer`}
+                                            required
+                                        >
+                                            <option value="">Select Vendor</option>
+                                            {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                                        </select>
+                                        <FaUsers className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Receiving Branch</label>
+                                    <div className="relative">
+                                        <select
+                                            name="branch_id"
+                                            value={formData.branch_id}
+                                            onChange={handleInputChange}
+                                            className={`${inputClass("branch_id")} appearance-none cursor-pointer`}
+                                            required
+                                        >
+                                            <option value="">Select Branch</option>
+                                            {branches.map((b) => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
+                                        </select>
+                                        <FaCodeBranch className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Execution Status</label>
+                                    <div className="relative">
+                                        <select
+                                            name="status"
+                                            value={formData.status}
+                                            onChange={handleInputChange}
+                                            className={`${inputClass("status")} appearance-none cursor-pointer`}
+                                        >
+                                            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-sky-500 shadow-sm shadow-sky-200"></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={labelClass}>Purchase Notes</label>
+                                    <textarea
+                                        rows={3}
+                                        name="notes"
+                                        value={formData.notes}
+                                        onChange={handleInputChange}
+                                        className={`${inputClass("notes")} resize-none`}
+                                        placeholder="Instructions for the supplier..."
+                                    />
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="xl:col-span-8 space-y-8">
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-l-4 border-slate-900 pl-4">Inventory Items</h3>
+                                    <div className="w-64">
+                                        <PurchaseOrderProductSearch
+                                            onSelect={handleAddProduct}
+                                            branchId={formData.branch_id}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {formData.items.map((item, index) => {
+                                        const lineSub = (Number(item.quantity) || 0) * (Number(item.unit_cost) || 0);
+                                        const lineTax = (lineSub * (Number(item.tax_rate) || 0)) / 100;
+                                        const lineTotal = lineSub + lineTax;
+
+                                        return (
+                                            <div key={`item-${index}`} className={`group relative bg-white border border-slate-100 rounded-[24px] ${isEmbed ? "p-4" : "p-6"} shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-200 transition-all duration-300`}>
+                                                <div className={`grid grid-cols-1 ${isEmbed ? "gap-4" : "md:grid-cols-12 gap-6"}`}>
+                                                    <div className={isEmbed ? "" : "md:col-span-5"}>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">1. Product Information</p>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-900 border border-slate-100">
+                                                                <FaBoxOpen size={16} />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="font-black text-slate-900 text-sm truncate">{item.productName}</p>
+                                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Line Total:</span>
+                                                                    <span className="text-[10px] font-black text-slate-900 tabular-nums">₹{lineTotal.toFixed(2)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className={`${isEmbed ? "grid-cols-2" : "md:col-span-7 grid-cols-4"} grid gap-4`}>
+                                                        <div>
+                                                            <label className={labelClass}>1. Quantity</label>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={item.quantity}
+                                                                onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                                                                className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-center shadow-sm"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelClass}>2. Unit Cost</label>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">₹</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={item.unit_cost}
+                                                                    onChange={(e) => handleItemChange(index, "unit_cost", e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-6 pr-3 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-right shadow-sm"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelClass}>3. GST Rate %</label>
+                                                            <div className="relative group">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={item.tax_rate}
+                                                                    onChange={(e) => handleItemChange(index, "tax_rate", e.target.value)}
+                                                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-center shadow-sm"
+                                                                />
+                                                                <FaPercent className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] text-slate-400" />
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className={labelClass}>4. GST Amount</label>
+                                                            <div className="h-[42px] flex items-center justify-end px-4 bg-slate-900 rounded-xl shadow-lg shadow-slate-900/10 border border-slate-800">
+                                                                <span className="text-white/40 font-bold text-[10px] mr-1.5">₹</span>
+                                                                <span className="text-white font-black text-xs tabular-nums tracking-tight">{lineTax.toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItemRow(index)}
+                                                    className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-white border border-slate-100 text-slate-300 hover:text-rose-600 shadow-sm flex items-center justify-center transition-all hover:scale-110 active:scale-90"
+                                                >
+                                                    <FaTrash size={10} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                
+                                {itemError && <p className="text-rose-600 text-[10px] font-bold uppercase tracking-widest text-center mt-4">{itemError}</p>}
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className={`pt-6 flex ${isEmbed ? "flex-col gap-6" : "flex-col sm:flex-row justify-between gap-8"} items-center border-t border-slate-100`}>
+                        <div className={`flex ${isEmbed ? "justify-between w-full" : "gap-10"}`}>
+                            <div className="text-slate-400">
+                                <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Subtotal (Net)</p>
+                                <p className={`${isEmbed ? "text-base" : "text-lg"} font-bold text-slate-600 tabular-nums`}>₹{subtotal.toLocaleString()}</p>
+                            </div>
+                            <div className="text-slate-400">
+                                <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Tax Amount</p>
+                                <p className={`${isEmbed ? "text-base" : "text-lg"} font-bold text-indigo-600 tabular-nums`}>+ ₹{tax.toLocaleString()}</p>
+                            </div>
+                        </div>
+
+                        <div className={`flex items-center gap-4 w-full ${isEmbed ? "" : "sm:w-auto"}`}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (isEmbed && onComplete) {
+                                        onComplete(null);
+                                    } else {
+                                        navigate(-1);
+                                    }
+                                }}
+                                className="flex-1 sm:flex-none px-10 py-4 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all"
+                            >
+                                Discard Changes
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={saving}
+                                className="flex-[2] sm:flex-none min-w-[240px] bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50"
+                            >
+                                {saving ? "Updating..." : "Commit Update"}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            )}
+        </div>
+    );
+
+    if (isEmbed) return formContent;
+
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             <ProtectedHeader />
@@ -271,234 +545,7 @@ export default function EditPurchaseOrder() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
                 <BackButton label="Back to Orders" />
 
-                <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
-                    <header className="px-8 sm:px-10 py-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="h-14 w-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
-                                <FaEdit className="text-xl" />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Edit Purchase Order #{id}</h1>
-                                <p className="text-sm font-medium text-slate-500">Update procurement and tax configuration</p>
-                            </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-6 bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm">
-                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Grand Total</p>
-                                <p className="text-2xl font-black text-slate-900 tabular-nums">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                             </div>
-                        </div>
-                    </header>
-
-                    {loadingPage ? (
-                        <div className="p-20 flex flex-col items-center justify-center text-slate-400 gap-4">
-                            <FaSpinner className="animate-spin text-3xl text-slate-900" />
-                            <p className="font-bold text-xs uppercase tracking-widest">Retrieving Order Data...</p>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="p-8 sm:p-10 space-y-10">
-                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-                                <section className="xl:col-span-4 space-y-8">
-                                    <div className="space-y-6">
-                                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-l-4 border-slate-900 pl-4">Order Meta</h3>
-                                        
-                                        <div>
-                                            <label className={labelClass}>Vendor / Supplier</label>
-                                            <div className="relative">
-                                                <select
-                                                    name="supplier"
-                                                    value={formData.supplier}
-                                                    onChange={handleInputChange}
-                                                    className={`${inputClass("supplier")} appearance-none cursor-pointer`}
-                                                    required
-                                                >
-                                                    <option value="">Select Vendor</option>
-                                                    {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                                                </select>
-                                                <FaUsers className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className={labelClass}>Receiving Branch</label>
-                                            <div className="relative">
-                                                <select
-                                                    name="branch_id"
-                                                    value={formData.branch_id}
-                                                    onChange={handleInputChange}
-                                                    className={`${inputClass("branch_id")} appearance-none cursor-pointer`}
-                                                    required
-                                                >
-                                                    <option value="">Select Branch</option>
-                                                    {branches.map((b) => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
-                                                </select>
-                                                <FaCodeBranch className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className={labelClass}>Execution Status</label>
-                                            <div className="relative">
-                                                <select
-                                                    name="status"
-                                                    value={formData.status}
-                                                    onChange={handleInputChange}
-                                                    className={`${inputClass("status")} appearance-none cursor-pointer`}
-                                                >
-                                                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                                                </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-sky-500 shadow-sm shadow-sky-200"></div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className={labelClass}>Purchase Notes</label>
-                                            <textarea
-                                                rows={3}
-                                                name="notes"
-                                                value={formData.notes}
-                                                onChange={handleInputChange}
-                                                className={`${inputClass("notes")} resize-none`}
-                                                placeholder="Instructions for the supplier..."
-                                            />
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <section className="xl:col-span-8 space-y-8">
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] border-l-4 border-slate-900 pl-4">Inventory Items</h3>
-                                            <div className="w-64">
-                                                <PurchaseOrderProductSearch
-                                                    onSelect={handleAddProduct}
-                                                    branchId={formData.branch_id}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            {formData.items.map((item, index) => {
-                                                const lineSub = (Number(item.quantity) || 0) * (Number(item.unit_cost) || 0);
-                                                const lineTax = (lineSub * (Number(item.tax_rate) || 0)) / 100;
-                                                const lineTotal = lineSub + lineTax;
-
-                                                return (
-                                                    <div key={`item-${index}`} className="group relative bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-200 transition-all duration-300">
-                                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                                                            <div className="md:col-span-5">
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">1. Product Information</p>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-900 border border-slate-100">
-                                                                        <FaBoxOpen size={16} />
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="font-black text-slate-900 text-sm truncate">{item.productName}</p>
-                                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Line Total:</span>
-                                                                            <span className="text-[10px] font-black text-slate-900 tabular-nums">₹{lineTotal.toFixed(2)}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="md:col-span-7 grid grid-cols-4 gap-4">
-                                                                <div>
-                                                                    <label className={labelClass}>1. Quantity</label>
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        value={item.quantity}
-                                                                        onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
-                                                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-center shadow-sm"
-                                                                    />
-                                                                </div>
-                                                                <div>
-                                                                    <label className={labelClass}>2. Unit Cost</label>
-                                                                    <div className="relative">
-                                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">₹</span>
-                                                                        <input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={item.unit_cost}
-                                                                            onChange={(e) => handleItemChange(index, "unit_cost", e.target.value)}
-                                                                            className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-6 pr-3 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-right shadow-sm"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                                <div>
-                                                                    <label className={labelClass}>3. GST Rate %</label>
-                                                                    <div className="relative group">
-                                                                        <input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={item.tax_rate}
-                                                                            onChange={(e) => handleItemChange(index, "tax_rate", e.target.value)}
-                                                                            className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-center shadow-sm"
-                                                                        />
-                                                                        <FaPercent className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] text-slate-400" />
-                                                                    </div>
-                                                                </div>
-                                                                <div>
-                                                                    <label className={labelClass}>4. GST Amount</label>
-                                                                    <div className="h-[42px] flex items-center justify-end px-4 bg-slate-900 rounded-xl shadow-lg shadow-slate-900/10 border border-slate-800">
-                                                                        <span className="text-white/40 font-bold text-[10px] mr-1.5">₹</span>
-                                                                        <span className="text-white font-black text-xs tabular-nums tracking-tight">{lineTax.toFixed(2)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeItemRow(index)}
-                                                            className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-white border border-slate-100 text-slate-300 hover:text-rose-600 shadow-sm flex items-center justify-center transition-all hover:scale-110 active:scale-90"
-                                                        >
-                                                            <FaTrash size={10} />
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        
-                                        {itemError && <p className="text-rose-600 text-[10px] font-bold uppercase tracking-widest text-center mt-4">{itemError}</p>}
-                                    </div>
-                                </section>
-                            </div>
-
-                            <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-slate-100">
-                                <div className="flex items-center gap-10">
-                                    <div className="text-slate-400">
-                                        <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Subtotal (Net)</p>
-                                        <p className="text-lg font-bold text-slate-600 tabular-nums">₹{subtotal.toLocaleString()}</p>
-                                    </div>
-                                    <div className="text-slate-400">
-                                        <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Tax Amount</p>
-                                        <p className="text-lg font-bold text-indigo-600 tabular-nums">+ ₹{tax.toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-4 w-full sm:w-auto">
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate(-1)}
-                                        className="flex-1 sm:flex-none px-10 py-4 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all"
-                                    >
-                                        Discard Changes
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className="flex-[2] sm:flex-none min-w-[240px] bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50"
-                                    >
-                                        {saving ? "Updating..." : "Commit Update"}
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    )}
-                </div>
+                {formContent}
             </main>
         </div>
     );

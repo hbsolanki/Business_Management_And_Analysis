@@ -1,5 +1,4 @@
 from rest_framework.routers import DefaultRouter
-from django.urls import path, include
 from apps.tasks.views import TaskViewSet
 
 router = DefaultRouter()

@@ -52,8 +52,8 @@ class BusinessCustomerSerializer(BaseSerializer):
         return value.upper() if value else value
 
     def create(self, validated_data):
-        print("DEBUG: BusinessCustomerSerializer.create started")
-        business = self.context.get('request').user.business
+        request = self.context.get('request')
+        business = request.user.business if request else None
         mobile_number = validated_data.get('mobile_number')
         
         validated_data.pop("customer_business_id", None)

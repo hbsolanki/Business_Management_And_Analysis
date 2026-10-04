@@ -34,7 +34,7 @@ class City(BaseModel):
         db_table = "bma_city"
         verbose_name_plural = "Cities"
         constraints = [
-            models.UniqueConstraint(fields=["name", "state"], name="unique_city_state")
+            models.UniqueConstraint(fields=["name", "state"], condition=models.Q(is_deleted=False), name="unique_city_state")
         ]
 
     def __str__(self):

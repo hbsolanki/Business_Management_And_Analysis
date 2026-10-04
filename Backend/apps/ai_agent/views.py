@@ -22,16 +22,23 @@ class AiChatSessionViewSet(BaseViewSet, ModelViewSet):
 
     @action(methods=["get"], detail=True, url_path="messages")
     def get_message_by_session_id(self, request, *args, **kwargs):
-        session = self.get_object()
-        messages = session.messages.all().order_by("-created_at")
-        
-        page = self.paginate_queryset(messages)
-        if page is not None:
-            serializer = AiChatMessageSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        from django.http import Http404
+        try:
+            session = self.get_object()
+            messages = session.messages.all().order_by("-created_at")
+            
+            page = self.paginate_queryset(messages)
+            if page is not None:
+                serializer = AiChatMessageSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
 
-        serializer = AiChatMessageSerializer(messages, many=True)
-        return Response(serializer.data)
+            serializer = AiChatMessageSerializer(messages, many=True)
+            return Response(serializer.data)
+        except Http404:
+            raise
+        except Exception as e:
+            from rest_framework import status
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 

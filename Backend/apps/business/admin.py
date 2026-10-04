@@ -1,6 +1,7 @@
 from django.contrib import admin
-from apps.business.models import Business,Branch,BranchAddress
+from apps.business.models import Business, Branch
+from apps.base.models import Address
 
 admin.site.register(Business)
 admin.site.register(Branch)
-admin.site.register(BranchAddress)
+admin.site.register(Address)

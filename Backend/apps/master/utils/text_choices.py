@@ -109,3 +109,63 @@ class OrderStatus(models.TextChoices):
     DELIVERED = "DELIVERED", "Delivered"
     FAILED = "FAILED", "Failed"
     CANCELLED = "CANCELLED", "Cancelled"
+
+
+class PaymentType(models.TextChoices):
+    INVOICE = "INVOICE", "Invoice"
+    SUBSCRIPTION = "SUBSCRIPTION", "Subscription"
+
+
+class PaymentMethod(models.TextChoices):
+    CASH = "CASH", "Cash"
+    CHEQUE = "CHEQUE", "Cheque"
+    UPI = "UPI", "UPI"
+    NEFT = "NEFT", "NEFT"
+    RTGS = "RTGS", "RTGS"
+    IMPS = "IMPS", "IMPS"
+    NET_BANKING = "NET_BANKING", "Net Banking"
+    CARD = "CARD", "Card (Debit/Credit)"
+    OTHER = "OTHER", "Other"
+
+class OfflinePaymentMethod(models.TextChoices):
+    CASH = "CASH", "Cash"
+    CHEQUE = "CHEQUE", "Cheque"
+    UPI = "UPI", "UPI"
+    NEFT = "NEFT", "NEFT"
+    RTGS = "RTGS", "RTGS"
+    IMPS = "IMPS", "IMPS"
+    NET_BANKING = "NET_BANKING", "Net Banking"
+    OTHER = "OTHER", "Other"
+
+
+class PaymentStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    PROCESSING = "PROCESSING", "Processing"
+    SUCCEEDED = "SUCCEEDED", "Succeeded"
+    FAILED = "FAILED", "Failed"
+    REFUNDED = "REFUNDED", "Refunded"
+    PARTIALLY_REFUNDED = "PARTIALLY_REFUNDED", "Partially Refunded"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class InvoicePaymentStatus(models.TextChoices):
+    UNPAID = "UNPAID", "Unpaid"
+    PARTIALLY_PAID = "PARTIALLY_PAID", "Partially Paid"
+    PAID = "PAID", "Paid"
+
+
+class PaymentGateway(models.TextChoices):
+    STRIPE = "STRIPE", "Stripe"
+
+
+class StripeAccountType(models.TextChoices):
+    EXPRESS = "EXPRESS", "Express"
+    STANDARD = "STANDARD", "Standard"
+
+
+class StripeAccountStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending Onboarding"
+    ACTIVE = "ACTIVE", "Active"              # charges_enabled=True
+    RESTRICTED = "RESTRICTED", "Restricted"  # partial KYC
+    DISABLED = "DISABLED", "Disabled"        # manually disabled
+

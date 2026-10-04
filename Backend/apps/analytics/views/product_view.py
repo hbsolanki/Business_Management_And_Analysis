@@ -106,15 +106,18 @@ class AnalysisProductViewSet(BaseViewSet):
     )
     @action(detail=False, methods=["get"], url_path="details")
     def product_details(self, request):
-        cache_key = make_cache_key(request, "analytics", "product_details", request.user)
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data, status=status.HTTP_200_OK)
+        try:
+            cache_key = make_cache_key(request, "analytics", "product_details", request.user)
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=status.HTTP_200_OK)
 
-        products = self.filter_queryset(self.get_queryset()).order_by("-net_profit")
-        serializer = self.get_serializer(products, many=True)
-        cache.set(cache_key, serializer.data, 60 * 5)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            products = self.filter_queryset(self.get_queryset()).order_by("-net_profit")
+            serializer = self.get_serializer(products, many=True)
+            cache.set(cache_key, serializer.data, 60 * 5)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
         summary="Get Product Stock",
@@ -123,15 +126,18 @@ class AnalysisProductViewSet(BaseViewSet):
     )
     @action(detail=False, methods=["get"], url_path="stock")
     def product_stocks(self, request):
-        cache_key = make_cache_key(request, "analytics", "product_stocks", request.user)
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data, status=status.HTTP_200_OK)
+        try:
+            cache_key = make_cache_key(request, "analytics", "product_stocks", request.user)
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=status.HTTP_200_OK)
 
-        inventory_data = self.filter_queryset(self.get_queryset()).order_by("stock_quantity")
-        serializer = self.get_serializer(inventory_data, many=True)
-        cache.set(cache_key, serializer.data, 60 * 5)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            inventory_data = self.filter_queryset(self.get_queryset()).order_by("stock_quantity")
+            serializer = self.get_serializer(inventory_data, many=True)
+            cache.set(cache_key, serializer.data, 60 * 5)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
         summary="Get Product Performance Report",
@@ -140,101 +146,104 @@ class AnalysisProductViewSet(BaseViewSet):
     )
     @action(detail=False, methods=["get"], url_path="performance/report")
     def product_performance_report(self, request):
-        user = request.user
-        branch_id = request.query_params.get('branch')
-        
-        cache_key = make_cache_key(request, "analytics", "product_performance_report", user)
-        
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data, status=status.HTTP_200_OK)
-        
-        # 1. Base business-wide filtered queryset
-        base_qs = ProductInvoice.objects.filter(invoice__business=request.user.business)
-        
-        # We manually apply the filters to have more control
-        # Clean current filters to get "Global" data within timeframe
-        general_params = request.GET.copy()
-        general_params.pop('branch', None)
-        
-        general_filterset = ProductPerformanceFilter(general_params, queryset=base_qs)
-        if not general_filterset.is_valid():
-            return Response(general_filterset.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        global_qs = general_filterset.qs
-        if not global_qs.exists():
-            return Response({"detail": "Data not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Business-wide Global Summary
-        global_summary = global_qs.aggregate(
-            total_quantity_sold=Coalesce(Sum("quantity"), Value(0)),
-            total_revenue=Coalesce(Sum(F("quantity") * F("selling_price")), Value(0, output_field=DecimalField())),
-            total_profit=Coalesce(Sum(F("quantity") * F("product__net_profit")), Value(0, output_field=DecimalField())),
-            total_cost=Coalesce(Sum(F("quantity") * F("product__cost_price")), Value(0, output_field=DecimalField())),
-        )
-
-        # 2. Determine which branches to report on
-        if request.user.role_name == UserRole.OWNER:
-            if branch_id:
-                branches = Branch.objects.filter(id=branch_id, business=request.user.business)
-            else:
-                branches = Branch.objects.filter(business=request.user.business)
-        else:
-            assigned_branches = request.user.branches
-            if branch_id:
-                branches = assigned_branches.filter(id=branch_id)
-            else:
-                branches = assigned_branches
-
-        branch_data_list = []
-        for branch in branches:
-            branch_qs = global_qs.filter(invoice__branch=branch)
+        try:
+            user = request.user
+            branch_id = request.query_params.get('branch')
             
-            # Aggregate stats for this specific branch
-            branch_summary = branch_qs.aggregate(
+            cache_key = make_cache_key(request, "analytics", "product_performance_report", user)
+            
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=status.HTTP_200_OK)
+            
+            # 1. Base business-wide filtered queryset
+            base_qs = ProductInvoice.objects.filter(invoice__business=request.user.business)
+            
+            # We manually apply the filters to have more control
+            # Clean current filters to get "Global" data within timeframe
+            general_params = request.GET.copy()
+            general_params.pop('branch', None)
+            
+            general_filterset = ProductPerformanceFilter(general_params, queryset=base_qs)
+            if not general_filterset.is_valid():
+                return Response(general_filterset.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            global_qs = general_filterset.qs
+            if not global_qs.exists():
+                return Response({"detail": "Data not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Business-wide Global Summary
+            global_summary = global_qs.aggregate(
                 total_quantity_sold=Coalesce(Sum("quantity"), Value(0)),
                 total_revenue=Coalesce(Sum(F("quantity") * F("selling_price")), Value(0, output_field=DecimalField())),
                 total_profit=Coalesce(Sum(F("quantity") * F("product__net_profit")), Value(0, output_field=DecimalField())),
                 total_cost=Coalesce(Sum(F("quantity") * F("product__cost_price")), Value(0, output_field=DecimalField())),
             )
+
+            # 2. Determine which branches to report on
+            if request.user.role_name == UserRole.OWNER:
+                if branch_id:
+                    branches = Branch.objects.filter(id=branch_id, business=request.user.business)
+                else:
+                    branches = Branch.objects.filter(business=request.user.business)
+            else:
+                assigned_branches = request.user.branches
+                if branch_id:
+                    branches = assigned_branches.filter(id=branch_id)
+                else:
+                    branches = assigned_branches
+
+            branch_data_list = []
+            for branch in branches:
+                branch_qs = global_qs.filter(invoice__branch=branch)
+                
+                # Aggregate stats for this specific branch
+                branch_summary = branch_qs.aggregate(
+                    total_quantity_sold=Coalesce(Sum("quantity"), Value(0)),
+                    total_revenue=Coalesce(Sum(F("quantity") * F("selling_price")), Value(0, output_field=DecimalField())),
+                    total_profit=Coalesce(Sum(F("quantity") * F("product__net_profit")), Value(0, output_field=DecimalField())),
+                    total_cost=Coalesce(Sum(F("quantity") * F("product__cost_price")), Value(0, output_field=DecimalField())),
+                )
+                
+                if branch_summary['total_quantity_sold'] == 0:
+                    continue # Skip empty branches in results
+
+                # Per-branch ranked products (without explicit rank numbering)
+                branch_products = list(
+                    branch_qs
+                    .values(
+                        "product_id",
+                        product_name=F("product__name"),
+                        category_name=F("product__product_category__name"),
+                    )
+                    .annotate(
+                        total_quantity_sold=Sum("quantity"),
+                        total_revenue=Sum(F("quantity") * F("selling_price")),
+                        total_profit=Sum(F("quantity") * F("product__net_profit")),
+                        total_cost=Sum(F("quantity") * F("product__cost_price")),
+                    )
+                    .order_by("-total_revenue")
+                )
+
+                branch_data_list.append({
+                    "branch_id": branch.id,
+                    "summary": branch_summary,
+                    "general_summary": global_summary if branch_id else None,
+                    "products": branch_products
+                })
+
+            data = {
+                "summary": global_summary,
+                "branch": branch_data_list
+            }
             
-            if branch_summary['total_quantity_sold'] == 0:
-                continue # Skip empty branches in results
-
-            # Per-branch ranked products (without explicit rank numbering)
-            branch_products = list(
-                branch_qs
-                .values(
-                    "product_id",
-                    product_name=F("product__name"),
-                    category_name=F("product__product_category__name"),
-                )
-                .annotate(
-                    total_quantity_sold=Sum("quantity"),
-                    total_revenue=Sum(F("quantity") * F("selling_price")),
-                    total_profit=Sum(F("quantity") * F("product__net_profit")),
-                    total_cost=Sum(F("quantity") * F("product__cost_price")),
-                )
-                .order_by("-total_revenue")
-            )
-
-            branch_data_list.append({
-                "branch_id": branch.id,
-                "summary": branch_summary,
-                "general_summary": global_summary if branch_id else None,
-                "products": branch_products
-            })
-
-        data = {
-            "summary": global_summary,
-            "branch": branch_data_list
-        }
-        
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        
-        cache.set(cache_key, serializer.data, 60 * 5)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            
+            cache.set(cache_key, serializer.data, 60 * 5)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
         summary="Get Category Performance",
@@ -243,29 +252,32 @@ class AnalysisProductViewSet(BaseViewSet):
     )
     @action(detail=False, methods=["get"], url_path="category/performance")
     def category_performance(self, request):
-        cache_key = make_cache_key(request, "analytics", "category_performance", request.user)
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data, status=status.HTTP_200_OK)
+        try:
+            cache_key = make_cache_key(request, "analytics", "category_performance", request.user)
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=status.HTTP_200_OK)
 
-        queryset = self.filter_queryset(self.get_queryset())
-        if not queryset.exists():
-            return Response({"detail": "Data not found"}, status=status.HTTP_404_NOT_FOUND)
+            queryset = self.filter_queryset(self.get_queryset())
+            if not queryset.exists():
+                return Response({"detail": "Data not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        data = (
-            queryset
-            .values("product__product_category")
-            .annotate(
-                category_id=F("product__product_category"),
-                category_name=F("product__product_category__name"),
-                total_revenue=Sum(F("quantity") * F("selling_price")),
-                total_profit=Sum(F("quantity") * F("product__net_profit")),
-                total_quantity_sold=Sum("quantity"),
-                product_count=Count("product", distinct=True)
+            data = (
+                queryset
+                .values("product__product_category")
+                .annotate(
+                    category_id=F("product__product_category"),
+                    category_name=F("product__product_category__name"),
+                    total_revenue=Sum(F("quantity") * F("selling_price")),
+                    total_profit=Sum(F("quantity") * F("product__net_profit")),
+                    total_quantity_sold=Sum("quantity"),
+                    product_count=Count("product", distinct=True)
+                )
+                .order_by("-total_revenue")
             )
-            .order_by("-total_revenue")
-        )
 
-        serializer = self.get_serializer(data, many=True)
-        cache.set(cache_key, serializer.data, 60 * 5)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer = self.get_serializer(data, many=True)
+            cache.set(cache_key, serializer.data, 60 * 5)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

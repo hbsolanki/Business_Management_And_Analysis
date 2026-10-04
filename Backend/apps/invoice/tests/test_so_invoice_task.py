@@ -61,7 +61,7 @@ class SalesOrderToInvoiceTaskTests(BaseTestCase):
             sales_order=so,
             product=self.product_a1,
             quantity=1000,  # exceeds 100 stock
-            unit_price=10.0
+            price=10.0
         )
         
         initial_invoice_count = Invoice.objects.count()

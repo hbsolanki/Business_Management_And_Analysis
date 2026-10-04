@@ -54,18 +54,18 @@ class ProductInvoiceSerializer(serializers.ModelSerializer):
         invoice = self.context.get('invoice')
         product = validated_data.pop('product')
         quantity = validated_data.get('quantity')
-        
-        # Price Calculations
+
+        # Price Calculations — run TaxCalculator once
         base_price = product.base_price
         total_tax_rate = product.output_gst_rate
-        
-        # Centralized calculation
         tax_data = TaxCalculator.calculate_gst(base_price * quantity, total_tax_rate)
-        
-        return ProductInvoice.objects.create(
+
+        item = ProductInvoice.objects.create(
             invoice=invoice,
             product=product,
             base_price=base_price,
-            selling_price=tax_data["total_amount"] / quantity, # selling price per unit
+            selling_price=tax_data["total_amount"] / quantity,  # selling price per unit
             **validated_data
         )
+        # Return tuple so invoice serializer can use tax_data directly
+        return item, tax_data

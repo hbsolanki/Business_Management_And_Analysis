@@ -3,7 +3,9 @@ from django.db import transaction
 from apps.master.models import Country, State, City
 from apps.base.serializers.base import BaseSerializer
 
-class BaseAddressSerializer(BaseSerializer):
+from apps.base.models import Address
+
+class AddressSerializer(BaseSerializer):
     city = serializers.CharField(write_only=True)
     state = serializers.CharField(write_only=True)
     country = serializers.CharField(write_only=True)
@@ -12,9 +14,9 @@ class BaseAddressSerializer(BaseSerializer):
     state_name = serializers.CharField(source="city.state.name", read_only=True)
     country_name = serializers.CharField(source="city.state.country.name", read_only=True)
 
-    class Meta:
-        fields = [
-            "id",
+    class Meta(BaseSerializer.Meta):
+        model = Address
+        fields = BaseSerializer.Meta.fields + [
             "address_line_1",
             "address_line_2",
             "city",
@@ -25,7 +27,7 @@ class BaseAddressSerializer(BaseSerializer):
             "country_name",
             "pin_code",
         ]
-        read_only_fields = ["id", "city_name", "state_name", "country_name"]
+        read_only_fields = BaseSerializer.Meta.read_only_fields + ["city_name", "state_name", "country_name"]
 
     @transaction.atomic
     def _handle_location(self, validated_data):

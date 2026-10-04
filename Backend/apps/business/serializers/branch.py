@@ -2,17 +2,17 @@ from rest_framework import serializers
 from django.db import transaction
 from apps.business.models import Branch
 from apps.base.serializers.base import BaseSerializer
-from apps.business.serializers.address import BranchAddressSerializer
+from apps.base.serializers.address import AddressSerializer
 
 
 class BranchSerializer(BaseSerializer):
-    address = BranchAddressSerializer(read_only=True)
-    address_data = serializers.DictField(child=serializers.CharField(allow_blank=True, allow_null=True), write_only=True, required=False)
+    resource_limit_field = "max_branches"
+    address = AddressSerializer(required=False, allow_null=True)
 
     class Meta(BaseSerializer.Meta):
         model = Branch
         fields = BaseSerializer.Meta.fields + [
-            "name", "address", "address_data", "contact_number", "is_default", "is_active"
+            "name", "address", "contact_number", "is_default", "is_active"
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields
 
@@ -41,10 +41,10 @@ class BranchSerializer(BaseSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        address_data = validated_data.pop("address_data", None)
+        address_data = validated_data.pop("address", None)
 
         if address_data:
-            address_serializer = BranchAddressSerializer(data=address_data)
+            address_serializer = AddressSerializer(data=address_data)
             address_serializer.is_valid(raise_exception=True)
             validated_data["address"] = address_serializer.save()
 
@@ -53,13 +53,13 @@ class BranchSerializer(BaseSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        address_data = validated_data.pop("address_data", None)
+        address_data = validated_data.pop("address", None)
 
-        if address_data:
+        if address_data is not None:
             if instance.address:
-                address_serializer = BranchAddressSerializer(instance.address, data=address_data, partial=True)
+                address_serializer = AddressSerializer(instance.address, data=address_data, partial=True)
             else:
-                address_serializer = BranchAddressSerializer(data=address_data)
+                address_serializer = AddressSerializer(data=address_data)
             address_serializer.is_valid(raise_exception=True)
             validated_data["address"] = address_serializer.save()
 

@@ -9,6 +9,8 @@ from apps.activity_log.models import ActivityLog
 class ProductCategoryViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     activity_module = ActivityLog.Module.PRODUCT
     serializer_class = ProductCategorySerializer
+    queryset = ProductCategory.objects.all()
 
     def get_queryset(self):
-        return ProductCategory.objects.filter(business=self.request.user.business)
+        # BaseViewSet.apply_business_filter handles business isolation
+        return super().get_queryset()

@@ -26,7 +26,7 @@ class Plan(BaseModel):
         db_table = "bma_subscription_plan"
         constraints = [
             models.UniqueConstraint(
-                fields=["name", "price"], name="unique_plan_name_price"
+                fields=["name", "price"], condition=Q(is_deleted=False), name="unique_plan_name_price"
             )
         ]
 
@@ -60,10 +60,6 @@ class Subscription(BaseModel):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
 
-    payment_mode = models.CharField(max_length=10, null=True, blank=True)
-    transaction_id = models.CharField(max_length=255, null=True, blank=True)
-    payment_date = models.DateTimeField(null=True, blank=True)
-
     is_trial = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     status = models.CharField(
@@ -74,8 +70,6 @@ class Subscription(BaseModel):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField(null=True, blank=True)
     failed_at = models.DateTimeField(null=True, blank=True)
-
-    payment_reference = models.CharField(max_length=255, null=True, blank=True)
 
     def is_valid(self):
         return self.is_active and self.end_date > timezone.now()
@@ -89,7 +83,7 @@ class Subscription(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business"],
-                condition=Q(is_active=True),
+                condition=Q(is_active=True, is_deleted=False),
                 name="unique_active_subscription_per_business",
             ),
         ]

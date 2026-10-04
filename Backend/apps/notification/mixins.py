@@ -36,16 +36,19 @@ class CreateReminderMixin:
 
     @action(detail=True, methods=["post"], url_path="create-reminder")
     def create_reminder(self, request, pk=None):
-        from apps.notification.serializers import CreateEntityReminderSerializer, ReminderSerializer
+        try:
+            from apps.notification.serializers import CreateEntityReminderSerializer, ReminderSerializer
 
-        entity_instance = self.get_object()
-        serializer = CreateEntityReminderSerializer(
-            data=request.data,
-            context={"request": request, "entity_instance": entity_instance},
-        )
-        serializer.is_valid(raise_exception=True)
-        reminder = serializer.save()
-        return Response(
-            ReminderSerializer(reminder, context={"request": request}).data,
-            status=status.HTTP_201_CREATED,
-        )
+            entity_instance = self.get_object()
+            serializer = CreateEntityReminderSerializer(
+                data=request.data,
+                context={"request": request, "entity_instance": entity_instance},
+            )
+            serializer.is_valid(raise_exception=True)
+            reminder = serializer.save()
+            return Response(
+                ReminderSerializer(reminder, context={"request": request}).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

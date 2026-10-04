@@ -19,7 +19,7 @@ from channels.layers import get_channel_layer
 from rest_framework.parsers import MultiPartParser, FormParser
 
 
-from apps.base.serializers.base import BulkIdSerializer
+from apps.base.serializers.bulk import BulkIdSerializer
 
 class MessagesViewSet(BaseViewSet,UpdateModelMixin,DestroyModelMixin):
     permission_classes = [ModelPermissions,ChatFeaturePermission]
@@ -43,29 +43,32 @@ class MessagesViewSet(BaseViewSet,UpdateModelMixin,DestroyModelMixin):
 
     @action(detail=False, methods=["get"],url_path=r"conversation/(?P<conversation_id>\d+)")
     def by_conversation(self, request, conversation_id=None):
-        cache_key = make_cache_key(request,"chat",f":conversation:{conversation_id}",request.user)
-        cache_data = cache.get(cache_key)
+        try:
+            cache_key = make_cache_key(request,"chat",f":conversation:{conversation_id}",request.user)
+            cache_data = cache.get(cache_key)
 
-        if cache_data:
-            return Response(cache_data,status=status.HTTP_200_OK)
+            if cache_data:
+                return Response(cache_data,status=status.HTTP_200_OK)
 
-        conversation = Conversation.objects.filter(id=conversation_id).filter(Q(user1=request.user) | Q(user2=request.user)).first()
+            conversation = Conversation.objects.filter(id=conversation_id).filter(Q(user1=request.user) | Q(user2=request.user)).first()
 
-        if not conversation:
-            raise PermissionDenied("Not part of this conversation")
+            if not conversation:
+                raise PermissionDenied("Not part of this conversation")
 
-        messages_qs = (Message.objects.filter(conversation=conversation).select_related("sender"))
+            messages_qs = (Message.objects.filter(conversation=conversation).select_related("sender"))
 
-        page = self.paginate_queryset(messages_qs)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            response=self.get_paginated_response(serializer.data)
-            cache.set(cache_key, response.data, timeout=60 * 2)
-            return response
+            page = self.paginate_queryset(messages_qs)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                response=self.get_paginated_response(serializer.data)
+                cache.set(cache_key, response.data, timeout=60 * 2)
+                return response
 
-        serializer = self.get_serializer(messages_qs, many=True)
-        cache.set(cache_key, serializer.data, timeout=60*2)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer = self.get_serializer(messages_qs, many=True)
+            cache.set(cache_key, serializer.data, timeout=60*2)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
         summary="Upload Media to Conversation",
@@ -75,54 +78,60 @@ class MessagesViewSet(BaseViewSet,UpdateModelMixin,DestroyModelMixin):
     )
     @action(detail=False, methods=["post"], url_path=r"conversation/(?P<conversation_id>\d+)/upload",parser_classes=[MultiPartParser, FormParser])
     def message_media_upload(self, request, conversation_id=None):
-        conversation = Conversation.objects.filter(id=conversation_id).filter(
-            Q(user1=request.user) | Q(user2=request.user)).first()
+        try:
+            conversation = Conversation.objects.filter(id=conversation_id).filter(
+                Q(user1=request.user) | Q(user2=request.user)).first()
 
-        if not conversation:
-            raise PermissionDenied("Not part of this conversation")
+            if not conversation:
+                raise PermissionDenied("Not part of this conversation")
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        file = serializer.validated_data.get("media")
-        
-        # Use Manager to create message
-        message = Message.objects.create_message(
-            conversation=conversation,
-            sender=request.user,
-            media=file
-        )
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            file = serializer.validated_data.get("media")
+            
+            # Use Manager to create message
+            message = Message.objects.create_message(
+                conversation=conversation,
+                sender=request.user,
+                media=file
+            )
 
-        data = MessageSerializer(message).data
+            data = MessageSerializer(message).data
 
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"chat_{conversation.id}",
-            {
-                "type": "chat.message",
-                "data": data
-            }
-        )
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"chat_{conversation.id}",
+                {
+                    "type": "chat.message",
+                    "data": data
+                }
+            )
 
-        return Response(data, status=status.HTTP_201_CREATED)
+            return Response(data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
-        serializer = BulkIdSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = BulkIdSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        ids = serializer.validated_data["ids"]
+            ids = serializer.validated_data["ids"]
 
-        # Check if any messages do not belong to the sender
-        if Message.objects.filter(id__in=ids).exclude(sender=request.user).exists():
-            raise PermissionDenied("You can only delete your own messages")
+            # Check if any messages do not belong to the sender
+            if Message.objects.filter(id__in=ids).exclude(sender=request.user).exists():
+                raise PermissionDenied("You can only delete your own messages")
 
-        Message.objects.filter(
-            id__in=ids,
-            sender=request.user
-        ).delete()
+            Message.objects.filter(
+                id__in=ids,
+                sender=request.user
+            ).delete()
 
-        return Response(
-            {"detail": "Messages deleted successfully"},
-            status=status.HTTP_200_OK
-        )
+            return Response(
+                {"detail": "Messages deleted successfully"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

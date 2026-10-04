@@ -23,97 +23,89 @@ from apps.employee.models import UserRole
 
 from decimal import Decimal
 
-class PurchaseOrderItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(), write_only=True
-    )
-    product = ProductSerializer(read_only=True)
+from apps.supplier.serializers.base_order import BaseOrderItemSerializer, BaseOrderSerializer
+from apps.base.utils.tax import TaxCalculator
+from apps.base.serializers.gst import GSTSerializer
 
-    class Meta:
+class PurchaseOrderItemSerializer(BaseOrderItemSerializer):
+    class Meta(BaseOrderItemSerializer.Meta):
         model = PurchaseOrderItem
-        fields = [
-            "id", "product_id", "product", "quantity", "unit_cost", 
-            "subtotal", "tax_rate", "tax_amount", "cgst_amount", "sgst_amount", "igst_amount"
-        ]
-        read_only_fields = ["subtotal", "product", "tax_amount", "cgst_amount", "sgst_amount", "igst_amount"]
-
-    def validate_quantity(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Quantity must be > 0")
-        return value
 
     def create(self, validated_data):
-        from apps.base.utils.tax import TaxCalculator
-        purchase_order = self.context.get("purchase_order")
-        product = validated_data["product_id"]
+        product = validated_data.get("product_id")
         quantity = validated_data["quantity"]
-        unit_cost = validated_data["unit_cost"]
+        price = validated_data["price"]
         
-        tax_rate = validated_data.get("tax_rate", product.input_gst_rate)
-        base_amount = unit_cost * quantity
+        tax_rate = product.input_gst_rate
+        base_amount = price * quantity
         
-        # Centralized calculation
         tax_data = TaxCalculator.calculate_gst(base_amount, tax_rate)
-
-        # Create GST object
-        gst_obj = GST.objects.create(
-            gst_rate=tax_rate,
-            gst_amount=tax_data["tax_amount"],
-            cgst_amount=tax_data["cgst_amount"],
-            sgst_amount=tax_data["sgst_amount"],
-            igst_amount=tax_data["igst_amount"],
-            total_amount=tax_data["total_amount"]
-        )
-
+        gst_data = {
+            "gst_rate": tax_rate,
+            "gst_amount": tax_data["tax_amount"],
+            "cgst_amount": tax_data["cgst_amount"],
+            "sgst_amount": tax_data["sgst_amount"],
+            "igst_amount": tax_data["igst_amount"],
+            "total_amount": tax_data["total_amount"]
+        }
+        gst_serializer = GSTSerializer(data=gst_data)
+        gst_serializer.is_valid(raise_exception=True)
+        gst_obj = gst_serializer.save()
+        
         return PurchaseOrderItem.objects.create(
-            purchase_order=purchase_order,
             product=product,
+            gst=gst_obj,
+            price=price,
+            subtotal=base_amount,
             quantity=quantity,
-            unit_cost=unit_cost,
-            gst=gst_obj
+            purchase_order=self.context.get("purchase_order")
         )
 
     def update(self, instance, validated_data):
-        from apps.base.utils.tax import TaxCalculator
-        validated_data.pop("product_id", None)
-
-        instance.quantity = validated_data.get("quantity", instance.quantity)
-        instance.unit_cost = validated_data.get("unit_cost", instance.unit_cost)
+        product = validated_data.pop("product_id", instance.product)
+        quantity = validated_data.get("quantity", instance.quantity)
+        price = validated_data.get("price", instance.price)
         
-        tax_rate = validated_data.get("tax_rate", instance.tax_rate)
-        base_amount = instance.unit_cost * instance.quantity
+        instance.quantity = quantity
+        instance.price = price
+        instance.product = product
+            
+        tax_rate = product.input_gst_rate
+        base_amount = price * quantity
         
-        # Centralized calculation
         tax_data = TaxCalculator.calculate_gst(base_amount, tax_rate)
+        gst_data = {
+            "gst_rate": tax_rate,
+            "gst_amount": tax_data["tax_amount"],
+            "cgst_amount": tax_data["cgst_amount"],
+            "sgst_amount": tax_data["sgst_amount"],
+            "igst_amount": tax_data["igst_amount"],
+            "total_amount": tax_data["total_amount"]
+        }
         
         if instance.gst:
-            instance.gst.gst_rate = tax_rate
-            instance.gst.gst_amount = tax_data["tax_amount"]
-            instance.gst.cgst_amount = tax_data["cgst_amount"]
-            instance.gst.sgst_amount = tax_data["sgst_amount"]
-            instance.gst.igst_amount = tax_data["igst_amount"]
-            instance.gst.total_amount = tax_data["total_amount"]
-            instance.gst.save()
+            gst_serializer = GSTSerializer(instance.gst, data=gst_data, partial=True)
+            gst_serializer.is_valid(raise_exception=True)
+            gst_serializer.save()
         else:
-            instance.gst = GST.objects.create(
-                gst_rate=tax_rate,
-                gst_amount=tax_data["tax_amount"],
-                cgst_amount=tax_data["cgst_amount"],
-                sgst_amount=tax_data["sgst_amount"],
-                igst_amount=tax_data["igst_amount"],
-                total_amount=tax_data["total_amount"]
-            )
-        
+            gst_serializer = GSTSerializer(data=gst_data)
+            gst_serializer.is_valid(raise_exception=True)
+            instance.gst = gst_serializer.save()
+            
+        instance.subtotal = base_amount
         instance.save()
         return instance
 
 
-class PurchaseOrderSerializer(BaseSerializer):
+
+class PurchaseOrderSerializer(BaseOrderSerializer):
     items = PurchaseOrderItemSerializer(many=True, required=True)
     branch_id = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all(), write_only=True, required=False, allow_null=True)
     supplier_id = serializers.PrimaryKeyRelatedField(queryset=Supplier.objects.all(), write_only=True, required=True)
     supplier = SupplierSerializer( read_only=True)
     branch = BranchSerializer( read_only=True)
+    
+    gst = GSTSerializer(read_only=True)
 
     class Meta(BaseSerializer.Meta):
         model = PurchaseOrder
@@ -127,19 +119,13 @@ class PurchaseOrderSerializer(BaseSerializer):
             "branch",
             "order_date",
             "total_amount",
-            "total_tax",
-            "cgst_total",
-            "sgst_total",
-            "igst_total",
+            "gst",
             "received_at",
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields + [
             "order_date",
             "total_amount",
-            "total_tax",
-            "cgst_total",
-            "sgst_total",
-            "igst_total",
+            "gst",
             "received_at",
         ]
 
@@ -163,28 +149,9 @@ class PurchaseOrderSerializer(BaseSerializer):
             
         return value
 
-    def validate_status(self, value):
-        if self.instance:
-            if self.instance.status == OrderStatus.FAILED:
-                raise serializers.ValidationError("Failed orders cannot be updated.")
-            if self.instance.status == OrderStatus.DELIVERED and value == OrderStatus.CANCELLED:
-                raise serializers.ValidationError("Delivered orders cannot be cancelled.")
-            if self.instance.status == OrderStatus.CANCELLED and value == OrderStatus.DELIVERED:
-                raise serializers.ValidationError("Cancelled orders cannot be delivered.")
-        return value
+    # validate_status handled by BaseOrderSerializerMixin
 
-    def validate_branch_id(self, value):
-        request = self.context.get("request")
-        user = getattr(request, "user", None)
-        business = self.context.get("business")
-
-        if business and value and value.business != business:
-            raise serializers.ValidationError("Branch access denied.")
-
-        if user and request.user.role_name != UserRole.OWNER:
-            if not request.user.branches.filter(id=value.id).exists():
-                raise exceptions.PermissionDenied("Branch access denied.")
-        return value
+    # validate_branch_id handled by BaseOrderSerializerMixin
 
     def validate_supplier_id(self, value):
         business = self.context.get("business")
@@ -192,37 +159,7 @@ class PurchaseOrderSerializer(BaseSerializer):
             raise serializers.ValidationError("Supplier ID invalid.")
         return value
 
-    def _calculate_totals(self, items):
-        total_tax_val = sum(item.tax_amount for item in items)
-        cgst_total_val = sum(item.cgst_amount for item in items)
-        sgst_total_val = sum(item.sgst_amount for item in items)
-        igst_total_val = sum(item.igst_amount for item in items)
-        total_amount_val = sum(item.quantity * item.unit_cost for item in items) + total_tax_val
-        return total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val
-
-    def _apply_gst_totals(self, order, total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val):
-        avg_gst_rate = ((total_tax_val / (total_amount_val - total_tax_val)) * Decimal("100")).quantize(Decimal("0.01")) if total_amount_val > total_tax_val else Decimal("0.00")
-
-        if order.gst:
-            order.gst.gst_rate = avg_gst_rate
-            order.gst.gst_amount = total_tax_val
-            order.gst.cgst_amount = cgst_total_val
-            order.gst.sgst_amount = sgst_total_val
-            order.gst.igst_amount = igst_total_val
-            order.gst.total_amount = total_amount_val
-            order.gst.save()
-        else:
-            order.gst = GST.objects.create(
-                gst_rate=avg_gst_rate,
-                gst_amount=total_tax_val,
-                cgst_amount=cgst_total_val,
-                sgst_amount=sgst_total_val,
-                igst_amount=igst_total_val,
-                total_amount=total_amount_val
-            )
-
-        order.total_amount = total_amount_val
-        order.save(update_fields=["total_amount", "gst"])
+    # _calculate_totals and _apply_totals handled by BaseOrderSerializerMixin
 
     @transaction.atomic
     def create(self, validated_data):
@@ -238,15 +175,7 @@ class PurchaseOrderSerializer(BaseSerializer):
         item_serializer = PurchaseOrderItemSerializer(context={**self.context, "purchase_order": purchase_order})
         items = [item_serializer.create(item_data) for item_data in items_data]
 
-        total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val = self._calculate_totals(items)
-        self._apply_gst_totals(
-            purchase_order,
-            total_tax_val,
-            cgst_total_val,
-            sgst_total_val,
-            igst_total_val,
-            total_amount_val,
-        )
+        TaxCalculator.apply_order_totals(purchase_order, items)
 
         # Trigger GST summary update task if status is DELIVERED
         if purchase_order.status == OrderStatus.DELIVERED:
@@ -310,15 +239,7 @@ class PurchaseOrderSerializer(BaseSerializer):
                     item_serializer.is_valid(raise_exception=True)
                     item_serializer.save()
 
-            total_tax_val, cgst_total_val, sgst_total_val, igst_total_val, total_amount_val = self._calculate_totals(instance.items.all())
-            self._apply_gst_totals(
-                instance,
-                total_tax_val,
-                cgst_total_val,
-                sgst_total_val,
-                igst_total_val,
-                total_amount_val,
-            )
+            TaxCalculator.apply_order_totals(instance, instance.items.all())
 
             if was_delivered:
                 instance.status = OrderStatus.PENDING

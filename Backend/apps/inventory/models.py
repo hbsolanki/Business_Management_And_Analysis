@@ -25,7 +25,7 @@ class InventoryProduct(BaseModel):
         db_table="bma_inventory_product"
         indexes=[models.Index(fields=["inventory"])]
         constraints = [
-            models.UniqueConstraint(fields=["inventory", "product"],name="unique_inventory_product") ]
+            models.UniqueConstraint(fields=["inventory", "product"], condition=models.Q(is_deleted=False), name="unique_inventory_product") ]
 
 class InventoryTransaction(BaseModel):
     Action = InventoryTransactionAction

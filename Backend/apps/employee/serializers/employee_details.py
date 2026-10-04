@@ -3,11 +3,11 @@ from rest_framework.exceptions import PermissionDenied
 
 from apps.employee.models import EmployeeDetails, UserRole
 from apps.base.serializers.base import BaseSerializer
-from apps.employee.serializers.employee_address import EmployeeAddressSerializer
+from apps.base.serializers.address import AddressSerializer
 
 
 class EmployeeDetailsSerializer(BaseSerializer):
-    address = EmployeeAddressSerializer(required=False)
+    address = AddressSerializer(required=False)
 
     class Meta(BaseSerializer.Meta):
         model = EmployeeDetails
@@ -37,7 +37,7 @@ class EmployeeDetailsSerializer(BaseSerializer):
         if user and "user" not in validated_data:
             validated_data["user"] = user
         if address_data:
-            address_serializer = EmployeeAddressSerializer(data=address_data)
+            address_serializer = AddressSerializer(data=address_data)
             address_serializer.is_valid(raise_exception=True)
             validated_data['address'] = address_serializer.save()
         return super().create(validated_data)
@@ -46,9 +46,9 @@ class EmployeeDetailsSerializer(BaseSerializer):
         address_data = validated_data.pop('address', None)
         if address_data is not None:
             if instance.address:
-                address_serializer = EmployeeAddressSerializer(instance.address, data=address_data, partial=True)
+                address_serializer = AddressSerializer(instance.address, data=address_data, partial=True)
             else:
-                address_serializer = EmployeeAddressSerializer(data=address_data)
+                address_serializer = AddressSerializer(data=address_data)
             address_serializer.is_valid(raise_exception=True)
             instance.address = address_serializer.save()
             instance.save(update_fields=["address"])

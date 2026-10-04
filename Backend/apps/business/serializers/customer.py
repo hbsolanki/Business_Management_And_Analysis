@@ -1,15 +1,18 @@
 from rest_framework import serializers
 from apps.business.models import BusinessCustomer
 from apps.base.serializers.base import BaseSerializer
+from apps.base.serializers.address import AddressSerializer
 
 
 class BusinessCustomerSerializer(BaseSerializer):
     customer_business_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    address = AddressSerializer(required=False, allow_null=True)
+
     class Meta(BaseSerializer.Meta):
         model = BusinessCustomer
         fields = BaseSerializer.Meta.fields + [
             "name", "mobile_number", "gender", "age", "email","same_platform",
-            "customer_business", "customer_business_id"
+            "customer_business", "customer_business_id", "address"
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields + ["customer_business"]
 
@@ -57,11 +60,22 @@ class BusinessCustomerSerializer(BaseSerializer):
         mobile_number = validated_data.get('mobile_number')
         
         validated_data.pop("customer_business_id", None)
+        address_data = validated_data.pop("address", None)
+
         customer, created = BusinessCustomer.objects.get_or_create(
             mobile_number=mobile_number,
             business=business,
             defaults={**validated_data}
         )
+
+        if address_data:
+            if customer.address:
+                address_serializer = AddressSerializer(customer.address, data=address_data, partial=True)
+            else:
+                address_serializer = AddressSerializer(data=address_data)
+            address_serializer.is_valid(raise_exception=True)
+            customer.address = address_serializer.save()
+            customer.save(update_fields=["address"])
 
         if not created:
             updated_fields = []

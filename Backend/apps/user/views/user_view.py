@@ -1,14 +1,16 @@
 import secrets
 import logging
 
-from django.conf import settings
 from django.core.cache import cache
+from django.contrib.auth import authenticate
 from django.db import transaction
 from django.db.utils import IntegrityError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.viewsets import ModelViewSet
 
 from apps.activity_log.mixins import ActivityLogMixin
@@ -18,13 +20,19 @@ from apps.employee.models import UserRole
 from apps.employee.serializers.employee import EmployeeSerializer
 from apps.employee.serializers.manager import ManagerSerializer
 from apps.employee.serializers.owner import OwnerSerializer
-from apps.employee.utils.permission_utils import sync_user_work_groups as sync_user_work_group
+from apps.master.serializers.otp import OtpValidationSerializer, SendOTPSerializer
+from apps.master.utils.otp import verify_otp, generate_and_send_otp
+from apps.employee.utils.permission_utils import (
+    sync_user_work_groups as sync_user_work_group,
+)
 from apps.master.serializers.user import UserBasicDetailsSerializer
 from apps.user.filters import UserFilter
 from apps.user.models import User
-from apps.user.serializers.user import UserSerializer
-from apps.user.tasks import send_otp_email
-from apps.user.utils.forgot_password import generate_otp
+from apps.user.serializers.user import UserSerializer, UserLoginSerializer
+
+
+class LoginThrottle(AnonRateThrottle):
+    rate = '5/min'
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +42,14 @@ class UserViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     filterset_class = UserFilter
 
     def get_permissions(self):
-        if self.action == "create":
+        if self.action in ("create", "login", "send_otp"):
             return [AllowAny()]
-        if self.action == "me":
-            return [IsAuthenticated()]
         return super().get_permissions()
+
+    def get_throttles(self):
+        if self.action == "login":
+            return [LoginThrottle()]
+        return super().get_throttles()
 
     def get_queryset(self):
         user = self.request.user
@@ -53,19 +64,41 @@ class UserViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return UserBasicDetailsSerializer
-
         if self.action == "create":
             return OwnerSerializer
-
+        if self.action == "login":
+            return UserLoginSerializer
         if self.action in ["retrieve", "update", "partial_update", "me"]:
-            obj = self.get_object() if self.action != "me" else self.request.user
-            if obj.role_name == UserRole.MANAGER:
-                return ManagerSerializer
-            if obj.role_name == UserRole.EMPLOYEE:
-                return EmployeeSerializer
-            return OwnerSerializer
-
+            obj = self.request.user if self.action == "me" else self.get_object()
+            role_serializers = {
+                UserRole.MANAGER: ManagerSerializer,
+                UserRole.EMPLOYEE: EmployeeSerializer,
+            }
+            return role_serializers.get(obj.role_name, OwnerSerializer)
         return UserSerializer
+
+    @verify_otp(identifier_field="email", purpose="registration")
+    def create(self, request, *args, **kwargs):
+        # 1. Structural Validation
+        otp_serializer = OtpValidationSerializer(data=request.data)
+        otp_serializer.is_valid(raise_exception=True)
+
+        email = otp_serializer.validated_data["user"].get("email", "").strip().lower()
+
+        # Mutate a copy so we don't alter the original QueryDict
+        request.data["user"]["email"] = email
+
+        # 2. Proceed with actual User Creation
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            logger.exception("Database integrity error during user registration")
+            return Response(
+                {
+                    "error": "A user with this username or email already exists due to a database conflict."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
     def retrieve(self, request, *args, **kwargs):
         key = f"user:{kwargs['pk']}"
@@ -84,14 +117,9 @@ class UserViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        output_serializer = UserSerializer(
-            serializer.instance, context=self.get_serializer_context()
-        )
+        # Use get_serializer to get the role-aware output serializer (same as retrieve)
+        output_serializer = self.get_serializer(serializer.instance)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
-
-    def partial_update(self, request, *args, **kwargs):
-        kwargs["partial"] = True
-        return self.update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
@@ -103,7 +131,7 @@ class UserViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
         with transaction.atomic():
             cache.delete(f"user:{instance.id}")
 
-            # Cascading soft delete for related records
+            # Cascade soft-delete
             instance.business_roles.all().update(is_deleted=True, is_active=False)
             instance.assigned_branches.all().update(is_deleted=True, is_active=False)
             instance.branch_works.all().update(is_deleted=True, is_active=False)
@@ -111,129 +139,83 @@ class UserViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
             if hasattr(instance, "employee_details"):
                 instance.employee_details.is_deleted = True
                 instance.employee_details.is_active = False
-                instance.employee_details.save(update_fields=["is_deleted", "is_active"])
-
-            super().perform_destroy(instance)
-
-    def create(self, request, *args, **kwargs):
-        user_data = request.data.get("user")
-        if not user_data:
-            return Response({"error": "User data required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        email = user_data.get("email", "").strip().lower()
-        if not email:
-            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Mutate a copy so we don't alter the original QueryDict
-        request.data["user"]["email"] = email
-
-        # 1. Check if email is temporarily blocked (1-hour lock)
-        block_key = f"otp_block_{email}"
-        if cache.get(block_key):
-            return Response(
-                {"error": "This email is temporarily blocked due to too many attempts. Please try again after 1 hour."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        otp = request.data.get("otp")
-        if not otp:
-            return Response({"error": "OTP is required for registration"}, status=status.HTTP_400_BAD_REQUEST)
-
-        cached_otp = cache.get(f"otp_registration_{email}")
-
-        # 2. Track OTP verification attempts
-        attempt_key = f"otp_verify_attempts_{email}"
-        attempts = cache.get(attempt_key, 0)
-
-        is_magic_otp = settings.DEBUG and str(otp) == "123456"
-
-        if not is_magic_otp and (not cached_otp or str(cached_otp) != str(otp)):
-            attempts += 1
-            cache.set(attempt_key, attempts, 3600)
-
-            if attempts >= 3:
-                cache.set(block_key, True, 3600)
-                return Response(
-                    {"error": "Too many invalid OTP attempts. Your email is now blocked for 1 hour."},
-                    status=status.HTTP_403_FORBIDDEN,
+                instance.employee_details.save(
+                    update_fields=["is_deleted", "is_active"]
                 )
 
-            remaining = 3 - attempts
-            return Response(
-                {"error": f"Invalid or expired OTP. {remaining} attempt{'s' if remaining != 1 else ''} remaining."},
-                status=status.HTTP_400_BAD_REQUEST,
+            # Soft-delete user
+            instance.is_deleted = True
+            instance.is_active = False
+            instance.save(update_fields=["is_deleted", "is_active"])
+
+            # Log delete
+            ActivityLog.objects.log(
+                business=self.request.user.business,
+                actor=self.request.user,
+                action=ActivityLog.Action.DELETE,
+                module=self.activity_module,
+                target_model=instance.__class__.__name__,
+                target_id=instance.id,
+                message=f"Deleted {instance.__class__.__name__}",
             )
 
-        # OTP is valid — proceed with creation
-        try:
-            response = super().create(request, *args, **kwargs)
-        except IntegrityError:
-            logger.exception("Database integrity error during user registration")
+    @action(detail=False, methods=["post"], url_path="login", url_name="login")
+    def login(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
+        user = authenticate(username=username, password=password)
+
+        if not user or not user.is_active:
             return Response(
-                {"error": "A user with this username or email already exists due to a database conflict."},
-                status=status.HTTP_409_CONFLICT,
+                {"error": "Invalid Credentials"},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if response.status_code == status.HTTP_201_CREATED:
-            cache.delete(f"otp_registration_{email}")
-            cache.delete(attempt_key)
-            cache.delete(f"otp_send_attempts_{email}")
+        user.last_login = timezone.now()
+        user.save(update_fields=["last_login"])
 
-        return response
+        ActivityLog.objects.log(
+            business=user.business,
+            actor=user,
+            action=ActivityLog.Action.LOGIN,
+            module=ActivityLog.Module.USER,
+            message=f"User {user.username} logged in",
+        )
 
-    @action(detail=False, methods=["post"], url_path="send-otp", permission_classes=[AllowAny])
+        from apps.user.utils.token import get_tokens_for_user
+        return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="send-otp",
+        permission_classes=[AllowAny],
+    )
     def send_otp(self, request):
-        email = request.data.get("email", "").strip().lower()
-        if not email:
-            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if email is blocked
-        block_key = f"otp_block_{email}"
-        if cache.get(block_key):
-            return Response(
-                {"error": "This email is temporarily blocked due to too many attempts. Please try again after 1 hour."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        serializer = SendOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
 
         # Reject if user already registered
-        if User.objects.filter(email__iexact=email).exists():
+        if User.all_objects.filter(email__iexact=email).exists():
             return Response(
                 {"error": "A user with this email already exists"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Track send attempts (max 3 per hour)
-        send_attempt_key = f"otp_send_attempts_{email}"
-        send_count = cache.get(send_attempt_key, 0)
+        generate_and_send_otp(identifier=email, email=email, purpose="registration")
 
-        if send_count >= 3:
-            cache.set(block_key, True, 3600)
-            return Response(
-                {"error": "You have requested OTP too many times. Your email is now blocked for 1 hour."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        # Get count just to display remaining attempts
+        send_count = cache.get(f"otp_send_attempts_{email}", 1)
+        remaining = max(0, 3 - send_count)
 
-        # Generate and store OTP (10 min TTL)
-        otp = generate_otp()
-        cache.set(f"otp_registration_{email}", otp, 600)
-        cache.set(send_attempt_key, send_count + 1, 3600)
-
-        # Send via Celery task (handles Brevo + fallback internally)
-        try:
-            send_otp_email.delay(to_email=email, otp=otp, purpose="registration")
-        except Exception:
-            logger.exception("Failed to dispatch Celery task for OTP registration email")
-            # Revert OTP generation and tracking if we failed to dispatch the email
-            cache.delete(f"otp_registration_{email}")
-            cache.set(send_attempt_key, send_count, 3600)
-            return Response(
-                {"error": "Email dispatch service is temporarily unavailable. Please try again later."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        remaining = 2 - send_count
         return Response(
-            {"message": f"OTP sent successfully. {remaining} request{'s' if remaining != 1 else ''} remaining."},
+            {
+                "message": f"OTP sent successfully. {remaining} request{'s' if remaining != 1 else ''} remaining."
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -244,16 +226,21 @@ class UserViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="logout")
     def logout(self, request):
-        user = request.user
-        user.last_login = None
-        user.save(update_fields=["last_login"])
+        try:
+            user = request.user
+            user.last_login = None
+            user.save(update_fields=["last_login"])
 
-        ActivityLog.objects.log(
-            business=user.business,
-            actor=user,
-            action=ActivityLog.Action.CUSTOM,
-            module=ActivityLog.Module.USER,
-            message=f"{user.username} logged out",
-        )
+            ActivityLog.objects.log(
+                business=user.business,
+                actor=user,
+                action=ActivityLog.Action.CUSTOM,
+                module=ActivityLog.Module.USER,
+                message=f"{user.username} logged out",
+            )
 
-        return Response({"message": "Successfully logged out"}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Successfully logged out"}, status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

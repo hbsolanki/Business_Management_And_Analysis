@@ -22,6 +22,8 @@ django_apps = [
     "allauth.socialaccount.providers.google",
     'channels',
     'storages',
+    'cloudinary_storage',
+    'cloudinary',
 ]
 
 project_app = [
@@ -41,6 +43,7 @@ project_app = [
     'apps.supplier',
     'apps.employee',
     'apps.ai_agent',
+    'apps.payment',
     'apps.base.apps.BaseConfig',
     'apps.gst_management.apps.GstManagementConfig',
 ]
@@ -116,6 +119,15 @@ STATICFILES_DIRS = []
 MEDIA_ROOT = BASE_DIR / "media"
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-stale-pending-payments-nightly": {
+        "task": "apps.payment.tasks.cleanup_stale_pending_payments",
+        "schedule": crontab(hour=2, minute=0),  # Runs daily at 2:00 AM at night
+    },
+}
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

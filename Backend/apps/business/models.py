@@ -1,14 +1,7 @@
 from django.db import models
-from apps.base.models import BaseModel, BaseAddress
+from apps.base.models import BaseModel, Address
 from apps.master.utils.text_choices import GSTRegistrationType, GenderType
 
-
-class BranchAddress(BaseAddress):
-    class Meta:
-        db_table = "bma_branch_address"
-
-    def __str__(self):
-        return f"Branch Address: {self.address_line_1}"
 
 class Business(BaseModel):
     name = models.CharField(max_length=100,null=True,blank=True)
@@ -49,7 +42,7 @@ class BusinessGSTProfile(BaseModel):
 class Branch(BaseModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="branches")
     name = models.CharField(max_length=100)
-    address = models.ForeignKey(BranchAddress, on_delete=models.SET_NULL, null=True, blank=True, related_name="branches")
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name="branches")
     contact_number = models.CharField(max_length=15, null=True, blank=True)
     is_default = models.BooleanField(default=False)
 
@@ -67,6 +60,7 @@ class Branch(BaseModel):
             ),
             models.UniqueConstraint(
                 fields=["business", "name"],
+                condition=models.Q(is_deleted=False),
                 name="unique_branch_name_per_business"
             )
         ]
@@ -81,6 +75,7 @@ class BusinessCustomer(BaseModel):
     name = models.CharField(max_length=100)
     mobile_number = models.CharField(max_length=11)
     email = models.EmailField(default='', null=True, blank=True)
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name="customers")
     age = models.IntegerField(null=True, blank=True)
     gender = models.CharField(choices=GenderType.choices, max_length=10, null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -99,7 +94,7 @@ class BusinessCustomer(BaseModel):
             ),
             models.UniqueConstraint(
                 fields=["business", "customer_business"],
-                condition=models.Q(customer_business__isnull=False),
+                condition=models.Q(customer_business__isnull=False, is_deleted=False),
                 name="unique_customer_business_link"
             )
         ]

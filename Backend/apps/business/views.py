@@ -100,34 +100,40 @@ class BusinessViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     @transaction.atomic
     def manager(self, request):
         if not request.user.has_perm('employee.can_create_manager'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to create a manager.")
-             
-        self.activity_module = ActivityLog.Module.USER
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = self.perform_create(serializer)
-        
-        staff_usage_subscription(business=request.user.business)
-        output_serializer = UserSerializer(user, context=self.get_serializer_context())
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+            return Response(
+                {"error": "You do not have permission to create a manager."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            self.activity_module = ActivityLog.Module.USER
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = self.perform_create(serializer)
+            staff_usage_subscription(business=request.user.business)
+            output_serializer = UserSerializer(user, context=self.get_serializer_context())
+            return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], url_path="employee")
     @limit_required("max_staff", resource_model=User)
     @transaction.atomic
     def employee(self, request):
         if not request.user.has_perm('employee.can_create_employee'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to create an employee.")
-
-        self.activity_module = ActivityLog.Module.USER
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = self.perform_create(serializer)
-
-        staff_usage_subscription(business=request.user.business)
-        output_serializer = UserSerializer(user, context=self.get_serializer_context())
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+            return Response(
+                {"error": "You do not have permission to create an employee."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            self.activity_module = ActivityLog.Module.USER
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = self.perform_create(serializer)
+            staff_usage_subscription(business=request.user.business)
+            output_serializer = UserSerializer(user, context=self.get_serializer_context())
+            return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class BranchViewSet(BaseViewSet, ModelViewSet):
@@ -136,10 +142,10 @@ class BranchViewSet(BaseViewSet, ModelViewSet):
     filterset_class = BranchFilter
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         if self.request.user.is_superuser:
             return Branch.objects.all().order_by("-is_active", "-is_default", "created_at")
-        return queryset.filter(business=self.request.user.business).order_by("-is_active", "-is_default", "created_at")
+        # BaseViewSet handles business + branch isolation, we only add ordering
+        return super().get_queryset().order_by("-is_active", "-is_default", "created_at")
 
     def list(self, request, *args, **kwargs):
         business_id = request.user.business_id
@@ -160,20 +166,13 @@ class BranchViewSet(BaseViewSet, ModelViewSet):
     @limit_required("max_branches", resource_model=Branch)
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        # Usage Update
+        response = super().create(request, *args, **kwargs)
         subscription = get_active_subscription(request.user.business)
         if subscription:
             increment_usage(subscription, "branches_created")
-            
             cache.delete(f"subscription:usage:{subscription.id}")
-            
-        headers = self.get_success_headers(serializer.data)
-        cache.delete(f"business:{self.request.user.business_id}:branches")
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        cache.delete(f"business:{request.user.business_id}:branches")
+        return response
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
@@ -189,9 +188,11 @@ class BranchViewSet(BaseViewSet, ModelViewSet):
 class BusinessCustomerViewSet(BaseViewSet, ModelViewSet):
     serializer_class = BusinessCustomerSerializer
     filterset_class = BusinessCustomerFilter
+    queryset = BusinessCustomer.objects.all()
 
     def get_queryset(self):
-        return BusinessCustomer.objects.filter(business=self.request.user.business)
+        # BaseViewSet.apply_business_filter handles business isolation
+        return super().get_queryset()
 
 class BusinessGSTProfileViewSet(BaseViewSet, ModelViewSet):
     """
@@ -202,10 +203,11 @@ class BusinessGSTProfileViewSet(BaseViewSet, ModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        return BusinessGSTProfile.objects.filter(business=self.request.user.business)
+        # BaseViewSet.apply_business_filter handles business isolation
+        return super().get_queryset()
 
     def perform_create(self, serializer):
-        serializer.save(business=self.request.user.business)
+        super().perform_create(serializer)
         cache.delete(f"user:{self.request.user.id}")
 
     def perform_update(self, serializer):

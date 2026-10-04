@@ -11,6 +11,7 @@ from apps.employee.models import UserRole
 
 
 class ProductSerializer(BaseSerializer):
+    resource_limit_field = "max_products"
     product_category = ProductCategorySerializer(read_only=True)
     product_category_id = serializers.PrimaryKeyRelatedField(
         queryset=ProductCategory.objects.none(),

@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.base.tests import BaseTestCase
 from apps.subscription.models import Subscription, SubscriptionWebhookEvent
-from apps.subscription.services.payment_service import SubscriptionPaymentService
+from apps.payment.services.subscription_payment_service import SubscriptionPaymentService
 
 
 class SubscriptionPaymentServiceTestCase(BaseTestCase):

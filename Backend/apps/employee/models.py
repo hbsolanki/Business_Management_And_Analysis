@@ -1,5 +1,5 @@
 from django.db import models
-from apps.base.models import BaseModel, BaseAddress
+from apps.base.models import BaseModel, Address
 from apps.master.utils.text_choices import UserRole, WorkType
 
 from apps.business.models import Business, Branch
@@ -12,7 +12,7 @@ class UserBusinessRole(BaseModel):
     class Meta:
         db_table = "bma_user_business_role"
         constraints = [
-            models.UniqueConstraint(fields=["user", "business"], name="unique_user_business_role")
+            models.UniqueConstraint(fields=["user", "business"], condition=models.Q(is_deleted=False), name="unique_user_business_role")
         ]
         permissions = [
             ("change_owner_role", "Can change owner role"),
@@ -30,7 +30,7 @@ class UserBranch(BaseModel):
     class Meta:
         db_table = "bma_user_branch"
         constraints = [
-            models.UniqueConstraint(fields=["user", "branch"], name="unique_user_branch")
+            models.UniqueConstraint(fields=["user", "branch"], condition=models.Q(is_deleted=False), name="unique_user_branch")
         ]
         permissions = [
             ("change_branch_employee", "Can change branch for employee"),
@@ -48,7 +48,7 @@ class UserBranchWork(BaseModel):
     class Meta:
         db_table = "bma_user_branch_work"
         constraints = [
-            models.UniqueConstraint(fields=["user", "branch", "work_type"], name="unique_user_branch_work")
+            models.UniqueConstraint(fields=["user", "branch", "work_type"], condition=models.Q(is_deleted=False), name="unique_user_branch_work")
         ]
         permissions = [
             ("change_employee_work", "Can change work type for employee"),
@@ -57,17 +57,10 @@ class UserBranchWork(BaseModel):
     def __str__(self):
         return f"{self.user.username} - {self.branch.name} ({self.work_type})"
 
-class EmployeeAddress(BaseAddress):
-    class Meta:
-        db_table = "bma_employee_address"
-
-    def __str__(self):
-        return f"Employee Address: {self.address_line_1}"
-
 class EmployeeDetails(BaseModel):
     user = models.OneToOneField('user.User', on_delete=models.CASCADE, related_name="employee_details")
     salary = models.IntegerField(default=0)
-    address = models.ForeignKey(EmployeeAddress, on_delete=models.SET_NULL, null=True, blank=True, related_name="employees")
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name="employees")
     bio = models.TextField(blank=True, null=True)
 
     class Meta:

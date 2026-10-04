@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.contrib.auth.models import Group
 
 from apps.subscription.models import Subscription, SubscriptionWebhookEvent, Plan
-from apps.subscription.services.payment_service import SubscriptionPaymentService
+from apps.payment.services.subscription_payment_service import SubscriptionPaymentService
 from apps.user.models import User
 from apps.business.models import Business, Branch
 from apps.employee.models import UserRole, UserBusinessRole

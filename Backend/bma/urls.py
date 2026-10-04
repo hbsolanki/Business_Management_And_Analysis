@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView
 )
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-from apps.base.views.payment_base import StripeWebhookViewSet
+from apps.payment.views import StripeWebhookViewSet
 from django.http import HttpResponse
 
 def health_check(request):
@@ -33,6 +33,7 @@ urlpatterns = [
     path('supplier/', include('apps.supplier.urls')),
     path('ai-agent/', include('apps.ai_agent.urls')),
     path('gst-management/', include('apps.gst_management.urls')),
+    path('payment/', include('apps.payment.urls')),
     path('stripe/webhook/', StripeWebhookViewSet.as_view({'post': 'webhook'}), name='stripe-webhook'),
 
     #urls

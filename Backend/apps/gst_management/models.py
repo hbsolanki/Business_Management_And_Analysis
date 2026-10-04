@@ -38,6 +38,7 @@ class MonthlyGSTSummary(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "month", "year"], 
+                condition=models.Q(is_deleted=False),
                 name="unique_monthly_gst_summary_per_business"
             )
         ]

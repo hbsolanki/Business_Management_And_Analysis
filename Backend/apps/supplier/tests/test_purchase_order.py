@@ -23,7 +23,7 @@ class PurchaseOrderTestCase(BaseTestCase):
                 {
                     "product_id": self.product.id,
                     "quantity": 5,
-                    "unit_cost": 8.0
+                    "price": 8.0
                 }
             ]
         }
@@ -38,7 +38,7 @@ class PurchaseOrderTestCase(BaseTestCase):
         for i in range(len(expected_data['items'])):
             self.assertEqual(response_data['items'][i]['product']['id'], expected_data['items'][i]['product_id'])
             self.assertEqual(response_data['items'][i]['quantity'], expected_data['items'][i]['quantity'])
-            self.assertEqual(float(response_data['items'][i]['unit_cost']), float(expected_data['items'][i]['unit_cost']))
+            self.assertEqual(float(response_data['items'][i]['price']), float(expected_data['items'][i]['price']))
 
     def test_purchase_order_crud_by_owner(self):
         self.client.force_authenticate(user=self.owner_a)

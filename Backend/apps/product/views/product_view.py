@@ -17,31 +17,19 @@ class ProductViewSet(ActivityLogMixin, BaseViewSet, ModelViewSet):
     activity_module = ActivityLog.Module.PRODUCT
     filterset_class = ProductFilter
     serializer_class = ProductSerializer
+    queryset = Product.objects.all()
 
     def get_queryset(self):
-        return Product.objects.filter(business=self.request.user.business).order_by(
-            "-is_active", "-created_at", "-id"
-        )
+        # BaseViewSet applies business isolation; we only add ordering here
+        return super().get_queryset().order_by("-is_active", "-created_at", "-id")
 
     @limit_required("max_products", resource_model=Product)
     @transaction.atomic
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        serializer.save(created_by=request.user)
-
-        # Usage update
-        from apps.subscription.utils.entitlements import (
-            get_active_subscription,
-            increment_usage,
-        )
-
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        from apps.subscription.utils.entitlements import get_active_subscription, increment_usage
         subscription = get_active_subscription(request.user.business)
         if subscription:
             increment_usage(subscription, "product_created")
             cache.delete(f"subscription:usage:{subscription.id}")
-
-        return Response(
-            {"message": "Product created successfully"}, status=status.HTTP_201_CREATED
-        )
+        return response

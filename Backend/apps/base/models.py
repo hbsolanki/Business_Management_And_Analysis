@@ -1,10 +1,11 @@
 from django.db import models
 from apps.base.utils.active_manager import ActiveManager
+from apps.base.mixins import DirtyFieldsMixin
 from django.conf import settings
 from decimal import Decimal, ROUND_HALF_UP
 
 
-class BaseModel(models.Model):
+class BaseModel(DirtyFieldsMixin, models.Model):
     objects = ActiveManager()
     all_objects = models.Manager()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -17,37 +18,18 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._original_state = self._as_dict()
 
-    def _as_dict(self):
-        return {
-            f.attname: self.__dict__.get(f.attname)
-            for f in self._meta.concrete_fields
-            if f.attname in self.__dict__
-        }
-
-    def get_dirty_fields(self):
-        new_state = self._as_dict()
-        changes = {}
-
-        for field, old_value in self._original_state.items():
-            new_value = new_state[field]
-            if old_value != new_value:
-                changes[field] = {"old": old_value, "new": new_value}
-
-        return changes
-
-
-class BaseAddress(BaseModel):
+class Address(BaseModel):
     address_line_1 = models.CharField(max_length=255)
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     city = models.ForeignKey('master.City', on_delete=models.SET_NULL, null=True, blank=True)
     pin_code = models.CharField(max_length=20)
 
     class Meta:
-        abstract = True
+        db_table = "bma_address"
+
+    def __str__(self):
+        return f"Address: {self.address_line_1}"
 
 
 class GST(BaseModel):
@@ -60,16 +42,3 @@ class GST(BaseModel):
 
     class Meta:
         db_table = "bma_gst"
-
-    def calculate_gst(self,is_inter_country=False):
-
-        gst_amount=self.gst_amount or Decimal("0.00")
-        if is_inter_country:
-            self.igst_amount = gst_amount
-        else:
-            self.cgst_amount = (gst_amount / Decimal("2")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            self.sgst_amount = gst_amount - self.cgst_amount
-
-    def save(self, *args, **kwargs):
-        self.calculate_gst()
-        super().save(*args, **kwargs)

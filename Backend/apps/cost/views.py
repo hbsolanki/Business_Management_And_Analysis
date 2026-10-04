@@ -52,30 +52,32 @@ class MonthlyCostCategoryViewSet(CreateReminderMixin, ActivityLogMixin, BaseView
     activity_module = ActivityLog.Module.COST
     filterset_class = MonthlyCostCategoryFilter
     queryset = MonthlyCostCategory.objects.all()
+    serializer_class = MonthlyCostCategorySerializer
+    serializer_action_classes = {
+        "create": MonthlyCostCategoryBulkSerializer,
+    }
 
-    def get_queryset(self):
-        user = self.request.user
-        queryset = super().get_queryset()
-        
-        queryset = queryset.filter(monthly_summary__business=user.business)
+    def apply_business_filter(self, queryset, user):
+        # MonthlyCostCategory has no direct business field; it's via monthly_summary
+        return queryset.filter(monthly_summary__business=user.business)
+
+    def apply_branch_filter(self, queryset, user):
+        # Branch path is also indirect via monthly_summary
         branch_id = self.request.query_params.get('branch')
-
         if user.role_name == UserRole.OWNER:
             if branch_id:
-                queryset = queryset.filter(monthly_summary__branch_id=branch_id)
-        else:
-            assigned_branches = user.branches
-            if branch_id:
-                queryset = queryset.filter(monthly_summary__branch_id=branch_id, monthly_summary__branch__in=assigned_branches)
-            else:
-                queryset = queryset.filter(monthly_summary__branch__in=assigned_branches)
+                return queryset.filter(monthly_summary__branch_id=branch_id)
+            return queryset
+        assigned_branches = user.branches
+        if branch_id:
+            return queryset.filter(monthly_summary__branch_id=branch_id, monthly_summary__branch__in=assigned_branches)
+        return queryset.filter(monthly_summary__branch__in=assigned_branches)
 
-        return queryset.select_related('cost_category', 'monthly_summary')
+    def get_queryset(self):
+        return super().get_queryset().select_related('cost_category', 'monthly_summary')
 
     def get_serializer_class(self):
-        if self.action == "create":
-            return MonthlyCostCategoryBulkSerializer
-        return MonthlyCostCategorySerializer
+        return super().get_serializer_class() or MonthlyCostCategorySerializer
 
     def list(self, request, *args, **kwargs):
         user = request.user
@@ -146,13 +148,15 @@ class ExpenseViewSet(CreateReminderMixin, ActivityLogMixin, BaseViewSet, ModelVi
         business = instance.business
         month = instance.date.month
         year = instance.date.year
-        instance.delete()
-        
+        super().perform_destroy(instance)  # soft delete via BaseViewSet
+        self._update_gst_summary_for(business, month, year)
+
+    def _update_gst_summary_for(self, business, month, year):
         try:
             from apps.gst_management.utils import aggregate_monthly_data
             aggregate_monthly_data(business=business, month=month, year=year)
         except Exception as e:
-            print(f"Error updating GST summary after expense deletion: {e}")
+            print(f"Error updating GST summary: {e}")
 
     def _update_gst_summary(self, instance):
         try:

@@ -167,13 +167,6 @@ class MonthlyCostCategoryBulkSerializer(BaseSerializer):
         model = MonthlyCostCategory
         fields = ['cost_category_items', 'month', 'year', 'branch_id']
 
-    def validate_branch_id(self, value):
-        request = self.context["request"]
-        user = request.user
-        if value.business_id != user.business_id:
-            raise serializers.ValidationError("Branch must belong to your business.")
-        return value
-
     def validate_cost_category_items(self, value):
         if not value:
             raise serializers.ValidationError("At least one cost category item is required.")

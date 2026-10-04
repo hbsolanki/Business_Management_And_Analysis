@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.db import transaction
 
 from apps.base.serializers.base import BaseSerializer
+from apps.base.serializers.gst import GSTSerializer
 from apps.invoice.models import Invoice
 from apps.business.serializers.customer import BusinessCustomerSerializer
 from apps.invoice.serializers.product_invoice import ProductInvoiceSerializer
@@ -15,7 +16,9 @@ from apps.business.models import Branch
 class InvoiceSerializer(BaseSerializer):
     customer = BusinessCustomerSerializer()
     invoice_items = ProductInvoiceSerializer(many=True, allow_empty=False, required=True)
+    gst = GSTSerializer(read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    payment_mode = serializers.CharField(write_only=True, required=True)
 
     branch_id = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.all(), write_only=True, required=True)
 
@@ -23,11 +26,11 @@ class InvoiceSerializer(BaseSerializer):
         model = Invoice
         fields = BaseSerializer.Meta.fields + [
             "business", "branch", "branch_id", "customer", "sales_order", "invoice_items",
-            "payment_mode", "total_amount", "sub_total", 
-            "payment_date", "transaction_id", "created_by_name"
+            "payment_status", "total_amount", "sub_total", "gst", "created_by_name", "payment_mode",
         ]
         read_only_fields = BaseSerializer.Meta.read_only_fields + [
-            "business", "branch", "total_amount", "sub_total", "created_by_name"
+            "business", "branch", "total_amount", "sub_total", "gst", "created_by_name",
+            "payment_status",
         ]
 
 
@@ -36,12 +39,11 @@ class InvoiceSerializer(BaseSerializer):
 
     def validate(self, attrs):
         request = self.context["request"]
-        user = request.user
-        branch    = self._validated_branch
+        branch = attrs.get("branch_id")
         inventory = Inventory.objects.filter(business=request.user.business, branch=branch).first()
         if not inventory:
             raise serializers.ValidationError({"branch_id": "Inventory not found for this branch."})
-        
+
         # Check for duplicate products in invoice items
         items_data = attrs.get("invoice_items", [])
         product_ids = [item["product"].id for item in items_data if "product" in item]
@@ -55,6 +57,7 @@ class InvoiceSerializer(BaseSerializer):
     def create(self, validated_data):
         request = self.context.get('request')
         user = request.user
+        validated_data.pop('payment_mode', None)
         items_data = validated_data.pop('invoice_items')
         customer_data = validated_data.pop('customer')
         branch = validated_data.pop("branch")
@@ -110,15 +113,15 @@ class InvoiceSerializer(BaseSerializer):
             many=True,
             context={**self.context, 'invoice': invoice, 'inventory': inventory}
         )
-        items = item_serializer.create(items_data)
+        results = item_serializer.create(items_data)
 
-        for item in items:
+        for item, tax_data in results:
             sub_total += item.base_price * item.quantity
             total_amount += item.selling_price * item.quantity
-            total_tax += item.tax_amount
-            cgst_total += item.cgst_amount
-            sgst_total += item.sgst_amount
-            igst_total += item.igst_amount
+            total_tax += tax_data["tax_amount"]
+            cgst_total += tax_data["cgst_amount"]
+            sgst_total += tax_data["sgst_amount"]
+            igst_total += tax_data["igst_amount"]
 
         # Finalize Invoice
         invoice.sub_total = sub_total
@@ -127,25 +130,21 @@ class InvoiceSerializer(BaseSerializer):
         # Calculate Average GST Rate
         avg_gst_rate = (total_tax / sub_total * 100) if sub_total > 0 else 0
 
-        # Create/Update GST for the entire invoice
-        from apps.base.models import GST
+        # Create/Update GST via GSTSerializer
+        gst_data = {
+            "gst_rate": avg_gst_rate,
+            "gst_amount": total_tax,
+            "cgst_amount": cgst_total,
+            "sgst_amount": sgst_total,
+            "igst_amount": igst_total,
+            "total_amount": total_amount,
+        }
         if invoice.gst:
-            invoice.gst.gst_rate = avg_gst_rate
-            invoice.gst.gst_amount = total_tax
-            invoice.gst.cgst_amount = cgst_total
-            invoice.gst.sgst_amount = sgst_total
-            invoice.gst.igst_amount = igst_total
-            invoice.gst.total_amount = total_amount
-            invoice.gst.save()
+            gst_serializer = GSTSerializer(invoice.gst, data=gst_data)
         else:
-            invoice.gst = GST.objects.create(
-                gst_rate=avg_gst_rate,
-                gst_amount=total_tax,
-                cgst_amount=cgst_total,
-                sgst_amount=sgst_total,
-                igst_amount=igst_total,
-                total_amount=total_amount
-            )
+            gst_serializer = GSTSerializer(data=gst_data)
+        gst_serializer.is_valid(raise_exception=True)
+        invoice.gst = gst_serializer.save()
         
         invoice.save()
         
@@ -166,6 +165,7 @@ class InvoiceSerializer(BaseSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        validated_data.pop('payment_mode', None)
         request = self.context.get('request')
         items_data = validated_data.pop('invoice_items', None)
         customer_data = validated_data.pop('customer', None)
@@ -216,12 +216,12 @@ class InvoiceSerializer(BaseSerializer):
                 many=True,
                 context={**self.context, 'invoice': instance, 'inventory': inventory}
             )
-            items = item_serializer.create(items_data)
+            results = item_serializer.create(items_data)
 
             # Deduct new stock
             inventory_items_new = [
                 {"product_id": item['product'].id, "quantity": item['quantity']}
-                for item in items_data
+                for item, _ in results
             ]
             transaction_data_new = {
                 "action": "OUT",
@@ -230,41 +230,47 @@ class InvoiceSerializer(BaseSerializer):
                 "items": inventory_items_new
             }
             inv_serializer_new = InventoryTransactionSerializer(
-                data=transaction_data_new, 
+                data=transaction_data_new,
                 context={**self.context, 'inventory': inventory}
             )
             inv_serializer_new.is_valid(raise_exception=True)
             inv_serializer_new.save()
 
-            # Recalculate totals
+            # Recalculate totals from already-computed tax_data
             sub_total = Decimal("0.00")
             total_amount = Decimal("0.00")
             total_tax = Decimal("0.00")
             cgst_total = Decimal("0.00")
             sgst_total = Decimal("0.00")
             igst_total = Decimal("0.00")
-            
-            for item in items:
+
+            for item, tax_data in results:
                 sub_total += item.base_price * item.quantity
                 total_amount += item.selling_price * item.quantity
-                total_tax += item.tax_amount
-                cgst_total += item.cgst_amount
-                sgst_total += item.sgst_amount
-                igst_total += item.igst_amount
+                total_tax += tax_data["tax_amount"]
+                cgst_total += tax_data["cgst_amount"]
+                sgst_total += tax_data["sgst_amount"]
+                igst_total += tax_data["igst_amount"]
 
             instance.sub_total = sub_total
             instance.total_amount = total_amount
             
-            # Calculate and Update Average GST Rate
+            # Calculate and Update Average GST Rate via GSTSerializer
             avg_gst_rate = (total_tax / sub_total * 100) if sub_total > 0 else 0
+            gst_data = {
+                "gst_rate": avg_gst_rate,
+                "gst_amount": total_tax,
+                "cgst_amount": cgst_total,
+                "sgst_amount": sgst_total,
+                "igst_amount": igst_total,
+                "total_amount": total_amount,
+            }
             if instance.gst:
-                instance.gst.gst_rate = avg_gst_rate
-                instance.gst.gst_amount = total_tax
-                instance.gst.cgst_amount = cgst_total
-                instance.gst.sgst_amount = sgst_total
-                instance.gst.igst_amount = igst_total
-                instance.gst.total_amount = total_amount
-                instance.gst.save()
+                gst_serializer = GSTSerializer(instance.gst, data=gst_data)
+            else:
+                gst_serializer = GSTSerializer(data=gst_data)
+            gst_serializer.is_valid(raise_exception=True)
+            instance.gst = gst_serializer.save()
 
             instance.save()
 

@@ -1,14 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, UserManager
-import uuid
 
 from apps.base.models import BaseModel
 from apps.base.utils.active_use_manager import ActiveUserManager
-from apps.master.utils.text_choices import UserRole
-
-def user_avatar_path(instance, filename):
-    ext = filename.split('.')[-1]
-    return f"bma/profile_pictures/user_{instance.id}/{uuid.uuid4()}.{ext}"
+from apps.user.utils.uploads import user_avatar_path
 
 
 class User(BaseModel, AbstractUser):

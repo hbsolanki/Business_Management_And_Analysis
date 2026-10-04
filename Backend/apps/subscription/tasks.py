@@ -89,7 +89,7 @@ def deactivate_expired_subscriptions():
                     is_active=False,
                     start_date__lte=now,
                     end_date__gt=now,
-                    payment_mode="ONLINE",  # Paid queued subscription
+                    status=Subscription.SubscriptionStatus.ACTIVE,
                 )
                 .first()
             )

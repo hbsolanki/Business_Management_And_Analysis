@@ -14,7 +14,7 @@ from django.core.cache import cache
 from apps.master.utils.cache import make_cache_key, invalidate_cache
 from apps.base.permission.model_permissions import ModelPermissions
 from apps.subscription.permissions import ChatFeaturePermission
-from apps.base.serializers.base import BulkIdSerializer
+from apps.base.serializers.bulk import BulkIdSerializer
 
 
 class ConversationViewSet(BaseViewSet,ModelViewSet):
@@ -102,83 +102,89 @@ class ConversationViewSet(BaseViewSet,ModelViewSet):
     @action(detail=False, methods=["post"],url_path="bulk-delete",url_name="bulk-delete")
     @transaction.atomic
     def bulk_delete(self,request):
-        serializer=self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        ids = serializer.validated_data["ids"]
+        try:
+            serializer=self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            ids = serializer.validated_data["ids"]
 
-        # Only delete if user is part of the conversation
-        Conversation.objects.filter(
-            id__in=ids
-        ).filter(
-            Q(user1=request.user) | Q(user2=request.user)
-        ).delete()
+            # Only delete if user is part of the conversation
+            Conversation.objects.filter(
+                id__in=ids
+            ).filter(
+                Q(user1=request.user) | Q(user2=request.user)
+            ).delete()
 
-        invalidate_cache("chat", "conversation_list", self.request.user)
+            invalidate_cache("chat", "conversation_list", self.request.user)
 
-        return Response(
-            {"detail": "Conversations deleted successfully", "ids": ids},
-            status=status.HTTP_200_OK
-        )
+            return Response(
+                {"detail": "Conversations deleted successfully", "ids": ids},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
-        query = request.query_params.get("search", "")
-        if not query:
-            return Response([])
+        try:
+            query = request.query_params.get("search", "")
+            if not query:
+                return Response([])
 
-        user = request.user
-        results = []
+            user = request.user
+            results = []
 
-        from apps.user.models import User
-        from apps.employee.models import UserBusinessRole, UserRole, WorkType
-        from django.db.models import Value, CharField, F
-        from django.db.models.functions import Concat
+            from apps.user.models import User
+            from apps.employee.models import UserBusinessRole, UserRole, WorkType
+            from django.db.models import Value, CharField, F
+            from django.db.models.functions import Concat
 
-        # 1. Permission checks
-        roles = UserBusinessRole.objects.filter(user=user, business=user.business).values_list('role', flat=True)
-        is_owner_or_manager = any(r in [UserRole.OWNER, UserRole.MANAGER] for r in roles)
-        works = user.branch_works.values_list('work_type', flat=True)
-        has_supplier_work = WorkType.SUPPLIER in works
-        has_invoice_work = WorkType.INVOICE in works
+            # 1. Permission checks
+            roles = UserBusinessRole.objects.filter(user=user, business=user.business).values_list('role', flat=True)
+            is_owner_or_manager = any(r in [UserRole.OWNER, UserRole.MANAGER] for r in roles)
+            works = user.branch_works.values_list('work_type', flat=True)
+            has_supplier_work = WorkType.SUPPLIER in works
+            has_invoice_work = WorkType.INVOICE in works
 
-        # 2. Internal Users Query
-        q_internal = User.objects.filter(
-            business_roles__business=user.business,
-            is_active=True
-        ).filter(
-            Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(username__icontains=query)
-        ).exclude(id=user.id).annotate(
-            display_name=Concat('first_name', Value(' '), 'last_name'),
-            type=Value('INTERNAL', output_field=CharField())
-        ).values('id', 'display_name', 'username', 'type', 'profile_picture')
-
-        # 3. Supplier Owners Query
-        q_suppliers = User.objects.none()
-        if is_owner_or_manager or has_supplier_work:
-            q_suppliers = User.objects.filter(
-                is_active=True,
-                business_roles__role=UserRole.OWNER,
-                business_roles__business__supplier_business__business=user.business,
-                business_roles__business__supplier_business__same_platform=True,
-                business_roles__business__supplier_business__name__icontains=query
-            ).annotate(
-                display_name=F('business_roles__business__supplier_business__name'),
-                type=Value('SUPPLIER', output_field=CharField())
+            # 2. Internal Users Query
+            q_internal = User.objects.filter(
+                business_roles__business=user.business,
+                is_active=True
+            ).filter(
+                Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(username__icontains=query)
+            ).exclude(id=user.id).annotate(
+                display_name=Concat('first_name', Value(' '), 'last_name'),
+                type=Value('INTERNAL', output_field=CharField())
             ).values('id', 'display_name', 'username', 'type', 'profile_picture')
 
-        # 4. Customer Owners Query
-        q_customers = User.objects.none()
-        if is_owner_or_manager or has_invoice_work or has_supplier_work:
-            q_customers = User.objects.filter(
-                is_active=True,
-                business_roles__role=UserRole.OWNER,
-                business_roles__business__customer_link__business=user.business,
-                business_roles__business__customer_link__same_platform=True,
-                business_roles__business__customer_link__name__icontains=query
-            ).annotate(
-                display_name=F('business_roles__business__customer_link__name'),
-                type=Value('CUSTOMER', output_field=CharField())
-            ).values('id', 'display_name', 'username', 'type', 'profile_picture')
+            # 3. Supplier Owners Query
+            q_suppliers = User.objects.none()
+            if is_owner_or_manager or has_supplier_work:
+                q_suppliers = User.objects.filter(
+                    is_active=True,
+                    business_roles__role=UserRole.OWNER,
+                    business_roles__business__supplier_business__business=user.business,
+                    business_roles__business__supplier_business__same_platform=True,
+                    business_roles__business__supplier_business__name__icontains=query
+                ).annotate(
+                    display_name=F('business_roles__business__supplier_business__name'),
+                    type=Value('SUPPLIER', output_field=CharField())
+                ).values('id', 'display_name', 'username', 'type', 'profile_picture')
 
-        # 5. Combine and Return
-        results = q_internal.union(q_suppliers, q_customers)[:20]
-        return Response(results)
+            # 4. Customer Owners Query
+            q_customers = User.objects.none()
+            if is_owner_or_manager or has_invoice_work or has_supplier_work:
+                q_customers = User.objects.filter(
+                    is_active=True,
+                    business_roles__role=UserRole.OWNER,
+                    business_roles__business__customer_link__business=user.business,
+                    business_roles__business__customer_link__same_platform=True,
+                    business_roles__business__customer_link__name__icontains=query
+                ).annotate(
+                    display_name=F('business_roles__business__customer_link__name'),
+                    type=Value('CUSTOMER', output_field=CharField())
+                ).values('id', 'display_name', 'username', 'type', 'profile_picture')
+
+            # 5. Combine and Return
+            results = q_internal.union(q_suppliers, q_customers)[:20]
+            return Response(results)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

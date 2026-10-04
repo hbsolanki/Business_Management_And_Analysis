@@ -16,7 +16,7 @@ class ForgetPasswordTests(BaseTestCase):
         self.reset_password_url = reverse('forget-reset')
         self.forget_username_url = reverse('forget-forget-username')
 
-    @patch('apps.user.tasks.send_otp_email.delay')
+    @patch('apps.master.tasks.send_otp_email.delay')
     def test_validate_username_sends_otp(self, mock_send_email):
         """OTP send."""
         data = {"username": self.user.username}
@@ -69,3 +69,42 @@ class ForgetPasswordTests(BaseTestCase):
         response = self.client.post(self.forget_username_url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mock_send_email.assert_called_once_with(to_email="test@example.com", username=self.user.username)
+
+    def test_reset_password_weak_password(self):
+        """Weak password is rejected with 400 even with valid OTP."""
+        cache.set(f"fp_verified:{self.user.username}", True, 120)
+        response = self.client.post(self.reset_password_url, {
+            "username": self.user.username,
+            "password": "abc",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+        # Original password must be unchanged
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.check_password("abc"))
+
+    def test_forget_username_nonexistent_email_returns_same_message(self):
+        """Nonexistent email returns same safe message — no enumeration."""
+        response = self.client.post(self.forget_username_url, {
+            "email": "doesnotexist@example.com"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("If the email exists", response.data["message"])
+
+    def test_validate_username_nonexistent_returns_same_message(self):
+        """Nonexistent username returns same safe message — no enumeration."""
+        response = self.client.post(self.validate_username_url, {
+            "username": "ghost_user_xyz"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("If the account exists", response.data["message"])
+
+    def test_reset_without_verified_otp_forbidden(self):
+        """Reset blocked if cache key missing (OTP not verified)."""
+        cache.delete(f"fp_verified:{self.user.username}")
+        response = self.client.post(self.reset_password_url, {
+            "username": self.user.username,
+            "password": "ValidPass123!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+

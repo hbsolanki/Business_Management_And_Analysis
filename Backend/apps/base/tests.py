@@ -309,12 +309,12 @@ class BaseTestCase(APITestCase):
         )
 
         # Business A Invoices
-        self.invoice_global_a = Invoice.objects.create(business=self.business_a, branch=None, payment_mode="CASH", total_amount=100.00, sub_total=100.00)
+        self.invoice_global_a = Invoice.objects.create(business=self.business_a, branch=None, total_amount=100.00, sub_total=100.00)
         
-        self.invoice_branch_a1 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, payment_mode="ONLINE", total_amount=118.00, sub_total=100.00)
+        self.invoice_branch_a1 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, total_amount=118.00, sub_total=100.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_a1, product=self.product_a1, quantity=2, selling_price=50.00, base_price=45.00)
         
-        self.invoice_branch_a1_2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, payment_mode="CASH", total_amount=177.00, sub_total=150.00)
+        self.invoice_branch_a1_2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, total_amount=177.00, sub_total=150.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_a1_2, product=self.product_a1, quantity=1, selling_price=50.00, base_price=45.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_a1_2, product=self.product_a2, quantity=1, selling_price=100.00, base_price=90.00)
 
@@ -322,24 +322,24 @@ class BaseTestCase(APITestCase):
         dt_march = timezone.make_aware(datetime(2024, 3, 10, 10, 0, 0))
         Invoice.objects.filter(id__in=[self.invoice_branch_a1.id, self.invoice_branch_a1_2.id]).update(created_at=dt_march)
 
-        self.invoice_branch_a2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a, payment_mode="CASH", total_amount=354.00, sub_total=300.00)
+        self.invoice_branch_a2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a, total_amount=354.00, sub_total=300.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_a2, product=self.product_a2, quantity=3, selling_price=100.00, base_price=90.00)
         
-        self.invoice_branch_a2_2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a, payment_mode="ONLINE", total_amount=354.00, sub_total=300.00)
+        self.invoice_branch_a2_2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a, total_amount=354.00, sub_total=300.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_a2_2, product=self.product_a2, quantity=3, selling_price=100.00, base_price=90.00)
 
         # Business A Historical Invoices (Analytics Setup)
         dt_old = timezone.make_aware(datetime(2023, 12, 15, 10, 0, 0))
-        self.invoice_old_a1 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, payment_mode="CASH", total_amount=500.00, sub_total=400.00)
+        self.invoice_old_a1 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, total_amount=500.00, sub_total=400.00)
         Invoice.objects.filter(id=self.invoice_old_a1.id).update(created_at=dt_old)
         ProductInvoice.objects.create(invoice=self.invoice_old_a1, product=self.product_a1, quantity=10, selling_price=40.00, base_price=35.00)
 
         dt_current = timezone.make_aware(datetime(2024, 3, 10, 10, 0, 0))
-        self.invoice_current_a2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a2, payment_mode="ONLINE", total_amount=200.00, sub_total=180.00)
+        self.invoice_current_a2 = Invoice.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a2, total_amount=200.00, sub_total=180.00)
         Invoice.objects.filter(id=self.invoice_current_a2.id).update(created_at=dt_current)
         
         dt_feb = timezone.make_aware(datetime(2024, 2, 20, 10, 0, 0))
-        self.invoice_feb_a3 = Invoice.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a3, payment_mode="CASH", total_amount=300.00, sub_total=250.00)
+        self.invoice_feb_a3 = Invoice.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a3, total_amount=300.00, sub_total=250.00)
         Invoice.objects.filter(id=self.invoice_feb_a3.id).update(created_at=dt_feb)
 
         # Business A Cost Models
@@ -395,23 +395,23 @@ class BaseTestCase(APITestCase):
         # Business A Initial Orders
         # Branch A1 Orders
         self.po_a1 = PurchaseOrder.objects.create(business=self.business_a, branch=self.branch_a1, supplier=self.supplier_a1, notes="Initial PO A1")
-        PurchaseOrderItem.objects.create(purchase_order=self.po_a1, product=self.product_a1, quantity=10, unit_cost=5.0)
+        PurchaseOrderItem.objects.create(purchase_order=self.po_a1, product=self.product_a1, quantity=10, price=5.0)
         self.po_a1.total_amount = 50.0
         self.po_a1.save()
 
         self.so_a1 = SalesOrder.objects.create(business=self.business_a, branch=self.branch_a1, customer=self.customer_a, notes="Initial SO A1")
-        SalesOrderItem.objects.create(sales_order=self.so_a1, product=self.product_a1, quantity=5, unit_price=10.0)
+        SalesOrderItem.objects.create(sales_order=self.so_a1, product=self.product_a1, quantity=5, price=10.0)
         self.so_a1.total_amount = 50.0
         self.so_a1.save()
 
         # Branch A2 Orders
         self.po_a2 = PurchaseOrder.objects.create(business=self.business_a, branch=self.branch_a2, supplier=self.supplier_a1, notes="Initial PO A2")
-        PurchaseOrderItem.objects.create(purchase_order=self.po_a2, product=self.product_a2, quantity=10, unit_cost=15.0)
+        PurchaseOrderItem.objects.create(purchase_order=self.po_a2, product=self.product_a2, quantity=10, price=15.0)
         self.po_a2.total_amount = 150.0
         self.po_a2.save()
 
         self.so_a2 = SalesOrder.objects.create(business=self.business_a, branch=self.branch_a2, customer=self.customer_a, notes="Initial SO A2")
-        SalesOrderItem.objects.create(sales_order=self.so_a2, product=self.product_a2, quantity=5, unit_price=20.0)
+        SalesOrderItem.objects.create(sales_order=self.so_a2, product=self.product_a2, quantity=5, price=20.0)
         self.so_a2.total_amount = 100.0
         self.so_a2.save()
 
@@ -445,19 +445,19 @@ class BaseTestCase(APITestCase):
         self.customer_b = BusinessCustomer.objects.create(business=self.business_b, name="Customer B", mobile_number="0987654321")
 
         # Business B Invoice
-        self.invoice_global_b = Invoice.objects.create(business=self.business_b, branch=None, payment_mode="CASH", total_amount=100.00, sub_total=100.00)
+        self.invoice_global_b = Invoice.objects.create(business=self.business_b, branch=None, total_amount=100.00, sub_total=100.00)
         
-        self.invoice_branch_b1 = Invoice.objects.create(business=self.business_b, branch=self.branch_b1, customer=self.customer_b, payment_mode="ONLINE", total_amount=118.00, sub_total=100.00)
+        self.invoice_branch_b1 = Invoice.objects.create(business=self.business_b, branch=self.branch_b1, customer=self.customer_b, total_amount=118.00, sub_total=100.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_b1, product=self.product_b1, quantity=2, selling_price=50.00, base_price=45.00)
         
-        self.invoice_branch_b1_2 = Invoice.objects.create(business=self.business_b, branch=self.branch_b1, customer=self.customer_b, payment_mode="CASH", total_amount=177.00, sub_total=150.00)
+        self.invoice_branch_b1_2 = Invoice.objects.create(business=self.business_b, branch=self.branch_b1, customer=self.customer_b, total_amount=177.00, sub_total=150.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_b1_2, product=self.product_b1, quantity=1, selling_price=50.00, base_price=45.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_b1_2, product=self.product_b2, quantity=1, selling_price=100.00, base_price=90.00)
 
-        self.invoice_branch_b2 = Invoice.objects.create(business=self.business_b, branch=self.branch_b2, customer=self.customer_b, payment_mode="CASH", total_amount=354.00, sub_total=300.00)
+        self.invoice_branch_b2 = Invoice.objects.create(business=self.business_b, branch=self.branch_b2, customer=self.customer_b, total_amount=354.00, sub_total=300.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_b2, product=self.product_b2, quantity=3, selling_price=100.00, base_price=90.00)
         
-        self.invoice_branch_b2_2 = Invoice.objects.create(business=self.business_b, branch=self.branch_b2, customer=self.customer_b, payment_mode="ONLINE", total_amount=354.00, sub_total=300.00)
+        self.invoice_branch_b2_2 = Invoice.objects.create(business=self.business_b, branch=self.branch_b2, customer=self.customer_b, total_amount=354.00, sub_total=300.00)
         ProductInvoice.objects.create(invoice=self.invoice_branch_b2_2, product=self.product_b2, quantity=3, selling_price=100.00, base_price=90.00)
 
         # Business B Cost Models
@@ -513,20 +513,20 @@ class BaseTestCase(APITestCase):
             purchase_order=self.po_b1,
             product=self.product_b1,
             quantity=5,
-            unit_cost=8.0,
+            price=8.0,
         )
         self.po_b1.total_amount = 40.0
         self.po_b1.save()
         self.sync_purchase_order = self.po_b1
 
         self.so_b1 = SalesOrder.objects.create(business=self.business_b, branch=self.branch_b1, customer=self.customer_b, notes="Initial SO B1")
-        SalesOrderItem.objects.create(sales_order=self.so_b1, product=self.product_b1, quantity=5, unit_price=10.0)
+        SalesOrderItem.objects.create(sales_order=self.so_b1, product=self.product_b1, quantity=5, price=10.0)
         self.so_b1.total_amount = 50.0
         self.so_b1.save()
 
         # Branch B2 Orders
         self.po_b2 = PurchaseOrder.objects.create(business=self.business_b, branch=self.branch_b2, supplier=self.supplier_b1, notes="Initial PO B2")
-        PurchaseOrderItem.objects.create(purchase_order=self.po_b2, product=self.product_b2, quantity=10, unit_cost=15.0)
+        PurchaseOrderItem.objects.create(purchase_order=self.po_b2, product=self.product_b2, quantity=10, price=15.0)
         self.po_b2.total_amount = 150.0
         self.po_b2.save()
 
@@ -538,7 +538,7 @@ class BaseTestCase(APITestCase):
         self.conv_b2 = self.create_conversation(self.owner_b, self.employee_b1)
 
         self.so_b2 = SalesOrder.objects.create(business=self.business_b, branch=self.branch_b2, customer=self.customer_b, notes="Initial SO B2")
-        SalesOrderItem.objects.create(sales_order=self.so_b2, product=self.product_b2, quantity=5, unit_price=20.0)
+        SalesOrderItem.objects.create(sales_order=self.so_b2, product=self.product_b2, quantity=5, price=20.0)
         self.so_b2.total_amount = 100.0
         self.so_b2.save()
 

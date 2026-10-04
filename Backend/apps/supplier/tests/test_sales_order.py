@@ -34,7 +34,7 @@ class SalesOrderTestCase(BaseTestCase):
                 {
                     "sku": self.product_a1.sku,
                     "quantity": 10,
-                    "unit_price": 100.0
+                    "price": 100.0
                 }
             ]
         }
@@ -49,7 +49,7 @@ class SalesOrderTestCase(BaseTestCase):
         for i in range(len(expected_data['items'])):
             self.assertEqual(response_data['items'][i]['product']['sku'], expected_data['items'][i]['sku'])
             self.assertEqual(response_data['items'][i]['quantity'], expected_data['items'][i]['quantity'])
-            self.assertEqual(float(response_data['items'][i]['unit_price']), float(expected_data['items'][i]['unit_price']))
+            self.assertEqual(float(response_data['items'][i]['price']), float(expected_data['items'][i]['price']))
 
     def test_sales_order_crud_by_owner(self):
         self.client.force_authenticate(user=self.owner_a)

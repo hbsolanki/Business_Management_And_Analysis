@@ -100,7 +100,7 @@ class SubscriptionTestCase(BaseTestCase):
 
     def test_plan_transition_upgrade_and_downgrade(self):
         """Verify plan transitions: upgrades take effect immediately, downgrades are queued."""
-        from apps.subscription.services.payment_service import (
+        from apps.payment.services.subscription_payment_service import (
             SubscriptionPaymentService,
         )
         from uuid import uuid4

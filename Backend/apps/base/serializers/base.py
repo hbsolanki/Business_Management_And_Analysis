@@ -1,4 +1,4 @@
-from rest_framework import serializers
+from rest_framework import serializers, exceptions
 import re
 from apps.business.models import Branch
 from apps.employee.models import UserRole
@@ -6,26 +6,23 @@ from apps.subscription.utils.entitlements import check_resource_limit
 
 class BaseSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(default=True)
+    resource_limit_field = None  # Set on child serializers e.g. resource_limit_field = "max_products"
 
     class Meta:
         fields = ["id", "created_at", "updated_at", "created_by", "updated_by", "is_active"]
         read_only_fields = ["id", "created_at", "updated_at", "created_by", "updated_by"]
 
     def validate_is_active(self, value):
-        
-        # If we are changing from False to True (reactivating), we must check the limits
-        if value is True and getattr(self, 'instance', None) and not self.instance.is_active:
-            model = self.Meta.model
-            limit_mapping = {
-                'Branch': 'max_branches',
-                'Product': 'max_products',
-                'User': 'max_staff'
-            }
-            if model.__name__ in limit_mapping:
+        # If reactivating (False -> True), check resource limits
+        if value is True and self.instance and not self.instance.is_active:
+            if self.resource_limit_field:
                 request = self.context.get("request")
                 if request and hasattr(request, 'user'):
-                    check_resource_limit(request.user.business, model, limit_mapping[model.__name__])
-                    
+                    check_resource_limit(
+                        request.user.business,
+                        self.Meta.model,
+                        self.resource_limit_field
+                    )
         return value
 
     def validate(self, attrs):
@@ -45,29 +42,37 @@ class BaseSerializer(serializers.ModelSerializer):
     def validate_branch_id(self, value):
         if value is None:
             return None
+
         request = self.context.get("request")
-        if not request or not hasattr(request, "user") or request.user is None:
-            return value
-        user = request.user
-        
-        # If value is already a Branch instance (e.g. from PrimaryKeyRelatedField), use it
-        if isinstance(value, Branch):
-            branch = value
-        else:
+        if isinstance(value, int):
+            from apps.business.models import Branch
             try:
-                branch = Branch.objects.get(id=value, business=request.user.business, is_active=True)
-            except (Branch.DoesNotExist, ValueError, TypeError):
-                raise serializers.ValidationError("Branch not found or branch inactive.")
+                value = Branch.objects.get(id=value)
+            except Branch.DoesNotExist:
+                raise serializers.ValidationError("Branch not found.")
 
-        # Business Ownership check (crucial for PrimaryKeyRelatedField which defaults to Branch.objects.all())
-        if branch.business != request.user.business:
-            raise serializers.ValidationError("This branch does not belong to your business.")
+        if not request:
+            return value
 
-        # Role-based assignment check
-        if request.user.role_name in (UserRole.MANAGER, UserRole.EMPLOYEE) and not request.user.branches.filter(id=branch.id).exists():
-            raise serializers.ValidationError("You do not have access to this branch.")
+        # Business resolution: check context first (e.g. order serializers pass it explicitly),
+        # then fall back to request.user.business
+        business = self.context.get("business") or getattr(getattr(request, "user", None), "business", None)
 
-        self._validated_branch = branch
+        if business:
+            # Ownership check
+            if value.business_id != business.id:
+                raise serializers.ValidationError("Branch does not belong to your business.")
+
+            # Active check
+            if not value.is_active:
+                raise serializers.ValidationError("Branch is inactive.")
+
+        # Role-based access: MANAGER and EMPLOYEE can only use their assigned branches
+        user = getattr(request, "user", None)
+        if user and getattr(user, "role_name", None) in (UserRole.MANAGER, UserRole.EMPLOYEE):
+            if not user.branches.filter(id=value.id).exists():
+                raise serializers.ValidationError("You do not have access to this branch.")
+
         return value
 
     def validate_gst_number(self, value):
@@ -82,13 +87,4 @@ class BaseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Mobile number must contain only digits.")
         if len(value) != 10:
             raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
-        return value
-
-class BulkIdSerializer(serializers.Serializer):
-    ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        allow_empty=False
-    )
-
-    def validate_ids(self, value):
         return value

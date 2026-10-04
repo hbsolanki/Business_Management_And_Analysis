@@ -17,14 +17,15 @@ ROLE_PERMISSIONS = {
             "view_business", "view_branch"
         ],
         "tasks": [
-            "view_task", "add_task", "change_task", "delete_task"
+            "view_task", "add_task", "change_task", "delete_task",
+            "view_taskgroup"
         ]
     }
 }
 
 # MODULE GROUPS for work-based permissions
 MODULE_GROUPS = {
-    "Invoice Access": ["invoice", "customer"],
+    "Invoice Access": ["invoice", "customer", "payment"],
     "Inventory Access": ["inventory"],
     "Product Access": ["product"],
     "Analytics Access": ["analytics"],

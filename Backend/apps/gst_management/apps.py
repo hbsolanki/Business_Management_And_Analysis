@@ -5,5 +5,5 @@ class GstManagementConfig(AppConfig):
     name = 'apps.gst_management'
 
     def ready(self):
-        # import apps.gst_management.signals
+        # import apps.invoice.gst_management.signals
         pass

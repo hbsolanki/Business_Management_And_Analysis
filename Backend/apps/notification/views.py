@@ -25,29 +25,44 @@ class NotificationViewSet(BaseViewSet, mixins.ListModelMixin, mixins.DestroyMode
 
     @action(methods=["post"], detail=True, url_path="mark-read")
     def mark_read(self, request, pk=None):
-        notification = self.get_object()
-        notification.is_read = True
-        notification.save(update_fields=["is_read"])
-        return Response({"detail": "Notification marked as read"}, status=status.HTTP_200_OK)
+        from django.http import Http404
+        try:
+            notification = self.get_object()
+            notification.is_read = True
+            notification.save(update_fields=["is_read"])
+            return Response({"detail": "Notification marked as read"}, status=status.HTTP_200_OK)
+        except Http404:
+            raise
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=["post"], detail=False, url_path="bulk-mark-read")
     def bulk_mark_read(self, request):
-        self.get_queryset().filter(id__in=request.data.get("ids", []), is_read=False).update(is_read=True)
-        return Response({"detail": "Notifications marked as read"}, status=status.HTTP_200_OK)
+        try:
+            self.get_queryset().filter(id__in=request.data.get("ids", []), is_read=False).update(is_read=True)
+            return Response({"detail": "Notifications marked as read"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=["post"], detail=False, url_path="bulk-delete")
     def bulk_delete(self, request):
-        self.get_queryset().filter(id__in=request.data.get("ids", [])).delete()
-        return Response({"detail": "Notifications deleted successfully"}, status=status.HTTP_200_OK)
+        try:
+            self.get_queryset().filter(id__in=request.data.get("ids", [])).delete()
+            return Response({"detail": "Notifications deleted successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"], url_path="stream", permission_classes=[IsAuthenticated])
     def stream(self, request, *args, **kwargs):
         """SSE streaming endpoint for notifications."""
-        response = StreamingHttpResponse(self._event_generator(request.user), content_type="text/event-stream")
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"
-        response["Connection"] = "keep-alive"
-        return response
+        try:
+            response = StreamingHttpResponse(self._event_generator(request.user), content_type="text/event-stream")
+            response["Cache-Control"] = "no-cache"
+            response["X-Accel-Buffering"] = "no"
+            response["Connection"] = "keep-alive"
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     async def _event_generator(self, user):
         channel_layer = get_channel_layer()
@@ -102,19 +117,25 @@ class ReminderViewSet(BaseViewSet, ModelViewSet):
     @action(detail=True, methods=["get"], url_path="links")
     def list_links(self, request, pk=None):
         """Return all entity links attached to this reminder."""
-        reminder = self.get_object()
-        links = ReminderLink.objects.filter(reminder=reminder).select_related("content_type")
-        serializer = ReminderLinkSerializer(links, many=True)
-        return Response(serializer.data)
+        try:
+            reminder = self.get_object()
+            links = ReminderLink.objects.filter(reminder=reminder).select_related("content_type")
+            serializer = ReminderLinkSerializer(links, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["delete"], url_path="links/(?P<link_pk>[^/.]+)")
     def delete_link(self, request, pk=None, link_pk=None):
         """Remove a specific ReminderLink without deleting the reminder itself."""
-        from django.shortcuts import get_object_or_404
-        reminder = self.get_object()
-        link = get_object_or_404(ReminderLink, pk=link_pk, reminder=reminder)
-        link.delete()
-        return Response({"detail": "Link removed."}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            from django.shortcuts import get_object_or_404
+            reminder = self.get_object()
+            link = get_object_or_404(ReminderLink, pk=link_pk, reminder=reminder)
+            link.delete()
+            return Response({"detail": "Link removed."}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EntityReminderViewSet(BaseViewSet):

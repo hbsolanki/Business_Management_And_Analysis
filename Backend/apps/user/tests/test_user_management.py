@@ -1,4 +1,6 @@
+import io
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from apps.employee.models import UserRole, WorkType
 from apps.base.tests import BaseTestCase
@@ -13,11 +15,10 @@ class UserManagementTests(BaseTestCase):
         self.user_list_url = reverse('user-list')
         
     def test_create_owner_unauthenticated(self):
-        """Owner register."""
+        """Owner register with OTP verification."""
         from django.core.cache import cache
         cache.set("otp_registration_newowner@example.com", "123456", 600)
         
-        # Create
         data = {
             "user": {
                 "username": "newowner",
@@ -26,12 +27,29 @@ class UserManagementTests(BaseTestCase):
                 "mobile_number": "1234567890",
                 "first_name": "New",
                 "last_name": "Owner"
-            },
-            "otp": "123456"
+            }
         }
+
+        # 1. Missing OTP
+        response_missing = self.client.post(self.user_list_url, data, format='json')
+        self.assertEqual(response_missing.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("otp", response_missing.data)
+
+        # 2. Invalid OTP
+        data["otp"] = "000000"
+        response_invalid = self.client.post(self.user_list_url, data, format='json')
+        self.assertEqual(response_invalid.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("otp", response_invalid.data)
+        self.assertIn("Invalid or expired OTP", response_invalid.data["otp"])
+
+        # 3. Valid OTP (Create)
+        data["otp"] = "123456"
         response = self.client.post(self.user_list_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
+        # Verify Cache is cleared
+        self.assertIsNone(cache.get("otp_registration_newowner@example.com"))
+
         # Read
         user = User.objects.get(username=data["user"]["username"])
         self.assertEqual(user.business_roles.first().role, UserRole.OWNER)
@@ -58,6 +76,7 @@ class UserManagementTests(BaseTestCase):
         cache.delete(f"otp_registration_{email}")
         cache.delete(f"otp_send_attempts_{email}")
         cache.delete(f"otp_block_{email}")
+        cache.delete(f"otp_send_cooldown_{email}")
         
         # Second request
         response2 = self.client.post(url, {"email": email}, format='json')
@@ -491,3 +510,138 @@ class UserManagementTests(BaseTestCase):
         response = self.client.get(next_url)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertIsNone(response.data["next"])
+
+    # --- EDGE CASE TESTS ---
+
+    def test_send_otp_duplicate_email_blocked(self):
+        """Send OTP to already-registered email returns 400."""
+        url = reverse('user-send-otp')
+        response = self.client.post(url, {"email": self.owner_a.email}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+    def test_register_weak_password_rejected(self):
+        """Weak password during registration returns 400."""
+        from django.core.cache import cache
+        email = "weakpass@example.com"
+        cache.set(f"otp_registration_{email}", "123456", 600)
+        data = {
+            "otp": "123456",
+            "user": {
+                "username": "weakpassuser",
+                "password": "abc",
+                "email": email,
+            }
+        }
+        response = self.client.post(self.user_list_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(username="weakpassuser").exists())
+
+    def test_register_invalid_email_format_rejected(self):
+        """Invalid email format during registration returns 400."""
+        from django.core.cache import cache
+        cache.set("otp_registration_notanemail", "123456", 600)
+        data = {
+            "otp": "123456",
+            "user": {
+                "username": "invalidemailuser",
+                "password": "Password123!",
+                "email": "notanemail",
+            }
+        }
+        response = self.client.post(self.user_list_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_profile_picture_too_large_rejected(self):
+        """Profile picture over 5MB is rejected by serializer."""
+        from apps.user.serializers.user import UserSerializer
+        from unittest.mock import patch, MagicMock
+        large_content = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
+        pic = SimpleUploadedFile("photo.jpg", large_content, content_type="image/jpeg")
+        
+        mock_img = MagicMock()
+        mock_img.format = "JPEG"
+        mock_img.size = (100, 100)
+        mock_img.verify = lambda: None
+        mock_img.load = lambda: None
+        mock_img.fp = pic
+        mock_img.mode = "RGB"
+        
+        with patch("PIL.Image.open", return_value=mock_img):
+            serializer = UserSerializer(
+                self.owner_a,
+                data={"profile_picture": pic},
+                partial=True,
+            )
+            self.assertFalse(serializer.is_valid())
+            self.assertIn("profile_picture", serializer.errors)
+            self.assertIn("5MB", str(serializer.errors["profile_picture"]))
+
+    def test_profile_picture_invalid_type_rejected(self):
+        """Non-image file type is rejected by serializer."""
+        from apps.user.serializers.user import UserSerializer
+        gif = SimpleUploadedFile("anim.gif", b"GIF89a", content_type="image/gif")
+        serializer = UserSerializer(
+            self.owner_a,
+            data={"profile_picture": gif},
+            partial=True,
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("profile_picture", serializer.errors)
+
+    def test_deleted_user_still_exists_in_all_objects(self):
+        """After soft-delete, user still exists in all_objects with is_deleted=True."""
+        self.client.force_authenticate(user=self.owner_a)
+        url = reverse('user-detail', args=[self.employee_a1.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Must NOT appear in default (active) manager
+        self.assertFalse(User.objects.filter(id=self.employee_a1.id).exists())
+        # Must appear in all_objects with is_deleted=True
+        deleted = User.all_objects.filter(id=self.employee_a1.id, is_deleted=True).first()
+        self.assertIsNotNone(deleted)
+        self.assertFalse(deleted.is_active)
+
+    def test_deleted_user_cannot_login(self):
+        """Soft-deleted user (is_active=False) is blocked at login."""
+        self.client.force_authenticate(user=self.owner_a)
+        url = reverse('user-detail', args=[self.employee_a1.id])
+        self.client.delete(url)
+        self.client.logout()
+
+        login_url = reverse('user-login')
+        response = self.client.post(login_url, {
+            "username": self.employee_a1.username,
+            "password": "password123",
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_me_endpoint_returns_correct_role(self):
+        """GET /user/me/ returns correct serializer with role field."""
+        me_url = reverse('user-me')
+
+        self.client.force_authenticate(user=self.owner_a)
+        response = self.client.get(me_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("role", response.data)
+        self.assertEqual(response.data["role"], UserRole.OWNER)
+
+        self.client.force_authenticate(user=self.manager_a1)
+        response = self.client.get(me_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["role"], UserRole.MANAGER)
+
+        self.client.force_authenticate(user=self.employee_a1)
+        response = self.client.get(me_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["role"], UserRole.EMPLOYEE)
+
+    def test_update_response_includes_role(self):
+        """PATCH response uses role-aware serializer and includes role field."""
+        self.client.force_authenticate(user=self.owner_a)
+        url = reverse('user-detail', args=[self.manager_a1.id])
+        response = self.client.patch(url, {"user": {"first_name": "RoleCheck"}}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("role", response.data)
+        self.assertEqual(response.data["role"], UserRole.MANAGER)
+

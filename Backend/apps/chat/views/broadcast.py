@@ -35,45 +35,48 @@ class BroadcastViewSet(ModelViewSet):
     @action(detail=False, methods=["post"], url_path=r"message")
     @transaction.atomic
     def message_broadcast(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        
-        channel_layer = get_channel_layer()
-        
-        for user_data in data["users"]:
-            user2 = user_data["user_id"]
-            user1 = request.user
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
             
-            u1, u2 = (user1, user2) if user1.id < user2.id else (user2, user1)
-
-            conversation, created = Conversation.objects.get_or_create(user1=u1, user2=u2)
-
-            message = Message.objects.create(
-                conversation=conversation, 
-                sender=user1, 
-                text=data["message"],
-                message_type=Message.MessageType.TEXT
-            )
+            channel_layer = get_channel_layer()
             
-            if channel_layer:
-                message_data = MessageSerializer(message).data
-                async_to_sync(channel_layer.group_send)(
-                    f"chat_{conversation.id}",
-                    {
-                        "type": "chat.message",
-                        "data": message_data
-                    }
+            for user_data in data["users"]:
+                user2 = user_data["user_id"]
+                user1 = request.user
+                
+                u1, u2 = (user1, user2) if user1.id < user2.id else (user2, user1)
+
+                conversation, created = Conversation.objects.get_or_create(user1=u1, user2=u2)
+
+                message = Message.objects.create(
+                    conversation=conversation, 
+                    sender=user1, 
+                    text=data["message"],
+                    message_type=Message.MessageType.TEXT
+                )
+                
+                if channel_layer:
+                    message_data = MessageSerializer(message).data
+                    async_to_sync(channel_layer.group_send)(
+                        f"chat_{conversation.id}",
+                        {
+                            "type": "chat.message",
+                            "data": message_data
+                        }
+                    )
+
+                # Send System Notification
+                send_notification(
+                    user=user2,
+                    actor=user1,
+                    title=f"New Broadcast from {user1.username}",
+                    content=data["message"],
+                    action_type=Notification.ActionType.MESSAGE_BROADCAST,
+                    action_link=f"/chat/{conversation.id}/"
                 )
 
-            # Send System Notification
-            send_notification(
-                user=user2,
-                actor=user1,
-                title=f"New Broadcast from {user1.username}",
-                content=data["message"],
-                action_type=Notification.ActionType.MESSAGE_BROADCAST,
-                action_link=f"/chat/{conversation.id}/"
-            )
-
-        return Response({"message": f"Message broadcasted to {len(data['users'])} users"}, status=status.HTTP_200_OK)
+            return Response({"message": f"Message broadcasted to {len(data['users'])} users"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

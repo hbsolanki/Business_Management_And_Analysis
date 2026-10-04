@@ -21,17 +21,18 @@ class Supplier(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["business", "mobile_number"], 
+                condition=models.Q(is_deleted=False),
                 name="unique_supplier_mobile_per_business"
             ),
             models.UniqueConstraint(
                 fields=["business", "gst_number"], 
                 name="unique_supplier_gst_per_business",
-                condition=models.Q(gst_number__isnull=False)
+                condition=models.Q(gst_number__isnull=False, is_deleted=False)
             ),
             models.UniqueConstraint(
                 fields=["business", "supplier_business"], 
                 name="unique_supplier_business_per_business",
-                condition=models.Q(supplier_business__isnull=False)
+                condition=models.Q(supplier_business__isnull=False, is_deleted=False)
             )
         ]
         indexes = [
@@ -42,36 +43,41 @@ class Supplier(BaseModel):
         return f"{self.name} ({self.business.name})"
 
 
-class PurchaseOrder(BaseModel):
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="purchase_orders")
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="purchase_orders", null=True, blank=True)
-    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name="purchase_orders")
-    
+class BaseOrder(BaseModel):
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="%(class)ss")
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="%(class)ss", null=True, blank=True)
     order_date = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=15, choices=OrderStatus.choices, default=OrderStatus.PENDING)
+    notes = models.TextField(null=True, blank=True)
+    
+    # Financial Totals (Static for immutability)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     
     # Linked GST details for the entire order
-    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="purchase_orders")
+    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)ss")
+
+    class Meta:
+        abstract = True
+
+
+class BaseOrderItem(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="%(class)ss")
+    quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=12, decimal_places=2)
     
-    notes = models.TextField(null=True, blank=True)
+    # Linked GST details per item
+    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="%(class)ss")
+
+    # Static snapshot fields for historical immutability
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        abstract = True
+
+
+class PurchaseOrder(BaseOrder):
+    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name="purchase_orders")
     received_at = models.DateTimeField(null=True, blank=True)
-
-    @property
-    def total_tax(self):
-        return self.gst.gst_amount if self.gst else 0
-
-    @property
-    def cgst_total(self):
-        return self.gst.cgst_amount if self.gst else 0
-
-    @property
-    def sgst_total(self):
-        return self.gst.sgst_amount if self.gst else 0
-
-    @property
-    def igst_total(self):
-        return self.gst.igst_amount if self.gst else 0
 
     class Meta:
         db_table = "bma_purchase_order"
@@ -85,14 +91,8 @@ class PurchaseOrder(BaseModel):
         return f"PO #{self.id} - {self.supplier.name}"
 
 
-class PurchaseOrderItem(models.Model):
+class PurchaseOrderItem(BaseOrderItem):
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="po_items")
-    quantity = models.PositiveIntegerField()
-    unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
-    
-    # Linked GST details per item
-    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="purchase_order_items")
 
     class Meta:
         db_table = "bma_purchase_order_item"
@@ -100,42 +100,9 @@ class PurchaseOrderItem(models.Model):
             models.UniqueConstraint(fields=["purchase_order", "product"], name="unique_product_per_purchase_order")
         ]
 
-    @property
-    def subtotal(self):
-        return self.quantity * self.unit_cost
 
-    @property
-    def tax_rate(self):
-        return self.gst.gst_rate if self.gst else 0
-
-    @property
-    def tax_amount(self):
-        return self.gst.gst_amount if self.gst else 0
-
-    @property
-    def cgst_amount(self):
-        return self.gst.cgst_amount if self.gst else 0
-
-    @property
-    def sgst_amount(self):
-        return self.gst.sgst_amount if self.gst else 0
-
-    @property
-    def igst_amount(self):
-        return self.gst.igst_amount if self.gst else 0
-
-
-class SalesOrder(BaseModel):
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="sales_orders")
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name="sales_orders", null=True, blank=True)
+class SalesOrder(BaseOrder):
     customer = models.ForeignKey(BusinessCustomer, on_delete=models.PROTECT, related_name="sales_orders", null=True, blank=True)
-    
-    order_date = models.DateField(auto_now_add=True)
-    status = models.CharField(max_length=15, choices=OrderStatus.choices, default=OrderStatus.PENDING)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    notes = models.TextField(null=True, blank=True)
-
     purchase_order = models.ForeignKey(
         PurchaseOrder,
         null=True,
@@ -156,14 +123,8 @@ class SalesOrder(BaseModel):
         return f"SO #{self.id} - {self.customer.name if self.customer else 'No Customer'}"
 
 
-class SalesOrderItem(models.Model):
+class SalesOrderItem(BaseOrderItem):
     sales_order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="sales_order_items")
-    quantity = models.PositiveIntegerField()
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
-    
-    # Linked GST details per item
-    gst = models.ForeignKey(GST, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales_order_items")
 
     class Meta:
         db_table = "bma_sales_order_item"
@@ -171,26 +132,3 @@ class SalesOrderItem(models.Model):
             models.UniqueConstraint(fields=["sales_order", "product"], name="unique_product_per_sales_order")
         ]
 
-    @property
-    def subtotal(self):
-        return self.quantity * self.unit_price
-
-    @property
-    def tax_rate(self):
-        return self.gst.gst_rate if self.gst else 0
-
-    @property
-    def tax_amount(self):
-        return self.gst.gst_amount if self.gst else 0
-
-    @property
-    def cgst_amount(self):
-        return self.gst.cgst_amount if self.gst else 0
-
-    @property
-    def sgst_amount(self):
-        return self.gst.sgst_amount if self.gst else 0
-
-    @property
-    def igst_amount(self):
-        return self.gst.igst_amount if self.gst else 0

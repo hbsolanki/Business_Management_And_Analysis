@@ -50,7 +50,7 @@ class AiAgentConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if hasattr(self, "session_group"):
             await self.channel_layer.group_discard(self.session_group, self.channel_name)
-        logger.info(f"[AiAgentConsumer] WebSocket disconnected. Session: {self.session_id}")
+        logger.info(f"[AiAgentConsumer] WebSocket disconnected. Session: {getattr(self, 'session_id', 'unknown')}")
 
     async def receive(self, text_data):
         try:

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from celery import shared_task
 from apps.supplier.models import SalesOrder, OrderStatus
 from apps.notification.utils import send_notification
@@ -44,7 +45,7 @@ def synchronize_sales_order_to_customer_task(sales_order_id):
                     po_items.append({
                         "product_id": target_product.id,
                         "quantity": item.quantity,
-                        "unit_cost": item.unit_price # Sales price is target's cost
+                        "price": getattr(item, "price", Decimal("0.00")),
                     })
                 except Product.DoesNotExist:
                     logger.warning(f"SKU {sku} not found in target business {target_business.name}. Skipping item.")
@@ -64,7 +65,8 @@ def synchronize_sales_order_to_customer_task(sales_order_id):
                     customer_owner = UserBusinessRole.objects.filter(business=target_business, role=UserRole.OWNER).first()
                     if customer_owner:
                         product_name = item.product.name
-                        category_name = item.product.category.name if item.product.category else "Uncategorized"
+                        category_obj = getattr(item.product, "product_category", None)
+                        category_name = category_obj.name if category_obj else "Uncategorized"
                         send_notification(
                             user=customer_owner.user,
                             title="Inventory Match Alert",
@@ -200,14 +202,13 @@ def synchronize_sales_order_items_update_to_customer_task(sales_order_id):
                     seen_skus.add(sku)
                     
                     quantity = s_item.quantity
-                    # SO unit_price is PO unit_cost
-                    cost = s_item.unit_price
+                    cost = getattr(s_item, "price", Decimal("0.00"))
 
                     if sku in target_items_map:
                         t_item = target_items_map[sku]
-                        if t_item.quantity != quantity or t_item.unit_cost != cost:
+                        if t_item.quantity != quantity or t_item.price != cost:
                             t_item.quantity = quantity
-                            t_item.unit_cost = cost
+                            t_item.price = cost
                             t_item.save()
                     else:
                         # Create new item in Purchase Order
@@ -217,7 +218,7 @@ def synchronize_sales_order_items_update_to_customer_task(sales_order_id):
                                 purchase_order=purchase_order,
                                 product=target_product,
                                 quantity=quantity,
-                                unit_cost=cost
+                                price=cost
                             )
                         except Product.DoesNotExist:
                             logger.warning(f"SKU {sku} not found in business {purchase_order.business.name}. Skipping item sync.")
@@ -237,7 +238,8 @@ def synchronize_sales_order_items_update_to_customer_task(sales_order_id):
                             customer_owner = UserBusinessRole.objects.filter(business=purchase_order.business, role=UserRole.OWNER).first()
                             if customer_owner:
                                 product_name = s_item.product.name
-                                category_name = s_item.product.category.name if s_item.product.category else "Uncategorized"
+                                category_obj = getattr(s_item.product, "product_category", None)
+                                category_name = category_obj.name if category_obj else "Uncategorized"
                                 send_notification(
                                     user=customer_owner.user,
                                     title="Inventory Match Alert",

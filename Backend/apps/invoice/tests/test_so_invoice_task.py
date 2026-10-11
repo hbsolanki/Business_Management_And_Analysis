@@ -1,74 +1,90 @@
+import pytest
 from apps.base.tests import BaseTestCase
 from apps.supplier.models import SalesOrder, SalesOrderItem
 from apps.invoice.models import Invoice
 from apps.inventory.models import InventoryTransaction
 from apps.supplier.tasks.sales_order_invoice_tasks import create_invoice_from_sales_order_task
 
-class SalesOrderToInvoiceTaskTests(BaseTestCase):
-    def setUp(self):
-        super().setUp()
-        self.setup_full_business_environment()
 
-    def test_create_invoice_from_sales_order_success(self):
+@pytest.fixture
+def so_invoice_env():
+    class Env(BaseTestCase):
+        def __init__(self):
+            pass
+    tc = Env()
+    tc.setup_role_permissions()
+    tc.setup_full_business_environment()
+    return tc
+
+
+@pytest.mark.django_db
+class TestSalesOrderToInvoiceTaskPytest:
+
+    def test_create_invoice_from_sales_order_success(self, so_invoice_env):
         """Verify successful creation of invoice from sales order."""
-        so = self.so_a1
-        so.created_by = self.owner_a
-        so.save()
+        # Arrange
+        sut_so = so_invoice_env.so_a1
+        sut_so.created_by = so_invoice_env.owner_a
+        sut_so.save()
         initial_invoice_count = Invoice.objects.count()
         initial_tx_count = InventoryTransaction.objects.count()
-        initial_stock = self.inventory_product_a1_1.stock_quantity
+        initial_stock = so_invoice_env.inventory_product_a1_1.stock_quantity
 
-        # Run task
-        result = create_invoice_from_sales_order_task(so.id)
-        
-        # Verify result
-        self.assertIn("Invoice #", result)
-        self.assertEqual(Invoice.objects.count(), initial_invoice_count + 1)
-        
+        # Act
+        sut_result = create_invoice_from_sales_order_task(sut_so.id)
+
+        # Assert
+        assert "Invoice #" in sut_result
+        assert Invoice.objects.count() == initial_invoice_count + 1
+
         # Verify Invoice details
-        invoice = Invoice.objects.latest('created_at')
-        self.assertEqual(invoice.business, so.business)
-        self.assertEqual(invoice.branch, so.branch)
-        self.assertEqual(invoice.customer, so.customer)
-        
+        sut_invoice = Invoice.objects.latest('created_at')
+        assert sut_invoice.business == sut_so.business
+        assert sut_invoice.branch == sut_so.branch
+        assert sut_invoice.customer == sut_so.customer
+
         # Verify Inventory Transaction
-        self.assertEqual(InventoryTransaction.objects.count(), initial_tx_count + 1)
-        tx = InventoryTransaction.objects.latest('created_at')
-        self.assertEqual(tx.action, "OUT")
-        self.assertIn(f"Invoice #{invoice.id}", tx.description)
-        
+        assert InventoryTransaction.objects.count() == initial_tx_count + 1
+        sut_tx = InventoryTransaction.objects.latest('created_at')
+        assert sut_tx.action == "OUT"
+        assert f"Invoice #{sut_invoice.id}" in sut_tx.description
+
         # Verify Stock Reduction
-        self.inventory_product_a1_1.refresh_from_db()
-        # SO A1 has 5 items of Product A1
-        self.assertEqual(self.inventory_product_a1_1.stock_quantity, initial_stock - 5)
+        so_invoice_env.inventory_product_a1_1.refresh_from_db()
+        assert so_invoice_env.inventory_product_a1_1.stock_quantity == initial_stock - 5
 
-    def test_create_invoice_from_sales_order_not_found(self):
+    def test_create_invoice_from_sales_order_not_found(self, so_invoice_env):
         """Verify task handles missing sales order gracefully."""
-        result = create_invoice_from_sales_order_task(99999)
-        self.assertIsNone(result)
+        # Arrange
+        sut_invalid_so_id = 99999
 
-    def test_create_invoice_from_sales_order_insufficient_stock(self):
+        # Act
+        sut_result = create_invoice_from_sales_order_task(sut_invalid_so_id)
+
+        # Assert
+        assert sut_result is None
+
+    def test_create_invoice_from_sales_order_insufficient_stock(self, so_invoice_env):
         """Verify task fails when there is insufficient stock for the sales order."""
-        # Create a new SO with high quantity
-        so = SalesOrder.objects.create(
-            business=self.business_a,
-            branch=self.branch_a1,
-            customer=self.customer_a,
-            created_by=self.owner_a,
+        # Arrange
+        sut_so = SalesOrder.objects.create(
+            business=so_invoice_env.business_a,
+            branch=so_invoice_env.branch_a1,
+            customer=so_invoice_env.customer_a,
+            created_by=so_invoice_env.owner_a,
             notes="Insufficient Stock SO"
         )
         SalesOrderItem.objects.create(
-            sales_order=so,
-            product=self.product_a1,
-            quantity=1000,  # exceeds 100 stock
+            sales_order=sut_so,
+            product=so_invoice_env.product_a1,
+            quantity=1000,
             price=10.0
         )
-        
         initial_invoice_count = Invoice.objects.count()
-        
-        # Run task
-        result = create_invoice_from_sales_order_task(so.id)
-            
-        # Verify validation error
-        self.assertIn("Validation Error", result)
-        self.assertEqual(Invoice.objects.count(), initial_invoice_count)
+
+        # Act
+        sut_result = create_invoice_from_sales_order_task(sut_so.id)
+
+        # Assert
+        assert "Validation Error" in sut_result
+        assert Invoice.objects.count() == initial_invoice_count

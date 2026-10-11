@@ -10,7 +10,7 @@ def push_purchase_order_to_supplier_external_api(po: PurchaseOrder):
     The external platform receives this as a Sales Order.
     """
     supplier = po.supplier
-    if not supplier.api_url or not supplier.integration_active:
+    if not getattr(supplier, 'api_url', None) or not getattr(supplier, 'integration_active', False):
         return None
 
     # Prepare payload manually to avoid serializer AttributeErrors and internal fields
@@ -19,7 +19,7 @@ def push_purchase_order_to_supplier_external_api(po: PurchaseOrder):
         items_data.append({
             "sku": item.product.sku,
             "quantity": item.quantity,
-            "unit_price": float(item.unit_cost)
+            "unit_price": float(getattr(item, 'price', getattr(item, 'unit_cost', 0)))
         })
 
     payload = {
@@ -29,7 +29,7 @@ def push_purchase_order_to_supplier_external_api(po: PurchaseOrder):
     }
 
     # Fetch the secret token
-    api_key = supplier.api_key
+    api_key = getattr(supplier, 'api_key', '')
 
     headers = {
         "X-BMA-API-Key": api_key,
@@ -69,7 +69,7 @@ def push_sales_order_status_to_customer_external_api(so: SalesOrder, status: str
     Pushes a status update for a Sales Order to the customer's platform.
     """
     customer = so.customer
-    if not customer or not customer.api_url or not customer.integration_active:
+    if not customer or not getattr(customer, 'api_url', None) or not getattr(customer, 'integration_active', False):
         return False
 
     # For customer sync, we use the local purchase_order ID link if available.

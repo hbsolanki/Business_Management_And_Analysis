@@ -1,24 +1,41 @@
-import io
+import pytest
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
 from rest_framework import status
-from apps.employee.models import UserRole, WorkType
+from rest_framework.test import APIClient
+from apps.employee.models import UserRole, WorkType, UserBusinessRole, UserBranch, UserBranchWork, EmployeeDetails
 from apps.base.tests import BaseTestCase
 from apps.user.models import User
 from apps.activity_log.models import ActivityLog
 from apps.employee.utils.permission_utils import sync_user_role_permissions
 
-class UserManagementTests(BaseTestCase):
-    def setUp(self):
-        super().setUp()
-        self.setup_full_business_environment()
-        self.user_list_url = reverse('user-list')
-        
-    def test_create_owner_unauthenticated(self):
-        """Owner register with OTP verification."""
-        from django.core.cache import cache
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def user_env():
+    class Env(BaseTestCase):
+        def __init__(self):
+            pass
+
+    tc = Env()
+    tc.setup_role_permissions()
+    tc.setup_full_business_environment()
+    tc.user_list_url = reverse('user-list')
+    return tc
+
+
+@pytest.mark.django_db
+class TestUserManagement:
+
+    def test_create_owner_unauthenticated(self, api_client, user_env):
+        # Arrange
         cache.set("otp_registration_newowner@example.com", "123456", 600)
-        
+        sut_url = user_env.user_list_url
         data = {
             "user": {
                 "username": "newowner",
@@ -30,68 +47,65 @@ class UserManagementTests(BaseTestCase):
             }
         }
 
-        # 1. Missing OTP
-        response_missing = self.client.post(self.user_list_url, data, format='json')
-        self.assertEqual(response_missing.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("otp", response_missing.data)
+        # Act & Assert - 1. Missing OTP
+        sut_missing_res = api_client.post(sut_url, data, format='json')
+        assert sut_missing_res.status_code == status.HTTP_400_BAD_REQUEST
+        assert "otp" in sut_missing_res.data
 
-        # 2. Invalid OTP
+        # Act & Assert - 2. Invalid OTP
         data["otp"] = "000000"
-        response_invalid = self.client.post(self.user_list_url, data, format='json')
-        self.assertEqual(response_invalid.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("otp", response_invalid.data)
-        self.assertIn("Invalid or expired OTP", response_invalid.data["otp"])
+        sut_invalid_res = api_client.post(sut_url, data, format='json')
+        assert sut_invalid_res.status_code == status.HTTP_400_BAD_REQUEST
+        assert "otp" in sut_invalid_res.data
+        assert "Invalid or expired OTP" in sut_invalid_res.data["otp"]
 
-        # 3. Valid OTP (Create)
+        # Act & Assert - 3. Valid OTP (Create)
         data["otp"] = "123456"
-        response = self.client.post(self.user_list_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
-        # Verify Cache is cleared
-        self.assertIsNone(cache.get("otp_registration_newowner@example.com"))
+        sut_create_res = api_client.post(sut_url, data, format='json')
+        assert sut_create_res.status_code == status.HTTP_201_CREATED
+        assert cache.get("otp_registration_newowner@example.com") is None
 
-        # Read
         user = User.objects.get(username=data["user"]["username"])
-        self.assertEqual(user.business_roles.first().role, UserRole.OWNER)
-        self.assertEqual(user.first_name, data["user"]["first_name"])
-        self.assertEqual(user.last_name, data["user"]["last_name"])
-        self.assertEqual(user.mobile_number, data["user"]["mobile_number"])
+        assert user.business_roles.first().role == UserRole.OWNER
+        assert user.first_name == data["user"]["first_name"]
+        assert user.last_name == data["user"]["last_name"]
+        assert user.mobile_number == data["user"]["mobile_number"]
 
-    def test_otp_generation_and_uniqueness(self):
-        """Verify OTP is generated, stored in cache, and unique on subsequent requests."""
-        from django.core.cache import cache
+    def test_otp_generation_and_uniqueness(self, api_client, user_env):
+        # Arrange
         email = "uniqueotp@example.com"
-        url = reverse('user-send-otp')
-        
-        # First request
-        response1 = self.client.post(url, {"email": email}, format='json')
-        self.assertEqual(response1.status_code, status.HTTP_200_OK)
-        
+        sut_url = reverse('user-send-otp')
+
+        # Act - First request
+        sut_res1 = api_client.post(sut_url, {"email": email}, format='json')
+
+        # Assert - First request
+        assert sut_res1.status_code == status.HTTP_200_OK
         otp1 = cache.get(f"otp_registration_{email}")
-        self.assertIsNotNone(otp1)
-        self.assertEqual(len(otp1), 6)
-        self.assertTrue(otp1.isdigit())
-        
-        # Clear cache tracking to bypass limitations and request second OTP
+        assert otp1 is not None
+        assert len(otp1) == 6
+        assert otp1.isdigit()
+
+        # Arrange - Clear cache tracking to bypass limitations
         cache.delete(f"otp_registration_{email}")
         cache.delete(f"otp_send_attempts_{email}")
         cache.delete(f"otp_block_{email}")
         cache.delete(f"otp_send_cooldown_{email}")
-        
-        # Second request
-        response2 = self.client.post(url, {"email": email}, format='json')
-        self.assertEqual(response2.status_code, status.HTTP_200_OK)
-        
-        otp2 = cache.get(f"otp_registration_{email}")
-        self.assertIsNotNone(otp2)
-        self.assertNotEqual(otp1, otp2, "Subsequent OTP generations should be random and unique")
 
-    def test_create_manager_by_owner(self):
-        """Create manager."""
-        self.client.force_authenticate(user=self.owner_a)
-        sync_user_role_permissions(self.owner_a)
-        
-        # Create
+        # Act - Second request
+        sut_res2 = api_client.post(sut_url, {"email": email}, format='json')
+
+        # Assert - Second request
+        assert sut_res2.status_code == status.HTTP_200_OK
+        otp2 = cache.get(f"otp_registration_{email}")
+        assert otp2 is not None
+        assert otp1 != otp2
+
+    def test_create_manager_by_owner(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sync_user_role_permissions(user_env.owner_a)
+        sut_url = reverse('business-manager')
         manager_data = {
             "user": {
                 "username": "newmanager",
@@ -100,30 +114,28 @@ class UserManagementTests(BaseTestCase):
                 "mobile_number": "1234567891"
             },
             "employee_details": {"salary": 50000},
-            "assigned_branches": [{"id": self.branch_a1.id}]
+            "assigned_branches": [{"id": user_env.branch_a1.id}]
         }
-        url = reverse('business-manager')
-        url = reverse('business-manager')
-        response = self.client.post(url, manager_data, format="json")
-        if response.status_code != status.HTTP_201_CREATED:
-            print("ERROR IN test_create_manager:", response.data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self._verify_log(ActivityLog.Action.CREATE, ActivityLog.Module.USER)
 
-        # Read
+        # Act
+        sut_response = api_client.post(sut_url, manager_data, format="json")
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_201_CREATED
+        user_env._verify_log(ActivityLog.Action.CREATE, ActivityLog.Module.USER)
+
         user = User.objects.get(username=manager_data["user"]["username"])
-        self.assertEqual(user.business_roles.first().role, UserRole.MANAGER)
-        self.assertEqual(user.mobile_number, manager_data["user"]["mobile_number"])
-        self.assertEqual(user.employee_details.salary, manager_data["employee_details"]["salary"])
-        self.assertEqual(user.assigned_branches.count(), len(manager_data["assigned_branches"]))
-        self.assertEqual(user.assigned_branches.first().branch_id, manager_data["assigned_branches"][0]["id"])
+        assert user.business_roles.first().role == UserRole.MANAGER
+        assert user.mobile_number == manager_data["user"]["mobile_number"]
+        assert user.employee_details.salary == manager_data["employee_details"]["salary"]
+        assert user.assigned_branches.count() == len(manager_data["assigned_branches"])
+        assert user.assigned_branches.first().branch_id == manager_data["assigned_branches"][0]["id"]
 
-    def test_create_employee_by_manager(self):
-        """Create employee."""
-        self.client.force_authenticate(user=self.manager_a1)
-        sync_user_role_permissions(self.manager_a1)
-        
-        # Create
+    def test_create_employee_by_manager(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.manager_a1)
+        sync_user_role_permissions(user_env.manager_a1)
+        sut_url = reverse('business-employee')
         employee_data = {
             "user": {
                 "username": "newemp1", 
@@ -132,31 +144,29 @@ class UserManagementTests(BaseTestCase):
                 "mobile_number": "1234567892"
             },
             "employee_details": {"salary": 30000},
-            "assigned_branches": [{"id": self.branch_a1.id}],
-            "assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.INVENTORY}]
+            "assigned_branches": [{"id": user_env.branch_a1.id}],
+            "assigned_works": [{"branch_id": user_env.branch_a1.id, "work_type": WorkType.INVENTORY}]
         }
-        url = reverse('business-employee')
-        response = self.client.post(url, employee_data, format='json')
-        if response.status_code != 201:
-            raise Exception(f"API Error: {response.data}")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Read
+        # Act
+        sut_response = api_client.post(sut_url, employee_data, format='json')
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_201_CREATED
         user = User.objects.get(username=employee_data["user"]["username"])
-        self.assertEqual(user.business_roles.first().role, UserRole.EMPLOYEE)
-        self.assertEqual(user.mobile_number, employee_data["user"]["mobile_number"])
-        self.assertEqual(user.employee_details.salary, employee_data["employee_details"]["salary"])
-        self.assertEqual(user.assigned_branches.count(), len(employee_data["assigned_branches"]))
-        self.assertEqual(user.assigned_branches.first().branch_id, employee_data["assigned_branches"][0]["id"])
-        self.assertEqual(user.branch_works.count(), len(employee_data["assigned_works"]))
-        self.assertEqual(user.branch_works.first().work_type, employee_data["assigned_works"][0]["work_type"])
+        assert user.business_roles.first().role == UserRole.EMPLOYEE
+        assert user.mobile_number == employee_data["user"]["mobile_number"]
+        assert user.employee_details.salary == employee_data["employee_details"]["salary"]
+        assert user.assigned_branches.count() == len(employee_data["assigned_branches"])
+        assert user.assigned_branches.first().branch_id == employee_data["assigned_branches"][0]["id"]
+        assert user.branch_works.count() == len(employee_data["assigned_works"])
+        assert user.branch_works.first().work_type == employee_data["assigned_works"][0]["work_type"]
 
-    def test_create_employee_by_owner(self):
-        """Owner employee."""
-        self.client.force_authenticate(user=self.owner_a)
-        sync_user_role_permissions(self.owner_a)
-        
-        # Create
+    def test_create_employee_by_owner(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sync_user_role_permissions(user_env.owner_a)
+        sut_url = reverse('business-employee')
         employee_data = {
             "user": {
                 "username": "newemp2", 
@@ -165,200 +175,205 @@ class UserManagementTests(BaseTestCase):
                 "mobile_number": "1234567893"
             },
             "employee_details": {"salary": 30000},
-            "assigned_branches": [{"id": self.branch_a1.id}],
-            "assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.PRODUCT}]
+            "assigned_branches": [{"id": user_env.branch_a1.id}],
+            "assigned_works": [{"branch_id": user_env.branch_a1.id, "work_type": WorkType.PRODUCT}]
         }
-        url = reverse('business-employee')
-        response = self.client.post(url, employee_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Read
+        # Act
+        sut_response = api_client.post(sut_url, employee_data, format='json')
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_201_CREATED
         user = User.objects.get(username=employee_data["user"]["username"])
-        self.assertEqual(user.business_roles.first().role, UserRole.EMPLOYEE)
-        self.assertEqual(user.mobile_number, employee_data["user"]["mobile_number"])
-        self.assertEqual(user.employee_details.salary, employee_data["employee_details"]["salary"])
-        self.assertEqual(user.assigned_branches.count(), len(employee_data["assigned_branches"]))
-        self.assertEqual(user.assigned_branches.first().branch_id, employee_data["assigned_branches"][0]["id"])
-        self.assertEqual(user.branch_works.count(), len(employee_data["assigned_works"]))
-        self.assertEqual(user.branch_works.first().work_type, employee_data["assigned_works"][0]["work_type"])
+        assert user.business_roles.first().role == UserRole.EMPLOYEE
+        assert user.mobile_number == employee_data["user"]["mobile_number"]
+        assert user.employee_details.salary == employee_data["employee_details"]["salary"]
+        assert user.assigned_branches.count() == len(employee_data["assigned_branches"])
+        assert user.assigned_branches.first().branch_id == employee_data["assigned_branches"][0]["id"]
+        assert user.branch_works.count() == len(employee_data["assigned_works"])
+        assert user.branch_works.first().work_type == employee_data["assigned_works"][0]["work_type"]
 
-    def test_owner_can_see_all_users(self):
-        """Owner visibility."""
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Read
-        response = self.client.get(self.user_list_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        from apps.user.models import User
-        expected_count = User.objects.filter(business_roles__business=self.owner_a.business_roles.first().business).distinct().count()
-        self.assertEqual(len(response.data['results']), expected_count)
+    def test_owner_can_see_all_users(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_url = user_env.user_list_url
 
-    def test_manager_can_see_employees_and_self(self):
-        """Manager visibility."""
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Read
-        response = self.client.get(self.user_list_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        expected_count = User.objects.filter(business_roles__business=self.manager_a1.business_roles.first().business).distinct().count()
-        self.assertEqual(len(response.data['results']), expected_count)
-        usernames = [u['username'] for u in response.data['results']]
-        self.assertIn(self.manager_a1.username, usernames)
-        self.assertIn(self.employee_a1.username, usernames)
-        self.assertIn(self.owner_a.username, usernames)
+        # Act
+        sut_response = api_client.get(sut_url)
 
-    def test_employee_can_only_see_self(self):
-        """Employee visibility."""
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Read
-        response = self.client.get(self.user_list_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        expected_count = User.objects.filter(business_roles__business=self.employee_a1.business_roles.first().business).distinct().count()
-        self.assertEqual(len(response.data['results']), expected_count)
-        usernames = [u['username'] for u in response.data['results']]
-        self.assertIn(self.employee_a1.username, usernames)
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        expected_count = User.objects.filter(business_roles__business=user_env.owner_a.business_roles.first().business).distinct().count()
+        assert len(sut_response.data['results']) == expected_count
 
-    def test_owner_can_update_delete_business_user(self):
-        """Owner CRUD."""
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Update
-        url_manager = reverse('user-detail', args=[self.manager_a1.id])
-        self.assertEqual(self.client.patch(url_manager, {"user": {"first_name": "Updated"}}, format='json').status_code, status.HTTP_200_OK)
-        log = self._verify_log(ActivityLog.Action.UPDATE, ActivityLog.Module.USER)
-        self.assertEqual(log.meta['first_name']['old'], "Manager")
-        
-        # Delete
-        url_employee = reverse('user-detail', args=[self.employee_a1.id])
-        self.assertEqual(self.client.delete(url_employee).status_code, status.HTTP_204_NO_CONTENT)
-        self._verify_log(ActivityLog.Action.DELETE, ActivityLog.Module.USER)
-        
-        # Verify
-        from apps.employee.models import UserBusinessRole
-        self.assertFalse(UserBusinessRole.objects.filter(user=self.employee_a1).exists())
+    def test_manager_can_see_employees_and_self(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.manager_a1)
+        sut_url = user_env.user_list_url
 
-    def test_manager_can_update_delete_business_employee(self):
-        """Manager CRUD."""
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Update
-        url_employee = reverse('user-detail', args=[self.employee_a1.id])
-        self.assertEqual(self.client.patch(url_employee, {"user": {"first_name": "New Name"}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url_employee).status_code, status.HTTP_204_NO_CONTENT)
-        
-        # Verify
-        from apps.employee.models import UserBusinessRole
-        self.assertFalse(UserBusinessRole.objects.filter(user=self.employee_a1).exists())
+        # Act
+        sut_response = api_client.get(sut_url)
 
-    def test_manager_cannot_update_delete_business_owner_manager(self):
-        """Manager isolation."""
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Update
-        url_owner = reverse('user-detail', args=[self.owner_a.id])
-        self.assertEqual(self.client.patch(url_owner, {"user": {"first_name": "Hacked"}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url_owner).status_code, status.HTTP_204_NO_CONTENT)
-        
-        # Update
-        url_manager2 = reverse('user-detail', args=[self.manager_a2.id])
-        self.assertEqual(self.client.patch(url_manager2, {"user": {"first_name": "Hacked"}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url_manager2).status_code, status.HTTP_204_NO_CONTENT)
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        expected_count = User.objects.filter(business_roles__business=user_env.manager_a1.business_roles.first().business).distinct().count()
+        assert len(sut_response.data['results']) == expected_count
+        usernames = [u['username'] for u in sut_response.data['results']]
+        assert user_env.manager_a1.username in usernames
+        assert user_env.employee_a1.username in usernames
+        assert user_env.owner_a.username in usernames
 
-    def test_employee_can_update_self_only(self):
-        """Employee self."""
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Update
-        url = reverse('user-detail', args=[self.employee_a1.id])
+    def test_employee_can_only_see_self(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.employee_a1)
+        sut_url = user_env.user_list_url
+
+        # Act
+        sut_response = api_client.get(sut_url)
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        expected_count = User.objects.filter(business_roles__business=user_env.employee_a1.business_roles.first().business).distinct().count()
+        assert len(sut_response.data['results']) == expected_count
+        usernames = [u['username'] for u in sut_response.data['results']]
+        assert user_env.employee_a1.username in usernames
+
+    def test_owner_can_update_delete_business_user(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_manager_url = reverse('user-detail', args=[user_env.manager_a1.id])
+        sut_employee_url = reverse('user-detail', args=[user_env.employee_a1.id])
+
+        # Act - Update
+        sut_patch_res = api_client.patch(sut_manager_url, {"user": {"first_name": "Updated"}}, format='json')
+
+        # Assert - Update
+        assert sut_patch_res.status_code == status.HTTP_200_OK
+        log = user_env._verify_log(ActivityLog.Action.UPDATE, ActivityLog.Module.USER)
+        assert log.meta['first_name']['old'] == "Manager"
+
+        # Act - Delete
+        sut_del_res = api_client.delete(sut_employee_url)
+
+        # Assert - Delete
+        assert sut_del_res.status_code == status.HTTP_204_NO_CONTENT
+        user_env._verify_log(ActivityLog.Action.DELETE, ActivityLog.Module.USER)
+        assert not UserBusinessRole.objects.filter(user=user_env.employee_a1).exists()
+
+    def test_manager_can_update_delete_business_employee(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.manager_a1)
+        sut_employee_url = reverse('user-detail', args=[user_env.employee_a1.id])
+
+        # Act - Update
+        sut_patch_res = api_client.patch(sut_employee_url, {"user": {"first_name": "New Name"}}, format='json')
+
+        # Assert - Update
+        assert sut_patch_res.status_code == status.HTTP_200_OK
+
+        # Act - Delete
+        sut_del_res = api_client.delete(sut_employee_url)
+
+        # Assert - Delete
+        assert sut_del_res.status_code == status.HTTP_204_NO_CONTENT
+        assert not UserBusinessRole.objects.filter(user=user_env.employee_a1).exists()
+
+    def test_manager_cannot_update_delete_business_owner_manager(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.manager_a1)
+        sut_owner_url = reverse('user-detail', args=[user_env.owner_a.id])
+        sut_manager2_url = reverse('user-detail', args=[user_env.manager_a2.id])
+
+        # Act & Assert - Owner update/delete
+        assert api_client.patch(sut_owner_url, {"user": {"first_name": "Hacked"}}, format='json').status_code == status.HTTP_200_OK
+        assert api_client.delete(sut_owner_url).status_code == status.HTTP_204_NO_CONTENT
+
+        # Act & Assert - Manager2 update/delete
+        assert api_client.patch(sut_manager2_url, {"user": {"first_name": "Hacked"}}, format='json').status_code == status.HTTP_200_OK
+        assert api_client.delete(sut_manager2_url).status_code == status.HTTP_204_NO_CONTENT
+
+    def test_employee_can_update_self_only(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.employee_a1)
+        sut_url = reverse('user-detail', args=[user_env.employee_a1.id])
         payload = {"user": {"first_name": "My New Name"}}
-        response = self.client.patch(url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_employee_cannot_update_delete_owner_manager_employee_only(self):
-        """Employee isolation."""
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Update
-        url_owner = reverse('user-detail', args=[self.owner_a.id])
-        self.assertEqual(self.client.patch(url_owner, {"user": {"first_name": "Nope"}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url_owner).status_code, status.HTTP_204_NO_CONTENT)
-        
-        # Update
-        url_manager = reverse('user-detail', args=[self.manager_a1.id])
-        self.assertEqual(self.client.patch(url_manager, {"user": {"first_name": "Nope"}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url_manager).status_code, status.HTTP_204_NO_CONTENT)
+        # Act
+        sut_response = api_client.patch(sut_url, payload, format='json')
 
-    def test_salary_update_permissions(self):
-        """Salary permissions."""
-        
-        # Update
-        self.client.force_authenticate(user=self.owner_a)
-        url_m = reverse('user-detail', args=[self.manager_a1.id])
-        self.assertEqual(self.client.patch(url_m, {"employee_details": {"salary": 5000}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Update manager by manager (Forbidden)
-        self.client.force_authenticate(user=self.manager_a1)
-        url_m2 = reverse('user-detail', args=[self.manager_a2.id])
-        self.assertEqual(self.client.patch(url_m2, {"employee_details": {"salary": 6000}}, format='json').status_code, status.HTTP_403_FORBIDDEN)
-        
-        # Update employee by manager (Allowed)
-        url_e = reverse('user-detail', args=[self.employee_a1.id])
-        self.assertEqual(self.client.patch(url_e, {"employee_details": {"salary": 3000}}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Update
-        self.client.force_authenticate(user=self.employee_a1)
-        url_self = reverse('user-detail', args=[self.employee_a1.id])
-        self.assertEqual(self.client.patch(url_self, {"employee_details": {"salary": 9999}}, format='json').status_code, status.HTTP_403_FORBIDDEN)
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
 
-    def test_work_update_permissions(self):
-        """Work permissions."""
-        url_e = reverse('user-detail', args=[self.employee_a1.id])
-        
-        # Update
-        self.client.force_authenticate(user=self.owner_a)
-        response = self.client.patch(url_e, {"assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.PRODUCT}]}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Update
-        self.client.force_authenticate(user=self.manager_a1)
-        self.assertEqual(self.client.patch(url_e, {"assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.INVENTORY}]}, format='json').status_code, status.HTTP_200_OK)
-        
-        # Update
-        self.client.force_authenticate(user=self.employee_a1)
-        url_self = reverse('user-detail', args=[self.employee_a1.id])
-        payload = {"assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.ANALYTICS}]}
-        response = self.client.patch(url_self, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_employee_cannot_update_delete_owner_manager_employee_only(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.employee_a1)
+        sut_owner_url = reverse('user-detail', args=[user_env.owner_a.id])
+        sut_manager_url = reverse('user-detail', args=[user_env.manager_a1.id])
 
-    def test_owner_cannot_update_delete_other_business_user(self):
-        """Business isolation."""
-        self.client.force_authenticate(user=self.owner_a)
-        url = reverse('user-detail', args=[self.employee_b1.id])
-        
-        # Update
-        self.assertEqual(self.client.patch(url, {"user": {"first_name": "Hacked"}}, format='json').status_code, status.HTTP_404_NOT_FOUND)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url).status_code, status.HTTP_404_NOT_FOUND)
+        # Act & Assert
+        assert api_client.patch(sut_owner_url, {"user": {"first_name": "Nope"}}, format='json').status_code == status.HTTP_200_OK
+        assert api_client.delete(sut_owner_url).status_code == status.HTTP_204_NO_CONTENT
+        assert api_client.patch(sut_manager_url, {"user": {"first_name": "Nope"}}, format='json').status_code == status.HTTP_200_OK
+        assert api_client.delete(sut_manager_url).status_code == status.HTTP_204_NO_CONTENT
 
-    def test_delete_user_cascades_all_related_models(self):
-        """Cascade delete."""
-        self.client.force_authenticate(user=self.owner_a)
-        sync_user_role_permissions(self.owner_a)
-        from apps.employee.models import WorkType, UserBusinessRole, UserBranch, UserBranchWork, EmployeeDetails
-        
-        # Create
+    def test_salary_update_permissions(self, api_client, user_env):
+        # Arrange & Act 1 - Owner updates manager
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_url_m = reverse('user-detail', args=[user_env.manager_a1.id])
+        sut_res1 = api_client.patch(sut_url_m, {"employee_details": {"salary": 5000}}, format='json')
+        assert sut_res1.status_code == status.HTTP_200_OK
+
+        # Arrange & Act 2 - Manager updates another manager (Forbidden)
+        api_client.force_authenticate(user=user_env.manager_a1)
+        sut_url_m2 = reverse('user-detail', args=[user_env.manager_a2.id])
+        sut_res2 = api_client.patch(sut_url_m2, {"employee_details": {"salary": 6000}}, format='json')
+        assert sut_res2.status_code == status.HTTP_403_FORBIDDEN
+
+        # Arrange & Act 3 - Manager updates employee (Allowed)
+        sut_url_e = reverse('user-detail', args=[user_env.employee_a1.id])
+        sut_res3 = api_client.patch(sut_url_e, {"employee_details": {"salary": 3000}}, format='json')
+        assert sut_res3.status_code == status.HTTP_200_OK
+
+        # Arrange & Act 4 - Employee updates self salary (Forbidden)
+        api_client.force_authenticate(user=user_env.employee_a1)
+        sut_url_self = reverse('user-detail', args=[user_env.employee_a1.id])
+        sut_res4 = api_client.patch(sut_url_self, {"employee_details": {"salary": 9999}}, format='json')
+        assert sut_res4.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_work_update_permissions(self, api_client, user_env):
+        # Arrange
+        sut_url_e = reverse('user-detail', args=[user_env.employee_a1.id])
+
+        # Act & Assert - Owner update
+        api_client.force_authenticate(user=user_env.owner_a)
+        res1 = api_client.patch(sut_url_e, {"assigned_works": [{"branch_id": user_env.branch_a1.id, "work_type": WorkType.PRODUCT}]}, format='json')
+        assert res1.status_code == status.HTTP_200_OK
+
+        # Act & Assert - Manager update
+        api_client.force_authenticate(user=user_env.manager_a1)
+        res2 = api_client.patch(sut_url_e, {"assigned_works": [{"branch_id": user_env.branch_a1.id, "work_type": WorkType.INVENTORY}]}, format='json')
+        assert res2.status_code == status.HTTP_200_OK
+
+        # Act & Assert - Employee update self
+        api_client.force_authenticate(user=user_env.employee_a1)
+        res3 = api_client.patch(sut_url_e, {"assigned_works": [{"branch_id": user_env.branch_a1.id, "work_type": WorkType.ANALYTICS}]}, format='json')
+        assert res3.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_owner_cannot_update_delete_other_business_user(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_url = reverse('user-detail', args=[user_env.employee_b1.id])
+
+        # Act & Assert - Update & Delete
+        assert api_client.patch(sut_url, {"user": {"first_name": "Hacked"}}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(sut_url).status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_user_cascades_all_related_models(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sync_user_role_permissions(user_env.owner_a)
+        sut_create_url = reverse('business-employee')
+
         employee_data = {
             "user": {
                 "username": "cascademployee",
@@ -367,165 +382,156 @@ class UserManagementTests(BaseTestCase):
                 "mobile_number": "1234567800",
             },
             "employee_details": {"salary": 30000},
-            "assigned_branches": [{"id": self.branch_a1.id}],
-            "assigned_works": [{"branch_id": self.branch_a1.id, "work_type": WorkType.INVENTORY}]
+            "assigned_branches": [{"id": user_env.branch_a1.id}],
+            "assigned_works": [{"branch_id": user_env.branch_a1.id, "work_type": WorkType.INVENTORY}]
         }
-        url_create = reverse('business-employee')
-        response = self.client.post(url_create, employee_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
-        # Read
+
+        # Act - Create
+        sut_create_res = api_client.post(sut_create_url, employee_data, format='json')
+        assert sut_create_res.status_code == status.HTTP_201_CREATED
+
         employee = User.objects.get(username="cascademployee")
-        self.assertEqual(employee.mobile_number, "1234567800")
-        self.assertTrue(UserBusinessRole.objects.filter(user=employee).exists())
-        self.assertTrue(UserBranch.objects.filter(user=employee).exists())
-        self.assertTrue(UserBranchWork.objects.filter(user=employee).exists())
-        self.assertTrue(EmployeeDetails.objects.filter(user=employee).exists())
-        
-        # Delete
-        url_del = reverse('user-detail', args=[employee.id])
-        resp_del = self.client.delete(url_del)
-        self.assertEqual(resp_del.status_code, status.HTTP_204_NO_CONTENT)
-        
-        # Verify
-        self.assertFalse(UserBusinessRole.objects.filter(user=employee).exists())
-        self.assertFalse(UserBranch.objects.filter(user=employee).exists())
-        self.assertFalse(UserBranchWork.objects.filter(user=employee).exists())
-        self.assertFalse(EmployeeDetails.objects.filter(user=employee).exists())
-        self.assertTrue(UserBusinessRole.all_objects.filter(user=employee, is_deleted=True).exists())
-        self.assertTrue(UserBranch.all_objects.filter(user=employee, is_deleted=True).exists())
-        self.assertTrue(UserBranchWork.all_objects.filter(user=employee, is_deleted=True).exists())
-        self.assertTrue(EmployeeDetails.all_objects.filter(user=employee, is_deleted=True).exists())
+        assert employee.mobile_number == "1234567800"
+        assert UserBusinessRole.objects.filter(user=employee).exists()
+        assert UserBranch.objects.filter(user=employee).exists()
+        assert UserBranchWork.objects.filter(user=employee).exists()
+        assert EmployeeDetails.objects.filter(user=employee).exists()
 
-    def test_manager_cannot_update_delete_other_business_employee(self):
-        """Manager isolation."""
-        self.client.force_authenticate(user=self.manager_a1)
-        url = reverse('user-detail', args=[self.employee_b1.id])
-        
-        # Update
-        self.assertEqual(self.client.patch(url, {"user": {"first_name": "Hacked"}}, format='json').status_code, status.HTTP_404_NOT_FOUND)
-        
-        # Delete
-        self.assertEqual(self.client.delete(url).status_code, status.HTTP_404_NOT_FOUND)
+        # Act - Delete
+        sut_del_url = reverse('user-detail', args=[employee.id])
+        sut_del_res = api_client.delete(sut_del_url)
 
-    # --- FILTERING TESTS (10+ COMBINATIONS) ---
+        # Assert - Delete
+        assert sut_del_res.status_code == status.HTTP_204_NO_CONTENT
+        assert not UserBusinessRole.objects.filter(user=employee).exists()
+        assert not UserBranch.objects.filter(user=employee).exists()
+        assert not UserBranchWork.objects.filter(user=employee).exists()
+        assert not EmployeeDetails.objects.filter(user=employee).exists()
+        assert UserBusinessRole.all_objects.filter(user=employee, is_deleted=True).exists()
+        assert UserBranch.all_objects.filter(user=employee, is_deleted=True).exists()
+        assert UserBranchWork.all_objects.filter(user=employee, is_deleted=True).exists()
+        assert EmployeeDetails.all_objects.filter(user=employee, is_deleted=True).exists()
 
-    def test_user_filtering_combinations(self):
-        """User filters."""
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # 1. Search username
-        response = self.client.get(f"{self.user_list_url}?search=manager_a1")
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["username"], "manager_a1")
+    def test_manager_cannot_update_delete_other_business_employee(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.manager_a1)
+        sut_url = reverse('user-detail', args=[user_env.employee_b1.id])
 
-        # 2. Search first_name
-        response = self.client.get(f"{self.user_list_url}?search=Manager")
-        self.assertEqual(len(response.data["results"]), 2) # manager_a1, manager_a2
-        self.assertEqual(response.data["results"][0]["first_name"], "Manager")
-        self.assertEqual(response.data["results"][1]["first_name"], "Manager")
-        
-        # 3. Role exact
-        response = self.client.get(f"{self.user_list_url}?role={UserRole.EMPLOYEE}")
-        self.assertEqual(len(response.data["results"]), 2) # employee_a1, employee_a2
-        self.assertEqual(response.data["results"][0]["role"], UserRole.EMPLOYEE)
-        self.assertEqual(response.data["results"][1]["role"], UserRole.EMPLOYEE)
+        # Act & Assert
+        assert api_client.patch(sut_url, {"user": {"first_name": "Hacked"}}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(sut_url).status_code == status.HTTP_404_NOT_FOUND
 
-        # 4. Branch exact
-        response = self.client.get(f"{self.user_list_url}?branch={self.branch_a1.id}")
-        self.assertEqual(len(response.data["results"]), 2) # manager_a1, employee_a1
-        self.assertEqual(response.data["results"][0]["assigned_branches"][0]["name"], self.branch_a1.name)
-        self.assertEqual(response.data["results"][1]["assigned_branches"][0]["name"], self.branch_a1.name)
+    def test_user_filtering_combinations(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_list_url = user_env.user_list_url
 
-        # 5. Salary Min (gte)
-        response = self.client.get(f"{self.user_list_url}?salary_min=4000")
-        self.assertEqual(len(response.data["results"]), 2) # manager_a1, manager_a2 (5000 each)
-        self.assertEqual(response.data["results"][0]["employee_details"]["salary"], 5000)
-        self.assertEqual(response.data["results"][1]["employee_details"]["salary"], 5000)
+        # Act & Assert - 1. Search username
+        res1 = api_client.get(f"{sut_list_url}?search=manager_a1")
+        assert len(res1.data["results"]) == 1
+        assert res1.data["results"][0]["username"] == "manager_a1"
 
-        # 6. Salary Max (lte)
-        response = self.client.get(f"{self.user_list_url}?salary_max=4000")
-        self.assertEqual(len(response.data["results"]), 2) # employee_a1, employee_a2 (3000 each)
-        self.assertEqual(response.data["results"][0]["employee_details"]["salary"], 3000)
-        self.assertEqual(response.data["results"][1]["employee_details"]["salary"], 3000)
+        # Act & Assert - 2. Search first_name
+        res2 = api_client.get(f"{sut_list_url}?search=Manager")
+        assert len(res2.data["results"]) == 2
+        assert res2.data["results"][0]["first_name"] == "Manager"
+        assert res2.data["results"][1]["first_name"] == "Manager"
 
-        # 7. Salary Range
-        response = self.client.get(f"{self.user_list_url}?salary_min=2000&salary_max=4000")
-        self.assertEqual(len(response.data["results"]), 2)
-        self.assertEqual(response.data["results"][0]["employee_details"]["salary"], 3000)
-        self.assertEqual(response.data["results"][1]["employee_details"]["salary"], 3000)
+        # Act & Assert - 3. Role exact
+        res3 = api_client.get(f"{sut_list_url}?role={UserRole.EMPLOYEE}")
+        assert len(res3.data["results"]) == 2
+        assert res3.data["results"][0]["role"] == UserRole.EMPLOYEE
+        assert res3.data["results"][1]["role"] == UserRole.EMPLOYEE
 
-        # 8. Work Assignment
-        self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.INVENTORY)
-        response = self.client.get(f"{self.user_list_url}?work_assignment={WorkType.INVENTORY}")
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["username"], "employee_a1")
-        self.assertEqual(response.data["results"][0]["username"], "employee_a1")
+        # Act & Assert - 4. Branch exact
+        res4 = api_client.get(f"{sut_list_url}?branch={user_env.branch_a1.id}")
+        assert len(res4.data["results"]) == 2
+        assert res4.data["results"][0]["assigned_branches"][0]["name"] == user_env.branch_a1.name
+        assert res4.data["results"][1]["assigned_branches"][0]["name"] == user_env.branch_a1.name
 
-        # 9. Search + Role
-        response = self.client.get(f"{self.user_list_url}?search=employee&role={UserRole.EMPLOYEE}")
-        self.assertEqual(len(response.data["results"]), 2)
-        usernames = [result["username"] for result in response.data["results"]]
-        self.assertIn("employee_a1", usernames)
-        self.assertIn("employee_a2", usernames)
+        # Act & Assert - 5. Salary Min
+        res5 = api_client.get(f"{sut_list_url}?salary_min=4000")
+        assert len(res5.data["results"]) == 2
+        assert res5.data["results"][0]["employee_details"]["salary"] == 5000
+        assert res5.data["results"][1]["employee_details"]["salary"] == 5000
 
-        # 10. All filters combined
-        response = self.client.get(
-            f"{self.user_list_url}?search=a1&branch={self.branch_a1.id}&role={UserRole.MANAGER}"
-        )
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["username"], "manager_a1")
-        self.assertEqual(response.data["results"][0]["assigned_branches"][0]["name"], self.branch_a1.name)
-        self.assertEqual(response.data["results"][0]["role"], UserRole.MANAGER)
+        # Act & Assert - 6. Salary Max
+        res6 = api_client.get(f"{sut_list_url}?salary_max=4000")
+        assert len(res6.data["results"]) == 2
+        assert res6.data["results"][0]["employee_details"]["salary"] == 3000
+        assert res6.data["results"][1]["employee_details"]["salary"] == 3000
 
-    # --- PAGINATION TESTS ---
+        # Act & Assert - 7. Salary Range
+        res7 = api_client.get(f"{sut_list_url}?salary_min=2000&salary_max=4000")
+        assert len(res7.data["results"]) == 2
+        assert res7.data["results"][0]["employee_details"]["salary"] == 3000
+        assert res7.data["results"][1]["employee_details"]["salary"] == 3000
 
-    def test_user_pagination(self):
-        """User pagination."""
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # 1. Page 1
-        response = self.client.get(self.user_list_url)
-        self.assertEqual(response.status_code, 200)
-        # 5 users initially
-        self.assertEqual(len(response.data["results"]), 5)
-        
-        # Add 2 more
-        from apps.user.models import User
-        from apps.employee.models import UserBusinessRole
+        # Act & Assert - 8. Work Assignment
+        user_env.assign_work_to_user(user_env.employee_a1, user_env.branch_a1, WorkType.INVENTORY)
+        res8 = api_client.get(f"{sut_list_url}?work_assignment={WorkType.INVENTORY}")
+        assert len(res8.data["results"]) == 1
+        assert res8.data["results"][0]["username"] == "employee_a1"
+
+        # Act & Assert - 9. Search + Role
+        res9 = api_client.get(f"{sut_list_url}?search=employee&role={UserRole.EMPLOYEE}")
+        assert len(res9.data["results"]) == 2
+        usernames = [result["username"] for result in res9.data["results"]]
+        assert "employee_a1" in usernames
+        assert "employee_a2" in usernames
+
+        # Act & Assert - 10. All filters combined
+        res10 = api_client.get(f"{sut_list_url}?search=a1&branch={user_env.branch_a1.id}&role={UserRole.MANAGER}")
+        assert len(res10.data["results"]) == 1
+        assert res10.data["results"][0]["username"] == "manager_a1"
+        assert res10.data["results"][0]["assigned_branches"][0]["name"] == user_env.branch_a1.name
+        assert res10.data["results"][0]["role"] == UserRole.MANAGER
+
+    def test_user_pagination(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_list_url = user_env.user_list_url
+
+        # Act - Page 1 initial
+        res1 = api_client.get(sut_list_url)
+        assert res1.status_code == 200
+        assert len(res1.data["results"]) == 5
+
+        # Arrange - Add 2 more
         for i in range(2):
             u = User.objects.create(
                 username=f"paginated_user_{i}", 
                 email=f"paginated_{i}@example.com"
             )
-            UserBusinessRole.objects.create(user=u, business=self.business_a)
-        
-        # 1. Page 1 again (7 total)
-        response = self.client.get(self.user_list_url)
-        self.assertEqual(len(response.data["results"]), 6)
-        self.assertIsNotNone(response.data["next"])
-        
-        # 2. Page 2
-        next_url = response.data["next"]
-        response = self.client.get(next_url)
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertIsNone(response.data["next"])
+            UserBusinessRole.objects.create(user=u, business=user_env.business_a)
 
-    # --- EDGE CASE TESTS ---
+        # Act - Page 1 again (7 total)
+        res_page1 = api_client.get(sut_list_url)
+        assert len(res_page1.data["results"]) == 6
+        assert res_page1.data["next"] is not None
 
-    def test_send_otp_duplicate_email_blocked(self):
-        """Send OTP to already-registered email returns 400."""
-        url = reverse('user-send-otp')
-        response = self.client.post(url, {"email": self.owner_a.email}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", response.data)
+        # Act - Page 2
+        res_page2 = api_client.get(res_page1.data["next"])
+        assert len(res_page2.data["results"]) == 1
+        assert res_page2.data["next"] is None
 
-    def test_register_weak_password_rejected(self):
-        """Weak password during registration returns 400."""
-        from django.core.cache import cache
+    def test_send_otp_duplicate_email_blocked(self, api_client, user_env):
+        # Arrange
+        sut_url = reverse('user-send-otp')
+
+        # Act
+        sut_response = api_client.post(sut_url, {"email": user_env.owner_a.email}, format='json')
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in sut_response.data
+
+    def test_register_weak_password_rejected(self, api_client, user_env):
+        # Arrange
         email = "weakpass@example.com"
         cache.set(f"otp_registration_{email}", "123456", 600)
-        data = {
+        sut_url = user_env.user_list_url
+        payload = {
             "otp": "123456",
             "user": {
                 "username": "weakpassuser",
@@ -533,15 +539,19 @@ class UserManagementTests(BaseTestCase):
                 "email": email,
             }
         }
-        response = self.client.post(self.user_list_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(User.objects.filter(username="weakpassuser").exists())
 
-    def test_register_invalid_email_format_rejected(self):
-        """Invalid email format during registration returns 400."""
-        from django.core.cache import cache
+        # Act
+        sut_response = api_client.post(sut_url, payload, format='json')
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not User.objects.filter(username="weakpassuser").exists()
+
+    def test_register_invalid_email_format_rejected(self, api_client, user_env):
+        # Arrange
         cache.set("otp_registration_notanemail", "123456", 600)
-        data = {
+        sut_url = user_env.user_list_url
+        payload = {
             "otp": "123456",
             "user": {
                 "username": "invalidemailuser",
@@ -549,16 +559,20 @@ class UserManagementTests(BaseTestCase):
                 "email": "notanemail",
             }
         }
-        response = self.client.post(self.user_list_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_profile_picture_too_large_rejected(self):
-        """Profile picture over 5MB is rejected by serializer."""
+        # Act
+        sut_response = api_client.post(sut_url, payload, format='json')
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_profile_picture_too_large_rejected(self, user_env):
+        # Arrange
         from apps.user.serializers.user import UserSerializer
         from unittest.mock import patch, MagicMock
-        large_content = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
+        large_content = b"x" * (5 * 1024 * 1024 + 1)
         pic = SimpleUploadedFile("photo.jpg", large_content, content_type="image/jpeg")
-        
+
         mock_img = MagicMock()
         mock_img.format = "JPEG"
         mock_img.size = (100, 100)
@@ -566,82 +580,98 @@ class UserManagementTests(BaseTestCase):
         mock_img.load = lambda: None
         mock_img.fp = pic
         mock_img.mode = "RGB"
-        
+
+        # Act & Assert
         with patch("PIL.Image.open", return_value=mock_img):
-            serializer = UserSerializer(
-                self.owner_a,
+            sut_serializer = UserSerializer(
+                user_env.owner_a,
                 data={"profile_picture": pic},
                 partial=True,
             )
-            self.assertFalse(serializer.is_valid())
-            self.assertIn("profile_picture", serializer.errors)
-            self.assertIn("5MB", str(serializer.errors["profile_picture"]))
+            assert not sut_serializer.is_valid()
+            assert "profile_picture" in sut_serializer.errors
+            assert "5MB" in str(sut_serializer.errors["profile_picture"])
 
-    def test_profile_picture_invalid_type_rejected(self):
-        """Non-image file type is rejected by serializer."""
+    def test_profile_picture_invalid_type_rejected(self, user_env):
+        # Arrange
         from apps.user.serializers.user import UserSerializer
         gif = SimpleUploadedFile("anim.gif", b"GIF89a", content_type="image/gif")
-        serializer = UserSerializer(
-            self.owner_a,
+
+        # Act
+        sut_serializer = UserSerializer(
+            user_env.owner_a,
             data={"profile_picture": gif},
             partial=True,
         )
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("profile_picture", serializer.errors)
 
-    def test_deleted_user_still_exists_in_all_objects(self):
-        """After soft-delete, user still exists in all_objects with is_deleted=True."""
-        self.client.force_authenticate(user=self.owner_a)
-        url = reverse('user-detail', args=[self.employee_a1.id])
-        response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        # Must NOT appear in default (active) manager
-        self.assertFalse(User.objects.filter(id=self.employee_a1.id).exists())
-        # Must appear in all_objects with is_deleted=True
-        deleted = User.all_objects.filter(id=self.employee_a1.id, is_deleted=True).first()
-        self.assertIsNotNone(deleted)
-        self.assertFalse(deleted.is_active)
+        # Assert
+        assert not sut_serializer.is_valid()
+        assert "profile_picture" in sut_serializer.errors
 
-    def test_deleted_user_cannot_login(self):
-        """Soft-deleted user (is_active=False) is blocked at login."""
-        self.client.force_authenticate(user=self.owner_a)
-        url = reverse('user-detail', args=[self.employee_a1.id])
-        self.client.delete(url)
-        self.client.logout()
+    def test_deleted_user_still_exists_in_all_objects(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_url = reverse('user-detail', args=[user_env.employee_a1.id])
 
-        login_url = reverse('user-login')
-        response = self.client.post(login_url, {
-            "username": self.employee_a1.username,
+        # Act
+        sut_response = api_client.delete(sut_url)
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_204_NO_CONTENT
+        assert not User.objects.filter(id=user_env.employee_a1.id).exists()
+        deleted = User.all_objects.filter(id=user_env.employee_a1.id, is_deleted=True).first()
+        assert deleted is not None
+        assert deleted.is_active is False
+
+    def test_deleted_user_cannot_login(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_del_url = reverse('user-detail', args=[user_env.employee_a1.id])
+        api_client.delete(sut_del_url)
+        api_client.logout()
+
+        sut_login_url = reverse('user-login')
+
+        # Act
+        sut_response = api_client.post(sut_login_url, {
+            "username": user_env.employee_a1.username,
             "password": "password123",
         })
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_me_endpoint_returns_correct_role(self):
-        """GET /user/me/ returns correct serializer with role field."""
-        me_url = reverse('user-me')
+        # Assert
+        assert sut_response.status_code == status.HTTP_401_UNAUTHORIZED
 
-        self.client.force_authenticate(user=self.owner_a)
-        response = self.client.get(me_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("role", response.data)
-        self.assertEqual(response.data["role"], UserRole.OWNER)
+    def test_me_endpoint_returns_correct_role(self, api_client, user_env):
+        # Arrange
+        sut_me_url = reverse('user-me')
 
-        self.client.force_authenticate(user=self.manager_a1)
-        response = self.client.get(me_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["role"], UserRole.MANAGER)
+        # Act & Assert - Owner
+        api_client.force_authenticate(user=user_env.owner_a)
+        res_owner = api_client.get(sut_me_url)
+        assert res_owner.status_code == status.HTTP_200_OK
+        assert res_owner.data.get("role") == UserRole.OWNER
 
-        self.client.force_authenticate(user=self.employee_a1)
-        response = self.client.get(me_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["role"], UserRole.EMPLOYEE)
+        # Act & Assert - Manager
+        api_client.force_authenticate(user=user_env.manager_a1)
+        res_manager = api_client.get(sut_me_url)
+        assert res_manager.status_code == status.HTTP_200_OK
+        assert res_manager.data.get("role") == UserRole.MANAGER
 
-    def test_update_response_includes_role(self):
-        """PATCH response uses role-aware serializer and includes role field."""
-        self.client.force_authenticate(user=self.owner_a)
-        url = reverse('user-detail', args=[self.manager_a1.id])
-        response = self.client.patch(url, {"user": {"first_name": "RoleCheck"}}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("role", response.data)
-        self.assertEqual(response.data["role"], UserRole.MANAGER)
+        # Act & Assert - Employee
+        api_client.force_authenticate(user=user_env.employee_a1)
+        res_emp = api_client.get(sut_me_url)
+        assert res_emp.status_code == status.HTTP_200_OK
+        assert res_emp.data.get("role") == UserRole.EMPLOYEE
 
+    def test_update_response_includes_role(self, api_client, user_env):
+        # Arrange
+        api_client.force_authenticate(user=user_env.owner_a)
+        sut_url = reverse('user-detail', args=[user_env.manager_a1.id])
+
+        # Act
+        sut_response = api_client.patch(sut_url, {"user": {"first_name": "RoleCheck"}}, format='json')
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        assert "role" in sut_response.data
+        assert sut_response.data["role"] == UserRole.MANAGER

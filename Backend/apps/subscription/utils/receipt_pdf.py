@@ -17,10 +17,10 @@ def generate_subscription_pdf(subscription, user):
         "duration_days": subscription.duration_days,
         "start_date": subscription.start_date.strftime("%d %b %Y"),
         "end_date": subscription.end_date.strftime("%d %b %Y"),
-        "payment_date": subscription.payment_date.strftime("%d %b %Y")
-        if subscription.payment_date
-        else "N/A",
-        "transaction_id": subscription.payment_reference or "N/A",
+        "payment_date": getattr(subscription, "payment_date", None).strftime("%d %b %Y")
+        if getattr(subscription, "payment_date", None)
+        else (subscription.created_at.strftime("%d %b %Y") if getattr(subscription, "created_at", None) else "N/A"),
+        "transaction_id": getattr(subscription, "payment_reference", None) or "N/A",
     }
 
     # 1. Render HTML as a string

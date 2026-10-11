@@ -239,7 +239,7 @@ export default function AddSaleOrder({ isEmbed = false, onComplete = null, initi
                 sku: skuValue,
                 productName: product.name,
                 quantity: "1",
-                unit_price: product.base_price
+                price: product.base_price
                     ? String(product.base_price)
                     : (product.cost_price ? String(product.cost_price) : "0"),
             };
@@ -268,7 +268,7 @@ export default function AddSaleOrder({ isEmbed = false, onComplete = null, initi
             product_id: parsePositiveInt(item.product_id),
             sku: String(item.sku || "").trim(),
             quantity: parsePositiveInt(item.quantity),
-            unit_price: String(item.unit_price || "").trim(),
+            price: String(item.price || "").trim(),
         }));
 
         return {
@@ -306,11 +306,11 @@ export default function AddSaleOrder({ isEmbed = false, onComplete = null, initi
         }
 
         const hasInvalidItem = payload.items.some(
-            (item) => !item.product_id || !item.sku || !item.quantity || !item.unit_price
+            (item) => !item.product_id || !item.sku || !item.quantity || !item.price
         );
 
         if (payload.items.length === 0 || hasInvalidItem) {
-            setItemError("Each line item requires product SKU, quantity, and unit price.");
+            setItemError("Each line item requires product SKU, quantity, and price.");
             setSaving(false);
             return;
         }
@@ -553,14 +553,14 @@ export default function AddSaleOrder({ isEmbed = false, onComplete = null, initi
                                         <div className={isEmbed ? "col-span-1" : "md:col-span-3"}>
                                             <label className={`${labelClass} flex items-center gap-1.5`}>
                                                 <FaMoneyBillWave className="text-slate-400" />
-                                                Unit Price
+                                                Price
                                             </label>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
-                                                value={item.unit_price}
-                                                onChange={(event) => handleItemChange(index, "unit_price", event.target.value)}
+                                                value={item.price}
+                                                onChange={(event) => handleItemChange(index, "price", event.target.value)}
                                                 className="w-full rounded-xl px-4 py-3 text-sm border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
                                                 placeholder="0.00"
                                                 required
@@ -586,7 +586,7 @@ export default function AddSaleOrder({ isEmbed = false, onComplete = null, initi
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 sm:px-6 py-4 w-full sm:w-auto sm:min-w-[280px] flex justify-between items-center gap-4">
                                     <span className="text-slate-500 font-bold uppercase tracking-wider text-sm">Order Total</span>
                                     <span className="text-2xl font-bold text-slate-900">
-                                        ₹{formData.items.reduce((sum, item) => sum + ((parsePositiveInt(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        ₹{formData.items.reduce((sum, item) => sum + ((parsePositiveInt(item.quantity) || 0) * (parseFloat(item.price) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
                             </div>

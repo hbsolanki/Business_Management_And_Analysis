@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import ProtectedHeader from "@/components/layout/ProtectedHeader";
 import PlansSection from "@/features/subscription/components/PlansSection";
-import PaymentModal from "@/features/payment/components/PaymentModal";
+import { paymentService } from "@/services/paymentService";
 import api, { API_BASE_URL } from "@/services/api";
 import toast from "react-hot-toast";
 import {
@@ -33,7 +33,8 @@ export default function Subscriptions() {
 
     const pendingSub = useMemo(() => {
         if (!purchased) return null;
-        if (purchased.status === "pending_payment" || purchased.status === "pending") {
+        const s = (purchased.status || "").toUpperCase();
+        if (s === "PENDING_PAYMENT" || s === "PENDING") {
             return purchased;
         }
         return purchased.pending_subscription || null;
@@ -102,6 +103,48 @@ export default function Subscriptions() {
     }, [fetchPurchased]);
 
     useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const sessionId = queryParams.get("session_id");
+        if (sessionId) {
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+
+            const toastId = toast.loading("Verifying your subscription payment...");
+
+            // Poll until status changes from PENDING_PAYMENT to ACTIVE (webhook may be delayed)
+            let attempts = 0;
+            const MAX_ATTEMPTS = 8;
+            const INTERVAL_MS = 2500;
+
+            const poll = async () => {
+                attempts++;
+                try {
+                    const res = await api.get("/subscription/plan/purchased/");
+                    const data = normalizeOne(res.data);
+                    const s = (data?.status || "").toUpperCase();
+
+                    if (s === "ACTIVE") {
+                        setPurchased(data);
+                        toast.success("Subscription activated successfully!", { id: toastId });
+                        return;
+                    }
+                } catch {
+                    // ignore fetch errors during polling
+                }
+
+                if (attempts < MAX_ATTEMPTS) {
+                    setTimeout(poll, INTERVAL_MS);
+                } else {
+                    // Timeout — do a final fetch and show message
+                    await fetchPurchased(true);
+                    toast.success("Payment received! Your plan will activate shortly.", { id: toastId });
+                }
+            };
+
+            setTimeout(poll, 2000);
+        }
+    }, [fetchPurchased]);
+
+    useEffect(() => {
         let isMounted = true;
         const fetchUsage = async () => {
             const usageId = purchased?.subscription_id || purchased?.id;
@@ -140,10 +183,13 @@ export default function Subscriptions() {
         try {
             const res = await api.post("/subscription/plan/purchase/", { plan_id: planId });
             const { subscription_id } = res.data;
-
-            setRenewSubscriptionId(subscription_id);
-            setRenewAmount(parseFloat(purchased.price || 0));
-            setIsPaymentModalOpen(true);
+            const successUrl = `${window.location.origin}/subscriptions?session_id={CHECKOUT_SESSION_ID}#current-plan`;
+            const cancelUrl = `${window.location.origin}/subscriptions`;
+            const payData = await paymentService.initiateSubscriptionPayment(subscription_id, successUrl, cancelUrl);
+            if (payData.checkout_url) {
+                window.location.href = payData.checkout_url;
+                return;
+            }
         } catch (err) {
             toast.error(err?.response?.data?.detail || "Failed to initiate renewal");
         } finally {
@@ -231,10 +277,21 @@ export default function Subscriptions() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            setRenewSubscriptionId(pendingSub.subscription_id || pendingSub.id);
-                                            setRenewAmount(parseFloat(pendingSub.price || 0));
-                                            setIsPaymentModalOpen(true);
+                                        onClick={async () => {
+                                            try {
+                                                const successUrl = `${window.location.origin}/subscriptions?session_id={CHECKOUT_SESSION_ID}#current-plan`;
+                                                const cancelUrl = `${window.location.origin}/subscriptions`;
+                                                const payData = await paymentService.initiateSubscriptionPayment(
+                                                    pendingSub.subscription_id || pendingSub.id,
+                                                    successUrl,
+                                                    cancelUrl
+                                                );
+                                                if (payData.checkout_url) {
+                                                    window.location.href = payData.checkout_url;
+                                                }
+                                            } catch (err) {
+                                                toast.error("Failed to initiate secure checkout.");
+                                            }
                                         }}
                                         className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-amber-600 text-white text-xs font-black uppercase tracking-wider hover:bg-amber-500 active:translate-y-0.5 hover:-translate-y-0.5 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/30 transition-all duration-300 w-full sm:w-auto"
                                     >
@@ -383,13 +440,7 @@ export default function Subscriptions() {
                 />
             </div>
 
-            <PaymentModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                subscriptionId={renewSubscriptionId}
-                amount={renewAmount}
-                onPaymentSuccess={handlePaymentSuccess}
-            />
+
 
             {showReminderModal && purchased && (purchased.plan || purchased.plan_id) && (
                 <Suspense fallback={null}>

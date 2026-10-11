@@ -155,7 +155,7 @@ export default function AddPurchaseOrder({ isEmbed = false, onComplete = null, i
                 product: String(product.id),
                 productName: product.name,
                 quantity: "1",
-                unit_cost: product.cost_price ? String(product.cost_price) : "0",
+                price: product.cost_price ? String(product.cost_price) : "0",
                 tax_rate: product.input_gst_rate ? String(product.input_gst_rate) : "0.00",
             };
             return { ...prev, items: [...prev.items, newItem] };
@@ -175,7 +175,7 @@ export default function AddPurchaseOrder({ isEmbed = false, onComplete = null, i
         let tax = 0;
         formData.items.forEach(item => {
             const q = Number(item.quantity) || 0;
-            const c = Number(item.unit_cost) || 0;
+            const c = Number(item.price) || 0;
             const r = Number(item.tax_rate) || 0;
             const lineSub = q * c;
             const lineTax = (lineSub * r) / 100;
@@ -196,7 +196,7 @@ export default function AddPurchaseOrder({ isEmbed = false, onComplete = null, i
         const items = formData.items.map((item) => ({
             product_id: parsePositiveInt(item.product),
             quantity: parsePositiveInt(item.quantity),
-            unit_cost: String(item.unit_cost || "").trim(),
+            price: String(item.price || "").trim(),
             tax_rate: String(item.tax_rate || "0").trim(),
         }));
 
@@ -389,7 +389,7 @@ export default function AddPurchaseOrder({ isEmbed = false, onComplete = null, i
                                         </div>
                                     ) : (
                                         formData.items.map((item, index) => {
-                                            const lineSub = (Number(item.quantity) || 0) * (Number(item.unit_cost) || 0);
+                                            const lineSub = (Number(item.quantity) || 0) * (Number(item.price) || 0);
                                             const lineTax = (lineSub * (Number(item.tax_rate) || 0)) / 100;
                                             const lineTotal = lineSub + lineTax;
 
@@ -423,14 +423,14 @@ export default function AddPurchaseOrder({ isEmbed = false, onComplete = null, i
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <label className={labelClass}>2. Unit Cost</label>
+                                                                <label className={labelClass}>2. Price</label>
                                                                 <div className="relative">
                                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">₹</span>
                                                                     <input
                                                                         type="number"
                                                                         step="0.01"
-                                                                        value={item.unit_cost}
-                                                                        onChange={(e) => handleItemChange(index, "unit_cost", e.target.value)}
+                                                                        value={item.price}
+                                                                        onChange={(e) => handleItemChange(index, "price", e.target.value)}
                                                                         className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-6 pr-3 py-2.5 text-sm font-black text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tabular-nums text-right shadow-sm"
                                                                     />
                                                                 </div>

@@ -236,10 +236,10 @@ export default function ViewPurchaseOrder() {
                                                     <td className="px-6 py-4 text-center">
                                                         <span className="font-bold text-slate-700">{item.quantity}</span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-right text-slate-600">{formatCurrency(item.unit_cost)}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-600">{formatCurrency(item.price)}</td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <p className="text-xs font-bold text-slate-900">{formatCurrency(item.tax_amount)}</p>
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{item.tax_rate}% GST</p>
+                                                        <p className="text-xs font-bold text-slate-900">{formatCurrency(item.gst?.gst_amount || 0)}</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{item.gst?.gst_rate || 0}% GST</p>
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-bold text-slate-900">{formatCurrency(item.subtotal)}</td>
                                                 </tr>

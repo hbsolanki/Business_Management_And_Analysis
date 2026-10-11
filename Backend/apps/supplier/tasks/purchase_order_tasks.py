@@ -1,3 +1,4 @@
+from decimal import Decimal
 from celery import shared_task
 from apps.supplier.models import PurchaseOrder, OrderStatus
 from apps.business.models import BusinessCustomer
@@ -49,7 +50,7 @@ def synchronize_purchase_order_to_supplier_task(purchase_order_id):
                     items_data.append({
                         "sku": sku,
                         "quantity": po_item.quantity,
-                        "unit_price": po_item.unit_cost,
+                        "price": getattr(po_item, "price", Decimal("0.00")),
                     })
                 except Product.DoesNotExist:
                     logger.warning(f"SKU {sku} not found in target business {target_business.name}. Skipping item.")
@@ -69,7 +70,8 @@ def synchronize_purchase_order_to_supplier_task(purchase_order_id):
                     supplier_owner = UserBusinessRole.objects.filter(business=target_business, role=UserRole.OWNER).first()
                     if supplier_owner:
                         product_name = po_item.product.name
-                        category_name = po_item.product.category.name if po_item.product.category else "Uncategorized"
+                        category_obj = getattr(po_item.product, "product_category", None)
+                        category_name = category_obj.name if category_obj else "Uncategorized"
                         send_notification(
                             user=supplier_owner.user,
                             title="Product Request Alert",
@@ -98,6 +100,8 @@ def synchronize_purchase_order_to_supplier_task(purchase_order_id):
             )
             serializer.is_valid(raise_exception=True)
             sales_order = serializer.save()
+            sales_order.purchase_order = purchase_order
+            sales_order.save(update_fields=["purchase_order"])
 
             # Invalidate target business cache
             from apps.master.utils.cache import invalidate_business_cache
@@ -208,14 +212,13 @@ def synchronize_purchase_order_items_update_to_supplier_task(purchase_order_id):
                     seen_skus.add(sku)
                     
                     quantity = s_item.quantity
-                    # PO unit_cost is SO unit_price
-                    price = s_item.unit_cost
+                    price = getattr(s_item, "price", Decimal("0.00"))
 
                     if sku in target_items_map:
                         t_item = target_items_map[sku]
-                        if t_item.quantity != quantity or t_item.unit_price != price:
+                        if t_item.quantity != quantity or t_item.price != price:
                             t_item.quantity = quantity
-                            t_item.unit_price = price
+                            t_item.price = price
                             t_item.save()
                     else:
                         # Create new item in Sales Order
@@ -225,7 +228,7 @@ def synchronize_purchase_order_items_update_to_supplier_task(purchase_order_id):
                                 sales_order=so,
                                 product=target_product,
                                 quantity=quantity,
-                                unit_price=price
+                                price=price
                             )
                         except Product.DoesNotExist:
                             logger.warning(f"SKU {sku} not found in business {so.business.name}. Skipping item sync.")
@@ -245,7 +248,8 @@ def synchronize_purchase_order_items_update_to_supplier_task(purchase_order_id):
                             supplier_owner = UserBusinessRole.objects.filter(business=so.business, role=UserRole.OWNER).first()
                             if supplier_owner:
                                 product_name = s_item.product.name
-                                category_name = s_item.product.category.name if s_item.product.category else "Uncategorized"
+                                category_obj = getattr(s_item.product, "product_category", None)
+                                category_name = category_obj.name if category_obj else "Uncategorized"
                                 send_notification(
                                     user=supplier_owner.user,
                                     title="Product Request Alert",

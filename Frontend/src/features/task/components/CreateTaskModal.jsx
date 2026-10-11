@@ -151,8 +151,13 @@ const CreateTaskModal = ({
             remarks: remarks || null,
             status,
             branch: branchId || null,
-            assignee_id: assigneeId
         };
+
+        if (assigneeId) {
+            taskData.task_assignment = {
+                assignee_id: assigneeId
+            };
+        }
 
         try {
             if (isEmbed) {

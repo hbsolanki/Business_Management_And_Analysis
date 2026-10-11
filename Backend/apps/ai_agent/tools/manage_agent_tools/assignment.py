@@ -270,7 +270,8 @@ async def execute_assignment(entity_type: str, source_id: int, target_id: int) -
                         is_authenticated=True,
                         role_name="OWNER"
                     ),
-                    query_params={}
+                    query_params={},
+                    method="PATCH"
                 )
 
                 if entity_type == "task_employee":

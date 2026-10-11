@@ -11,7 +11,8 @@ class QueryParameterJWTAuthentication(JWTAuthentication):
         if header is not None:
             return header
             
-        token = request.query_params.get('token')
+        params = getattr(request, 'query_params', getattr(request, 'GET', {}))
+        token = params.get('token')
         if token:
             # simplejwt expects bytes
             return b'Bearer ' + token.encode('utf-8')

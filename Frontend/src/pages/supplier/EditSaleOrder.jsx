@@ -32,7 +32,6 @@ import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branc
 const INITIAL_FORM = {
     branch_id: "",
     customer_id: "",
-    purchase_order_id: 0,
     status: "PENDING",
     notes: "",
     items: [],
@@ -196,7 +195,7 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
                         sku: skuValue,
                         productName: productObj?.name || "Product",
                         quantity: String(item?.quantity ?? "1"),
-                        unit_price: String(item?.unit_price ?? item?.unit_cost ?? ""),
+                        price: String(item?.price ?? item?.unit_price ?? item?.unit_cost ?? ""),
                     };
                 });
 
@@ -215,7 +214,6 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
                 const initialForm = {
                     branch_id: resolvedBranchId,
                     customer_id: customerId ? String(customerId) : "",
-                    purchase_order_id: Number(order?.purchase_order_id ?? 0),
                     status: order?.status || "PENDING",
                     notes: order?.notes || "",
                     items: mappedItems,
@@ -226,13 +224,12 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
                 setOriginalData({
                     branch: parsePositiveInt(initialForm.branch_id),
                     customer: parsePositiveInt(initialForm.customer_id),
-                    purchase_order: initialForm.purchase_order_id,
                     status: initialForm.status,
                     notes: String(initialForm.notes || "").trim(),
                     items: initialForm.items.map((item) => ({
                         sku: String(item.sku || "").trim(),
                         quantity: parsePositiveInt(item.quantity),
-                        unit_price: String(item.unit_price || "").trim(),
+                        price: String(item.price || "").trim(),
                     })),
                 });
             } catch (error) {
@@ -282,7 +279,7 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
                 sku: skuValue,
                 productName: product.name,
                 quantity: "1",
-                unit_price: product.base_price
+                price: product.base_price
                     ? String(product.base_price)
                     : (product.cost_price ? String(product.cost_price) : "0"),
             };
@@ -315,10 +312,10 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
         const items = formData.items.map((item) => ({
             sku: String(item.sku || "").trim(),
             quantity: parsePositiveInt(item.quantity),
-            unit_price: String(item.unit_price || "").trim(),
+            price: String(item.price || "").trim(),
         }));
 
-        const payload = {
+        return {
             is_active: true,
             branch: parsePositiveInt(formData.branch_id),
             customer: parsePositiveInt(formData.customer_id),
@@ -326,13 +323,6 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
             notes: String(formData.notes || "").trim(),
             items,
         };
-
-        const poId = Number(formData.purchase_order_id);
-        if (poId > 0) {
-            payload.purchase_order = poId;
-        }
-
-        return payload;
     };
 
     const handleSubmit = async (event) => {
@@ -361,11 +351,11 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
         }
 
         const hasInvalidItem = payload.items.some(
-            (item) => !item.sku || !item.quantity || !item.unit_price
+            (item) => !item.sku || !item.quantity || !item.price
         );
 
         if (payload.items.length === 0 || hasInvalidItem) {
-            setItemError("Each line item requires product SKU, quantity, and unit price.");
+            setItemError("Each line item requires product SKU, quantity, and price.");
             setSaving(false);
             return;
         }
@@ -377,14 +367,6 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
             if (originalData) {
                 if (originalData.branch !== requestPayload.branch) changedData.branch = requestPayload.branch;
                 if (originalData.customer !== requestPayload.customer) changedData.customer = requestPayload.customer;
-                
-                const requestPO = requestPayload.purchase_order ?? 0;
-                const originalPO = originalData.purchase_order ?? 0;
-                if (originalPO !== requestPO) {
-                    if (requestPO > 0) {
-                        changedData.purchase_order = requestPO;
-                    }
-                }
 
                 if (originalData.status !== requestPayload.status) changedData.status = requestPayload.status;
                 if (originalData.notes !== requestPayload.notes) changedData.notes = requestPayload.notes;
@@ -645,15 +627,15 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
                                         <div className={isEmbed ? "col-span-1" : "md:col-span-3"}>
                                             <label className={`${labelClass} flex items-center gap-1.5`}>
                                                 <FaMoneyBillWave className="text-slate-400" />
-                                                Unit Price
+                                                Price
                                             </label>
                                             <div className="relative group">
                                                 <input
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
-                                                    value={item.unit_price}
-                                                    onChange={(event) => handleItemChange(index, "unit_price", event.target.value)}
+                                                    value={item.price}
+                                                    onChange={(event) => handleItemChange(index, "price", event.target.value)}
                                                     className="w-full rounded-xl px-4 py-3 text-sm border border-slate-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-50 outline-none transition-all"
                                                     placeholder="0.00"
                                                     required
@@ -680,7 +662,7 @@ export default function EditSaleOrder({ isEmbed = false, id: embedId = null, onC
                                 <div className="bg-slate-50 border border-slate-200 rounded-xl px-6 py-4 min-w-[280px] flex justify-between items-center">
                                     <span className="text-slate-500 font-bold uppercase tracking-wider text-sm">Order Total</span>
                                     <span className="text-2xl font-bold text-slate-900">
-                                        ₹{formData.items.reduce((sum, item) => sum + ((parsePositiveInt(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        ₹{formData.items.reduce((sum, item) => sum + ((parsePositiveInt(item.quantity) || 0) * (parseFloat(item.price) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
                             </div>

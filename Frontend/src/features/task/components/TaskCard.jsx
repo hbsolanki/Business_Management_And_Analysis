@@ -11,7 +11,7 @@ const TaskCard = ({ task, onDelete }) => {
 
     // Permission Logic
     const isCreator = task.assigned_by?.id === currentUserId;
-    const isAssignee = task.assignee?.id === currentUserId;
+    const isAssignee = task.assignee?.id === currentUserId || (task.assignee_group && task.assignee_group.members?.some(m => m.user?.id === currentUserId));
 
     // Creator can delete, Assignee cannot
     const canDelete = isCreator;
@@ -131,7 +131,14 @@ const TaskCard = ({ task, onDelete }) => {
 
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
-                        {task.assignee?.profile_picture ? (
+                        {task.assignee_group ? (
+                            <div className="flex items-center gap-1">
+                                <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center text-white shadow-sm" title={`Group: ${task.assignee_group.name}`}>
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-700 max-w-[80px] truncate">{task.assignee_group.name}</span>
+                            </div>
+                        ) : task.assignee?.profile_picture ? (
                             <img
                                 src={task.assignee.profile_picture}
                                 alt={task.assignee.username}

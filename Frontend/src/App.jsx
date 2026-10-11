@@ -40,6 +40,15 @@ const EditBranch = lazy(() => import("@/pages/business/EditBranch"));
 const InvoiceNew = lazy(() => import("@/pages/invoice/AddInvoice"));
 const Invoice = lazy(() => import("@/pages/invoice/InvoiceList"));
 const PaymentSuccess = lazy(() => import("@/pages/invoice/PaymentSuccess"));
+const PaymentDashboard = lazy(() => import("@/pages/payment/PaymentDashboard"));
+
+// payment callbacks (no auth required — Stripe redirects here)
+import {
+  StripeConnectReturn,
+  StripeConnectRefresh,
+  InvoicePaymentSuccess,
+  InvoicePaymentCancel,
+} from "@/features/payment/components/PaymentCallbackPages";
 
 // Cost Category & Management
 const CostDashboard = lazy(() => import("@/pages/cost/CostDashboard"));
@@ -143,6 +152,9 @@ const TaskDashboard = lazy(() => import("@/pages/task/TaskDashboard"));
 const TaskDetails = lazy(() => import("@/pages/task/TaskDetails"));
 const EditTask = lazy(() => import("@/pages/task/EditTask"));
 const CreateTask = lazy(() => import("@/pages/task/CreateTask"));
+const TaskGroupDashboard = lazy(() => import("@/pages/task/TaskGroupDashboard"));
+const CreateTaskGroup = lazy(() => import("@/pages/task/CreateTaskGroup"));
+const EditTaskGroup = lazy(() => import("@/pages/task/EditTaskGroup"));
 
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
@@ -451,6 +463,14 @@ function App() {
 
               <Route
                 element={
+                  <PrivateRoute allowedRoles={["OWNER", "MANAGER"]} />
+                }
+              >
+                <Route path="/payment-dashboard" element={<PaymentDashboard />} />
+              </Route>
+
+              <Route
+                element={
                   <PrivateRoute
                     allowedRoles={["OWNER", "MANAGER", "EMPLOYEE"]}
                   />
@@ -486,10 +506,19 @@ function App() {
                 <Route path="/tasks" element={<TaskDashboard />} />
                 <Route path="/tasks/created" element={<TaskDashboard />} />
                 <Route path="/tasks/my-tasks" element={<TaskDashboard />} />
+                <Route path="/tasks/groups" element={<TaskGroupDashboard />} />
+                <Route path="/tasks/group/new" element={<CreateTaskGroup />} />
+                <Route path="/tasks/group/:id/edit" element={<EditTaskGroup />} />
                 <Route path="/tasks/new" element={<CreateTask />} />
                 <Route path="/tasks/:id" element={<TaskDetails />} />
                 <Route path="/tasks/:id/edit" element={<EditTask />} />
               </Route>
+
+              {/* Payment Callback Routes — no auth, Stripe redirects here */}
+              <Route path="/payment/connect/return" element={<StripeConnectReturn />} />
+              <Route path="/payment/connect/refresh" element={<StripeConnectRefresh />} />
+              <Route path="/invoice/:id/payment/success" element={<InvoicePaymentSuccess />} />
+              <Route path="/invoice/:id/payment/cancel" element={<InvoicePaymentCancel />} />
 
               <Route path="*" element={<PageNotFound />} />
             </Routes>

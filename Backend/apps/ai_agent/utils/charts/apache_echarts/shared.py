@@ -97,6 +97,13 @@ def generic_normalize(data: List[Dict], label_key: str, value_keys: List[str]) -
 def normalize_multi_series(data: List[Dict]) -> Tuple[List[str], List[Dict]]:
     if not data:
         return [], []
+    if isinstance(data, dict):
+        if "data" in data and isinstance(data["data"], list):
+            data = data["data"]
+        else:
+            return list(data.keys()), [to_number(v) for v in data.values()]
+    if not data or not isinstance(data, list) or not isinstance(data[0], dict):
+        return [], []
     series_map = {}
     labels = []
     label_set = set()
@@ -350,9 +357,60 @@ def get_base_echarts_option(title: str = "", x_label: str = "", y_label: str = "
     
     return option
 
-# Add dummy stubs for other complex normalizers if they are called by specific chart builders
-def normalize_scatter_series(data): return []
+def normalize_scatter_series(data):
+    if not isinstance(data, list):
+        return []
+    points = []
+    for item in data:
+        if isinstance(item, dict):
+            points.append({
+                "x": to_number(item.get("x", item.get("value_x", 0))),
+                "y": to_number(item.get("y", item.get("value_y", 0))),
+            })
+        elif isinstance(item, (list, tuple)) and len(item) >= 2:
+            points.append({"x": to_number(item[0]), "y": to_number(item[1])})
+    return points
+
 def normalize_matrix_data(data): return [], [], []
-def normalize_gauge_data(data): return 0
-def normalize_bullet_data(data): return {}
-def normalize_kpi_data(data): return {}
+
+def normalize_gauge_data(data, title=""):
+    val = 0.0
+    label = title or "Value"
+    if isinstance(data, (int, float)):
+        val = float(data)
+    elif isinstance(data, dict):
+        val = to_number(data.get("value", data.get("val", 0)))
+        label = str(data.get("label", data.get("name", label)))
+    elif isinstance(data, list) and data:
+        if isinstance(data[0], dict):
+            val = to_number(data[0].get("value", data[0].get("val", 0)))
+            label = str(data[0].get("label", data[0].get("name", label)))
+        elif isinstance(data[0], (int, float)):
+            val = float(data[0])
+    return {"min": 0, "max": 100, "value": val, "label": label}
+
+def normalize_bullet_data(data, title=""):
+    ranges = [50, 75, 100]
+    actual = 0.0
+    target = 100.0
+    label = title or "Metric"
+    if isinstance(data, dict):
+        ranges = data.get("ranges", ranges)
+        actual = to_number(data.get("actual", data.get("value", actual)))
+        target = to_number(data.get("target", target))
+        label = str(data.get("label", label))
+    return {"ranges": ranges, "actual": actual, "target": target, "label": label}
+
+def normalize_kpi_data(data, title=""):
+    value = 0.0
+    label = title or "KPI"
+    trend = []
+    if isinstance(data, dict):
+        value = to_number(data.get("value", 0))
+        label = str(data.get("label", label))
+        trend = data.get("trend", [])
+    elif isinstance(data, list):
+        trend = [to_number(x.get("value", x) if isinstance(x, dict) else x) for x in data]
+        value = trend[-1] if trend else 0.0
+    return {"value": value, "label": label, "trend": trend}
+

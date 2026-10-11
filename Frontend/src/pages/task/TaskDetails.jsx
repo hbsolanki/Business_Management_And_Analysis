@@ -60,7 +60,7 @@ const TaskDetails = () => {
     if (!task) return null;
 
     const isCreator = task.assigned_by?.id == currentUser.id;
-    const isAssignee = task.assignee?.id == currentUser.id;
+    const isAssignee = task.assignee?.id == currentUser.id || (task.assignee_group && task.assignee_group.members?.some(m => m.user?.id == currentUser.id));
 
     const canDelete = isCreator;
     const canEdit = isCreator || isAssignee;
@@ -202,25 +202,38 @@ const TaskDetails = () => {
                             )}
 
                             {/* Assignee Card */}
-                            <Link
-                                to={task.assignee?.id ? `/profile/${task.assignee.id}` : "#"}
-                                className={`bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl transition-all ${task.assignee?.id ? "hover:border-brand-200 hover:bg-brand-50/40 hover:shadow-sm" : "pointer-events-none"}`}
-                            >
-                                {task.assignee?.profile_picture ? (
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm">
-                                        <img src={task.assignee.profile_picture} alt={task.assignee.username} className="w-full h-full object-cover" />
+                            {task.assignee_group ? (
+                                <div className="bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl">
+                                    <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white text-lg font-bold shadow-sm">
+                                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg>
                                     </div>
-                                ) : (
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 text-lg font-bold border border-slate-200 shadow-sm">
-                                        {task.assignee?.username.substring(0, 1).toUpperCase()}
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Assigned To Group</p>
+                                        <p className="font-semibold text-slate-900">{task.assignee_group.name}</p>
+                                        <p className="text-xs text-slate-500">{task.assignee_group.is_private ? 'Private' : 'Public'} • {task.assignee_group.members?.length || 0} Members</p>
                                     </div>
-                                )}
-                                <div>
-                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Assigned To</p>
-                                    <p className="font-semibold text-slate-900">{task.assignee?.first_name} {task.assignee?.last_name}</p>
-                                    <p className="text-xs text-slate-500">@{task.assignee?.username}</p>
                                 </div>
-                            </Link>
+                            ) : (
+                                <Link
+                                    to={task.assignee?.id ? `/profile/${task.assignee.id}` : "#"}
+                                    className={`bg-white border border-slate-200 flex items-center gap-4 p-4 rounded-xl transition-all ${task.assignee?.id ? "hover:border-brand-200 hover:bg-brand-50/40 hover:shadow-sm" : "pointer-events-none"}`}
+                                >
+                                    {task.assignee?.profile_picture ? (
+                                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm">
+                                            <img src={task.assignee.profile_picture} alt={task.assignee.username} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 text-lg font-bold border border-slate-200 shadow-sm">
+                                            {task.assignee?.username?.substring(0, 1).toUpperCase() || 'U'}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Assigned To</p>
+                                        <p className="font-semibold text-slate-900">{task.assignee?.first_name} {task.assignee?.last_name}</p>
+                                        <p className="text-xs text-slate-500">@{task.assignee?.username}</p>
+                                    </div>
+                                </Link>
+                            )}
 
                             {/* Creator Card */}
                             <Link
@@ -233,7 +246,7 @@ const TaskDetails = () => {
                                     </div>
                                 ) : (
                                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 text-lg font-bold border border-slate-200 shadow-sm">
-                                        {task.assigned_by?.username.substring(0, 1).toUpperCase()}
+                                        {task.assigned_by?.username?.substring(0, 1).toUpperCase() || 'U'}
                                     </div>
                                 )}
                                 <div>

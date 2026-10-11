@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from 'react-router-dom';
 import Modal from '@/components/ui/Modal';
 import ProtectedHeader from '@/components/layout/ProtectedHeader';
-import { FaTasks, FaPlus } from 'react-icons/fa';
+import { FaTasks, FaPlus, FaSearch, FaChevronDown, FaPlay, FaUndo } from 'react-icons/fa';
 import { useTaskData } from '@/features/task/hooks/useTaskData';
 import TaskCard from '@/features/task/components/TaskCard';
 import { tokenService } from '@/services/tokenService';
+import UserSearchFilter from '@/components/shared/UserSearchFilter';
+import TaskGroupSearchFilter from '@/components/shared/TaskGroupSearchFilter';
 
 const TaskDashboard = () => {
     const { tasks, loading, fetchTasks, deleteTask } = useTaskData();
@@ -13,15 +15,15 @@ const TaskDashboard = () => {
     const [deleteId, setDeleteId] = useState(null);
     const [activeTab, setActiveTab] = useState('assigned_to'); // 'assigned_to' or 'assigned_by'
 
-    const [filters, setFilters] = useState({
+    const EMPTY_FILTERS = {
         title: '',
-        from_date: '',
-        to_date: '',
-        remarks: '',
         from_deadline: '',
         to_deadline: '',
-        overdue: ''
-    });
+        assignee: '',
+        taskgroup: ''
+    };
+    const [filters, setFilters] = useState(EMPTY_FILTERS);
+    const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
 
     // Only Owners and Managers can create tasks
     const role = tokenService.getRole();
@@ -112,100 +114,116 @@ const TaskDashboard = () => {
                 </div>
 
                 {/* Tabs */}
-                {canManageTasks && (
-                    <div className="flex space-x-1 bg-white border border-slate-200 p-1 rounded-xl w-fit mb-6">
-                        <button
-                            onClick={() => navigate('/tasks/my-tasks')}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'assigned_to' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'}`}>
-                            My Tasks
-                        </button>
+                <div className="flex space-x-1 bg-white border border-slate-200 p-1 rounded-xl w-fit mb-6">
+                    <button
+                        onClick={() => navigate('/tasks/my-tasks')}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'assigned_to' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'}`}>
+                        My Tasks
+                    </button>
+                    {canManageTasks && (
                         <button
                             onClick={() => navigate('/tasks/created')}
                             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'assigned_by' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'}`}>
                             Created Tasks
                         </button>
-                    </div>
-                )}
-
-                {/* Filters */}
-                <div className="bg-white border border-slate-200 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 shadow-sm">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Title</label>
-                        <input
-                            type="text"
-                            placeholder="Filter by title..."
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.title}
-                            onChange={(e) => setFilters(prev => ({ ...prev, title: e.target.value }))}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Remarks</label>
-                        <input
-                            type="text"
-                            placeholder="Filter by remarks..."
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.remarks}
-                            onChange={(e) => setFilters(prev => ({ ...prev, remarks: e.target.value }))}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From Date</label>
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.from_date}
-                            onChange={(e) => setFilters(prev => ({ ...prev, from_date: e.target.value }))}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Date</label>
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.to_date}
-                            onChange={(e) => setFilters(prev => ({ ...prev, to_date: e.target.value }))}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">From Deadline</label>
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.from_deadline}
-                            onChange={(e) => setFilters(prev => ({ ...prev, from_deadline: e.target.value }))}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">To Deadline</label>
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none"
-                            value={filters.to_deadline}
-                            onChange={(e) => setFilters(prev => ({ ...prev, to_deadline: e.target.value }))}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Overdue Status</label>
-                        <select
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none bg-white cursor-pointer"
-                            value={filters.overdue}
-                            onChange={(e) => setFilters(prev => ({ ...prev, overdue: e.target.value }))}
-                        >
-                            <option value="">All Tasks</option>
-                            <option value="true">Overdue Only</option>
-                            <option value="false">Active Only</option>
-                        </select>
-                    </div>
+                    )}
+                    <button
+                        onClick={() => navigate('/tasks/groups')}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900`}>
+                        Task Groups
+                    </button>
                 </div>
 
-                <div className="flex justify-end mb-6">
-                    <button
-                        onClick={handleFilterClick}
-                        className="px-6 py-2 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+                {/* GST Style Filters */}
+                <div className="mb-8 rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <button 
+                        onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-all duration-300"
                     >
-                        Apply Filters
+                        <div className="flex items-center gap-3">
+                            <FaSearch size={12} className={Object.values(filters).some(Boolean) ? "text-slate-900" : "text-slate-400"} />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Task Filters</span>
+                        </div>
+                        <div className={`text-slate-400 transition-transform duration-300 ${isFiltersExpanded ? "rotate-180" : ""}`}>
+                            <FaChevronDown size={10} />
+                        </div>
                     </button>
+
+                    {isFiltersExpanded && (
+                        <div className="p-5 sm:p-6 border-t border-slate-50 space-y-5 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Title</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 z-10 flex items-center pl-5 pointer-events-none text-slate-400 group-focus-within:text-slate-900 transition-colors">
+                                            <FaSearch size={12} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Filter by title..."
+                                            value={filters.title}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, title: e.target.value }))}
+                                            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-11 pr-4 py-2.5 text-sm font-medium leading-6 tracking-normal text-slate-900 caret-slate-900 outline-none transition-all placeholder:text-sm placeholder:font-medium placeholder:tracking-normal placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                                        />
+                                    </div>
+                                </div>
+
+                                <UserSearchFilter
+                                    label="Assignee Name"
+                                    placeholder="Search assignee..."
+                                    value={filters.assignee}
+                                    onChange={(val) => setFilters(prev => ({ ...prev, assignee: val }))}
+                                />
+                                <TaskGroupSearchFilter
+                                    label="Task Group Name"
+                                    placeholder="Search task group..."
+                                    value={filters.taskgroup}
+                                    onChange={(val) => setFilters(prev => ({ ...prev, taskgroup: val }))}
+                                />
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">From Deadline</label>
+                                    <input
+                                        type="date"
+                                        value={filters.from_deadline}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, from_deadline: e.target.value }))}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm font-medium leading-6 tracking-normal text-slate-900 caret-slate-900 outline-none transition-all focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">To Deadline</label>
+                                    <input
+                                        type="date"
+                                        value={filters.to_deadline}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, to_deadline: e.target.value }))}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm font-medium leading-6 tracking-normal text-slate-900 caret-slate-900 outline-none transition-all focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-100"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-end">
+                                <div className="flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row">
+                                    <button
+                                        onClick={handleFilterClick}
+                                        className="w-full sm:w-auto px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95"
+                                    >
+                                        <FaPlay size={10} className="text-slate-400" />
+                                        Apply Filters
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setFilters(EMPTY_FILTERS);
+                                            fetchTasks(activeTab, EMPTY_FILTERS);
+                                        }}
+                                        className="w-full sm:w-auto px-8 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95"
+                                    >
+                                        <FaUndo size={10} />
+                                        Reset Parameters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Task List */}
@@ -220,11 +238,11 @@ const TaskDashboard = () => {
                         </div>
                         <h3 className="text-xl font-semibold text-slate-900 mb-2">No tasks found</h3>
                         <p className="text-slate-500 mb-6">
-                            {filters.title || filters.from_date || filters.to_date || filters.remarks
+                            {filters.title || filters.from_date || filters.to_date
                                 ? "No tasks match your filters."
                                 : (activeTab === 'assigned_by' ? "You haven't assigned any tasks yet." : "You have no tasks assigned to you.")}
                         </p>
-                        {canManageTasks && activeTab === 'assigned_by' && !filters.title && !filters.from_date && !filters.to_date && !filters.remarks && (
+                        {canManageTasks && activeTab === 'assigned_by' && !filters.title && !filters.from_date && !filters.to_date && (
                             <button
                                 onClick={handleCreateClick}
                                 className="inline-flex items-center justify-center px-5 py-2.5 border-2 border-dashed border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors"

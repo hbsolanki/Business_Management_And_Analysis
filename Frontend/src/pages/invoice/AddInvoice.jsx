@@ -194,6 +194,13 @@ export default function AddInvoice({ isEmbed = false, initialData = null, onComp
                     gender: customer.gender ? String(customer.gender).toUpperCase() : null,
                     age: customer.age ? Number(customer.age) : null,
                     email: customer.email ? String(customer.email).trim() : "",
+                    address: {
+                        address_line_1: String(customer.address || "").trim(),
+                        city: "City",
+                        state: "State",
+                        country: "India",
+                        pin_code: "000000"
+                    }
                 },
                 invoice_items: items.map(({ productId, quantity }) => ({
                     product_id: Number(productId),

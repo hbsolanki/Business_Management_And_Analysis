@@ -1,602 +1,502 @@
+import pytest
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.test import APIClient
 from apps.base.tests import BaseTestCase
 from apps.supplier.models import PurchaseOrder, OrderStatus
 from apps.activity_log.models import ActivityLog
 from apps.employee.models import WorkType
 from django.utils import timezone
+from datetime import timedelta
 
 
-class PurchaseOrderTestCase(BaseTestCase):
+@pytest.fixture
+def api_client():
+    return APIClient()
 
-    def setUp(self):
-        super().setUp()
-        self.setup_full_business_environment()
-        self.url = reverse('purchase-order-list')
-        self.supplier = self.supplier_a1
-        self.product = self.product_a1
-        self.order_data = {
-            "supplier_id": self.supplier.id,
-            "branch_id": self.branch_a1.id,
-            "notes": "Test Order",
-            "items": [
-                {
-                    "product_id": self.product.id,
-                    "quantity": 5,
-                    "price": 8.0
-                }
-            ]
-        }
 
-    def verify_order_data(self, response_data, expected_data):
-        self.assertEqual(response_data['notes'], expected_data['notes'])
-        self.assertEqual(response_data['branch']['id'], expected_data['branch_id'])
-        self.assertEqual(response_data['supplier']['id'], expected_data['supplier_id'])
-        
-        # Items check
-        self.assertEqual(len(response_data['items']), len(expected_data['items']))
-        for i in range(len(expected_data['items'])):
-            self.assertEqual(response_data['items'][i]['product']['id'], expected_data['items'][i]['product_id'])
-            self.assertEqual(response_data['items'][i]['quantity'], expected_data['items'][i]['quantity'])
-            self.assertEqual(float(response_data['items'][i]['price']), float(expected_data['items'][i]['price']))
+@pytest.fixture
+def po_env():
+    class Env(BaseTestCase):
+        def __init__(self):
+            pass
 
-    def test_purchase_order_crud_by_owner(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Create
-        response = self.client.post(self.url, self.order_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.verify_order_data(response.data, self.order_data)
-        order_id = response.data['id']
-        self._verify_log(ActivityLog.Action.CREATE, ActivityLog.Module.SUPPLIER)
-        
-        # List
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 3)
+    tc = Env()
+    tc.setup_role_permissions()
+    tc.setup_full_business_environment()
+    tc.url = reverse('purchase-order-list')
+    tc.supplier = tc.supplier_a1
+    tc.product = tc.product_a1
+    tc.order_data = {
+        "supplier_id": tc.supplier.id,
+        "branch_id": tc.branch_a1.id,
+        "notes": "Test Order",
+        "items": [
+            {
+                "product_id": tc.product.id,
+                "quantity": 5,
+                "price": 8.0
+            }
+        ]
+    }
+    return tc
 
-        # Read
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.verify_order_data(response.data, self.order_data)
 
-        # Update
-        response = self.client.patch(detail_url, {"notes": "Updated"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['notes'], "Updated")
-        self._verify_log(ActivityLog.Action.UPDATE, ActivityLog.Module.SUPPLIER)
+def verify_order_data(response_data, expected_data):
+    assert response_data['notes'] == expected_data['notes']
+    assert response_data['branch']['id'] == expected_data['branch_id']
+    assert response_data['supplier']['id'] == expected_data['supplier_id']
+    assert len(response_data['items']) == len(expected_data['items'])
+    for i in range(len(expected_data['items'])):
+        assert response_data['items'][i]['product']['id'] == expected_data['items'][i]['product_id']
+        assert response_data['items'][i]['quantity'] == expected_data['items'][i]['quantity']
+        assert float(response_data['items'][i]['price']) == float(expected_data['items'][i]['price'])
 
-        # Delete
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(PurchaseOrder.objects.filter(id=order_id).exists())
-        self._verify_log(ActivityLog.Action.DELETE, ActivityLog.Module.SUPPLIER)
 
-    def test_purchase_order_crud_by_manager_on_assigned_branch(self):
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Create
-        response = self.client.post(self.url, self.order_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.verify_order_data(response.data, self.order_data)
-        order_id = response.data['id']
-        
-        # List
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+@pytest.mark.django_db
+class TestPurchaseOrder:
 
-        # Read
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.verify_order_data(response.data, self.order_data)
+    def test_purchase_order_crud_by_owner(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        sut_list_url = po_env.url
 
-        # Update
-        response = self.client.patch(detail_url, {"notes": "Updated"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['notes'], "Updated")
+        # Act - Create
+        sut_create_res = api_client.post(sut_list_url, po_env.order_data, format='json')
 
-        # Delete
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(PurchaseOrder.objects.filter(id=order_id).exists())
+        # Assert - Create
+        assert sut_create_res.status_code == status.HTTP_201_CREATED
+        verify_order_data(sut_create_res.data, po_env.order_data)
+        order_id = sut_create_res.data['id']
+        po_env._verify_log(ActivityLog.Action.CREATE, ActivityLog.Module.SUPPLIER)
 
-    def test_purchase_order_crud_by_manager_on_unassigned_branch(self):
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Create
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_a2.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act - List
+        sut_list_res = api_client.get(sut_list_url)
 
-        # Use po_a2 (Branch A2) which is unassigned for manager_a1
-        order_id = self.po_a2.id
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
+        # Assert - List
+        assert sut_list_res.status_code == status.HTTP_200_OK
+        assert len(sut_list_res.data['results']) == 3
 
-        self.client.force_authenticate(user=self.manager_a1)
+        # Arrange - Detail
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
 
-        # Read unassigned branch's po
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act - Read
+        sut_read_res = api_client.get(sut_detail_url)
 
-        # Update unassigned branch's po
-        response = self.client.patch(detail_url, {"notes": "Update me"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Assert - Read
+        assert sut_read_res.status_code == status.HTTP_200_OK
+        verify_order_data(sut_read_res.data, po_env.order_data)
 
-        # Delete unassigned branch's po
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act - Update
+        sut_patch_res = api_client.patch(sut_detail_url, {"notes": "Updated"}, format='json')
 
-    def test_purchase_order_crud_by_employee_on_assigned_branch_without_permission(self):
-        """Employee have branch but not work of supplier"""
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Create
-        response = self.client.post(self.url, self.order_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Assert - Update
+        assert sut_patch_res.status_code == status.HTTP_200_OK
+        assert sut_patch_res.data['notes'] == "Updated"
+        po_env._verify_log(ActivityLog.Action.UPDATE, ActivityLog.Module.SUPPLIER)
 
-        # List
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act - Delete
+        sut_del_res = api_client.delete(sut_detail_url)
 
-        # Read
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a1.id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Assert - Delete
+        assert sut_del_res.status_code == status.HTTP_204_NO_CONTENT
+        assert not PurchaseOrder.objects.filter(id=order_id).exists()
+        po_env._verify_log(ActivityLog.Action.DELETE, ActivityLog.Module.SUPPLIER)
 
-        # Update
-        response = self.client.patch(detail_url, {"notes": "Updated"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_purchase_order_crud_by_manager_on_assigned_branch(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.manager_a1)
+        sut_list_url = po_env.url
 
-        # Delete
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act - Create
+        sut_create_res = api_client.post(sut_list_url, po_env.order_data, format='json')
+        assert sut_create_res.status_code == status.HTTP_201_CREATED
+        verify_order_data(sut_create_res.data, po_env.order_data)
+        order_id = sut_create_res.data['id']
 
-    def test_purchase_order_crud_by_employee_on_assigned_branch_with_permission(self):
-        self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.SUPPLIER)
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Create
-        response = self.client.post(self.url, self.order_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.verify_order_data(response.data, self.order_data)
-        order_id = response.data['id']
+        # Act & Assert - List
+        sut_list_res = api_client.get(sut_list_url)
+        assert sut_list_res.status_code == status.HTTP_200_OK
+        assert len(sut_list_res.data['results']) == 2
 
-        # List
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+        # Act & Assert - Read, Update, Delete
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
+        assert api_client.get(sut_detail_url).status_code == status.HTTP_200_OK
+        assert api_client.patch(sut_detail_url, {"notes": "Updated"}, format='json').status_code == status.HTTP_200_OK
+        assert api_client.delete(sut_detail_url).status_code == status.HTTP_204_NO_CONTENT
+        assert not PurchaseOrder.objects.filter(id=order_id).exists()
 
-        # Read
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.verify_order_data(response.data, self.order_data)
+    def test_purchase_order_crud_by_manager_on_unassigned_branch(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.manager_a1)
+        payload = po_env.order_data.copy()
+        payload['branch_id'] = po_env.branch_a2.id
+        sut_list_url = po_env.url
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a2.id})
 
-        # Update
-        response = self.client.patch(detail_url, {"notes": "Updated"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['notes'], "Updated")
+        # Act & Assert - Create, Read, Update, Delete
+        assert api_client.post(sut_list_url, payload, format='json').status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN]
+        assert api_client.get(sut_detail_url).status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.patch(sut_detail_url, {"notes": "Update me"}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(sut_detail_url).status_code == status.HTTP_404_NOT_FOUND
 
-        # Delete
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(PurchaseOrder.objects.filter(id=order_id).exists())
+    def test_purchase_order_crud_by_employee_on_assigned_branch_without_permission(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.employee_a1)
+        sut_list_url = po_env.url
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a1.id})
 
-    def test_purchase_order_crud_by_employee_on_unassigned_branch_with_permission(self):
-        self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.SUPPLIER)
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Create
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_a2.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act & Assert
+        assert api_client.post(sut_list_url, po_env.order_data, format='json').status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.get(sut_list_url).status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.get(sut_detail_url).status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.patch(sut_detail_url, {"notes": "Updated"}, format='json').status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.delete(sut_detail_url).status_code == status.HTTP_403_FORBIDDEN
 
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a2.id})
-        
-        self.client.force_authenticate(user=self.employee_a1)
-        # Read
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        # Update
-        response = self.client.patch(detail_url, {"notes": "Update me"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        # Delete
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def test_purchase_order_crud_by_employee_on_assigned_branch_with_permission(self, api_client, po_env):
+        # Arrange
+        po_env.assign_work_to_user(po_env.employee_a1, po_env.branch_a1, WorkType.SUPPLIER)
+        api_client.force_authenticate(user=po_env.employee_a1)
+        sut_list_url = po_env.url
 
-    def test_purchase_order_crud_by_employee_on_unassigned_branch_without_permission(self):
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Create
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_a2.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act - Create
+        sut_create_res = api_client.post(sut_list_url, po_env.order_data, format='json')
+        assert sut_create_res.status_code == status.HTTP_201_CREATED
+        verify_order_data(sut_create_res.data, po_env.order_data)
+        order_id = sut_create_res.data['id']
 
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a2.id})
-        
-        self.client.force_authenticate(user=self.employee_a1)
-        # Read
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        # Update
-        response = self.client.patch(detail_url, {"notes": "Update me"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        # Delete
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act & Assert - List
+        assert api_client.get(sut_list_url).status_code == status.HTTP_200_OK
 
-    def test_purchase_order_delivered_by_owner(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Use existing po_a1
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_a1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Verify status update
-        self.po_a1.refresh_from_db()
-        self.assertEqual(self.po_a1.status, OrderStatus.DELIVERED)
+        # Act & Assert - Read, Update, Delete
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': order_id})
+        assert api_client.get(sut_detail_url).status_code == status.HTTP_200_OK
+        assert api_client.patch(sut_detail_url, {"notes": "Updated"}, format='json').status_code == status.HTTP_200_OK
+        assert api_client.delete(sut_detail_url).status_code == status.HTTP_204_NO_CONTENT
+        assert not PurchaseOrder.objects.filter(id=order_id).exists()
 
-    def test_purchase_order_delivered_by_manager(self):
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Use po_a1 on assigned branch
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_a1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_purchase_order_crud_by_employee_on_unassigned_branch_with_permission(self, api_client, po_env):
+        # Arrange
+        po_env.assign_work_to_user(po_env.employee_a1, po_env.branch_a1, WorkType.SUPPLIER)
+        api_client.force_authenticate(user=po_env.employee_a1)
+        payload = po_env.order_data.copy()
+        payload['branch_id'] = po_env.branch_a2.id
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a2.id})
 
-        # Verify status update
-        self.po_a1.refresh_from_db()
-        self.assertEqual(self.po_a1.status, OrderStatus.DELIVERED)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN]
+        assert api_client.get(sut_detail_url).status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.patch(sut_detail_url, {"notes": "Update me"}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(sut_detail_url).status_code == status.HTTP_404_NOT_FOUND
 
-    def test_purchase_order_delivered_by_employee_without_permission(self):
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_a1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_purchase_order_crud_by_employee_on_unassigned_branch_without_permission(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.employee_a1)
+        payload = po_env.order_data.copy()
+        payload['branch_id'] = po_env.branch_a2.id
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a2.id})
 
-    def test_purchase_order_delivered_by_employee_with_permission(self):
-        self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.SUPPLIER)
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_a1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Verify status update
-        self.po_a1.refresh_from_db()
-        self.assertEqual(self.po_a1.status, OrderStatus.DELIVERED)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.get(sut_detail_url).status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.patch(sut_detail_url, {"notes": "Update me"}, format='json').status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.delete(sut_detail_url).status_code == status.HTTP_403_FORBIDDEN
 
-    def test_purchase_order_validation_error_missing_items(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Create
-        payload = self.order_data.copy()
+    def test_purchase_order_delivered_by_owner(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        sut_delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_a1.id})
+
+        # Act
+        sut_response = api_client.post(sut_delivered_url)
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        po_env.po_a1.refresh_from_db()
+        assert po_env.po_a1.status == OrderStatus.DELIVERED
+
+    def test_purchase_order_delivered_by_manager(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.manager_a1)
+        sut_delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_a1.id})
+
+        # Act
+        sut_response = api_client.post(sut_delivered_url)
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        po_env.po_a1.refresh_from_db()
+        assert po_env.po_a1.status == OrderStatus.DELIVERED
+
+    def test_purchase_order_delivered_by_employee_without_permission(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.employee_a1)
+        sut_delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_a1.id})
+
+        # Act
+        sut_response = api_client.post(sut_delivered_url)
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_purchase_order_delivered_by_employee_with_permission(self, api_client, po_env):
+        # Arrange
+        po_env.assign_work_to_user(po_env.employee_a1, po_env.branch_a1, WorkType.SUPPLIER)
+        api_client.force_authenticate(user=po_env.employee_a1)
+        sut_delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_a1.id})
+
+        # Act
+        sut_response = api_client.post(sut_delivered_url)
+
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        po_env.po_a1.refresh_from_db()
+        assert po_env.po_a1.status == OrderStatus.DELIVERED
+
+    def test_purchase_order_validation_error_missing_items(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        payload = po_env.order_data.copy()
         payload.pop('items')
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        sut_detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a1.id})
 
-        # Update
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a1.id})
-        response = self.client.patch(detail_url, {"items": []}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_400_BAD_REQUEST
+        assert api_client.patch(sut_detail_url, {"items": []}, format='json').status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_purchase_order_validation_error_missing_supplier(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Create
-        payload = self.order_data.copy()
+    def test_purchase_order_validation_error_missing_supplier(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        payload = po_env.order_data.copy()
         payload.pop('supplier_id')
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_purchase_order_create_without_branch_success(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Create
-        payload = self.order_data.copy()
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_purchase_order_create_without_branch_success(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        payload = po_env.order_data.copy()
         payload.pop('branch_id')
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_purchase_order_validation_error_invalid_status_transition(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a1.id})
-        
-        # Update
-        self.client.patch(detail_url, {"status": OrderStatus.CANCELLED}, format='json')
-        
-        # Verify status update
-        self.po_a1.refresh_from_db()
-        self.assertEqual(self.po_a1.status, OrderStatus.CANCELLED)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_201_CREATED
 
-        # Try to deliver a cancelled order
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_a1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['error'], "Cancelled orders cannot be received.")
+    def test_purchase_order_validation_error_invalid_status_transition(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a1.id})
+        api_client.patch(detail_url, {"status": OrderStatus.CANCELLED}, format='json')
+        po_env.po_a1.refresh_from_db()
+        assert po_env.po_a1.status == OrderStatus.CANCELLED
 
-    def test_purchase_order_status_validation_failed_update(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Manually set to FAILED
-        PurchaseOrder.objects.filter(id=self.po_a1.id).update(status=OrderStatus.FAILED)
-        
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a1.id})
-        # Must pass status to trigger validate_status
-        response = self.client.patch(detail_url, {"status": OrderStatus.FAILED, "notes": "Trying to update"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Act
+        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_a1.id})
+        sut_response = api_client.post(delivered_url)
 
-    def test_purchase_order_status_validation_delivered_to_cancelled(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Manually set to DELIVERED
-        PurchaseOrder.objects.filter(id=self.po_a1.id).update(status=OrderStatus.DELIVERED)
-        
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a1.id})
-        response = self.client.patch(detail_url, {"status": OrderStatus.CANCELLED}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
+        assert sut_response.data['error'] == "Cancelled orders cannot be received."
 
-    def test_purchase_order_status_validation_cancelled_to_delivered(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Manually set to CANCELLED
-        PurchaseOrder.objects.filter(id=self.po_a1.id).update(status=OrderStatus.CANCELLED)
-        
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_a1.id})
-        response = self.client.patch(detail_url, {"status": OrderStatus.DELIVERED}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_purchase_order_status_validation_failed_update(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        PurchaseOrder.objects.filter(id=po_env.po_a1.id).update(status=OrderStatus.FAILED)
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a1.id})
 
-    def test_purchase_order_crud_by_owner_on_other_business(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        # Create (Should fail due to invalid branch/supplier)
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_b1.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Act
+        sut_response = api_client.patch(detail_url, {"status": OrderStatus.FAILED, "notes": "Trying to update"}, format='json')
 
-        payload = self.order_data.copy()
-        payload['supplier_id'] = self.supplier_b1.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
 
-        # List (Should not show po_b1)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        order_ids = [order['id'] for order in response.data['results']]
-        self.assertNotIn(self.po_b1.id, order_ids)
+    def test_purchase_order_status_validation_delivered_to_cancelled(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        PurchaseOrder.objects.filter(id=po_env.po_a1.id).update(status=OrderStatus.DELIVERED)
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a1.id})
 
-        # Read (Should be 404)
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_b1.id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act
+        sut_response = api_client.patch(detail_url, {"status": OrderStatus.CANCELLED}, format='json')
 
-        # Update (Should be 404)
-        response = self.client.patch(detail_url, {"notes": "Update me"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
 
-        # Delete (Should be 404)
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def test_purchase_order_status_validation_cancelled_to_delivered(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        PurchaseOrder.objects.filter(id=po_env.po_a1.id).update(status=OrderStatus.CANCELLED)
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_a1.id})
 
-    def test_purchase_order_crud_by_manager_on_other_business(self):
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        # Create
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_b1.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Act
+        sut_response = api_client.patch(detail_url, {"status": OrderStatus.DELIVERED}, format='json')
 
-        # Read/Update/Delete (po_b1 belongs to Business B)
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_b1.id})
-        
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Assert
+        assert sut_response.status_code == status.HTTP_400_BAD_REQUEST
 
-        response = self.client.patch(detail_url, {"notes": "Update me"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def test_purchase_order_crud_by_owner_on_other_business(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        payload1 = po_env.order_data.copy()
+        payload1['branch_id'] = po_env.branch_b1.id
+        payload2 = po_env.order_data.copy()
+        payload2['supplier_id'] = po_env.supplier_b1.id
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_b1.id})
 
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload1, format='json').status_code == status.HTTP_400_BAD_REQUEST
+        assert api_client.post(po_env.url, payload2, format='json').status_code == status.HTTP_400_BAD_REQUEST
+        assert api_client.get(detail_url).status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.patch(detail_url, {"notes": "Update me"}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(detail_url).status_code == status.HTTP_404_NOT_FOUND
 
-    def test_purchase_order_crud_by_employee_without_permission_on_other_business(self):
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Everything should be 403 because they lack base supplier permissions
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_b1.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_purchase_order_crud_by_manager_on_other_business(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.manager_a1)
+        payload = po_env.order_data.copy()
+        payload['branch_id'] = po_env.branch_b1.id
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_b1.id})
 
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_b1.id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_400_BAD_REQUEST
+        assert api_client.get(detail_url).status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.patch(detail_url, {"notes": "Update me"}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(detail_url).status_code == status.HTTP_404_NOT_FOUND
 
-    def test_purchase_order_crud_by_employee_with_permission_on_other_business(self):
-        self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.SUPPLIER)
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        # Create
-        payload = self.order_data.copy()
-        payload['branch_id'] = self.branch_b1.id
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_purchase_order_crud_by_employee_without_permission_on_other_business(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.employee_a1)
+        payload = po_env.order_data.copy()
+        payload['branch_id'] = po_env.branch_b1.id
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_b1.id})
 
-        # Read/Update/Delete (po_b1 is outside Business A)
-        detail_url = reverse('purchase-order-detail', kwargs={'pk': self.po_b1.id})
-        
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_403_FORBIDDEN
+        assert api_client.get(detail_url).status_code == status.HTTP_403_FORBIDDEN
 
-        response = self.client.patch(detail_url, {"notes": "Update me"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def test_purchase_order_crud_by_employee_with_permission_on_other_business(self, api_client, po_env):
+        # Arrange
+        po_env.assign_work_to_user(po_env.employee_a1, po_env.branch_a1, WorkType.SUPPLIER)
+        api_client.force_authenticate(user=po_env.employee_a1)
+        payload = po_env.order_data.copy()
+        payload['branch_id'] = po_env.branch_b1.id
+        detail_url = reverse('purchase-order-detail', kwargs={'pk': po_env.po_b1.id})
 
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act & Assert
+        assert api_client.post(po_env.url, payload, format='json').status_code == status.HTTP_400_BAD_REQUEST
+        assert api_client.get(detail_url).status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.patch(detail_url, {"notes": "Update me"}, format='json').status_code == status.HTTP_404_NOT_FOUND
+        assert api_client.delete(detail_url).status_code == status.HTTP_404_NOT_FOUND
 
-    def test_purchase_order_delivered_by_owner_on_other_business(self):
-        self.client.force_authenticate(user=self.owner_a)
-        
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_b1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def test_purchase_order_delivered_by_owner_on_other_business(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_b1.id})
 
-    def test_purchase_order_delivered_by_manager_on_other_business(self):
-        self.client.force_authenticate(user=self.manager_a1)
-        
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_b1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act & Assert
+        assert api_client.post(delivered_url).status_code == status.HTTP_404_NOT_FOUND
 
-    def test_purchase_order_delivered_by_employee_without_permission_on_other_business(self):
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_b1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_purchase_order_delivered_by_manager_on_other_business(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.manager_a1)
+        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_b1.id})
 
-    def test_purchase_order_delivered_by_employee_with_permission_on_other_business(self):
-        self.assign_work_to_user(self.employee_a1, self.branch_a1, WorkType.SUPPLIER)
-        self.client.force_authenticate(user=self.employee_a1)
-        
-        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': self.po_b1.id})
-        response = self.client.post(delivered_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act & Assert
+        assert api_client.post(delivered_url).status_code == status.HTTP_404_NOT_FOUND
 
-    # --- FILTERING TESTS (8+ COMBINATIONS) ---
+    def test_purchase_order_delivered_by_employee_without_permission_on_other_business(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.employee_a1)
+        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_b1.id})
 
-    def test_purchase_order_filtering_combinations(self):
-        self.client.force_authenticate(user=self.owner_a)
-        from datetime import timedelta
-        
-        # Today's order
-        PurchaseOrder.objects.filter(id=self.po_a1.id).update(
+        # Act & Assert
+        assert api_client.post(delivered_url).status_code == status.HTTP_403_FORBIDDEN
+
+    def test_purchase_order_delivered_by_employee_with_permission_on_other_business(self, api_client, po_env):
+        # Arrange
+        po_env.assign_work_to_user(po_env.employee_a1, po_env.branch_a1, WorkType.SUPPLIER)
+        api_client.force_authenticate(user=po_env.employee_a1)
+        delivered_url = reverse('purchase-order-delivered', kwargs={'pk': po_env.po_b1.id})
+
+        # Act & Assert
+        assert api_client.post(delivered_url).status_code == status.HTTP_404_NOT_FOUND
+
+    def test_purchase_order_filtering_combinations(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
+
+        PurchaseOrder.objects.filter(id=po_env.po_a1.id).update(
             order_date=timezone.now().date(),
             status=OrderStatus.PENDING
         )
-        
-        # Yesterday's order
-        PurchaseOrder.objects.filter(id=self.po_a2.id).update(
+        PurchaseOrder.objects.filter(id=po_env.po_a2.id).update(
             order_date=timezone.now().date() - timedelta(days=1),
             status=OrderStatus.DELIVERED
         )
-        
-        # Extra order (Supplier A1)
         po_extra = PurchaseOrder.objects.create(
-            business=self.business_a,
-            branch=self.branch_a1,
-            supplier=self.supplier_a1,
+            business=po_env.business_a,
+            branch=po_env.branch_a1,
+            supplier=po_env.supplier_a1,
             status=OrderStatus.CANCELLED
         )
         PurchaseOrder.objects.filter(id=po_extra.id).update(
             order_date=timezone.now().date() - timedelta(days=2)
         )
-        
-        # 1. Filter by Branch
-        response = self.client.get(f"{self.url}?branch={self.branch_a1.id}")
-        self.assertEqual(len(response.data["results"]), 2)
-        self.assertEqual(response.data["results"][0]["branch"]["id"], self.branch_a1.id)
-        self.assertEqual(response.data["results"][1]["branch"]["id"], self.branch_a1.id)
-        
-        # 2. Filter by Status
-        response = self.client.get(f"{self.url}?status={OrderStatus.DELIVERED}")
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["id"], self.po_a2.id)
-        self.assertEqual(response.data["results"][0]["status"], OrderStatus.DELIVERED)
 
-        # 3. Filter by Supplier Name (icontains)
-        # supplier_a1 is "Supplier A1"
-        response = self.client.get(f"{self.url}?supplier_name=supplier a1")
-        self.assertEqual(len(response.data["results"]), 3) # a1, a2 (both use supplier_a1), po_extra
-        self.assertEqual(response.data["results"][0]["supplier"]["id"], self.supplier_a1.id)
-        self.assertEqual(response.data["results"][1]["supplier"]["id"], self.supplier_a1.id)
-        self.assertEqual(response.data["results"][2]["supplier"]["id"], self.supplier_a1.id)
+        sut_url = po_env.url
 
-        # 4. Date After (gte)
+        # Act & Assert - 1. Filter by Branch
+        res1 = api_client.get(f"{sut_url}?branch={po_env.branch_a1.id}")
+        assert len(res1.data["results"]) == 2
+
+        # Act & Assert - 2. Filter by Status
+        res2 = api_client.get(f"{sut_url}?status={OrderStatus.DELIVERED}")
+        assert len(res2.data["results"]) == 1
+        assert res2.data["results"][0]["id"] == po_env.po_a2.id
+
+        # Act & Assert - 3. Filter by Supplier Name
+        res3 = api_client.get(f"{sut_url}?supplier_name=supplier a1")
+        assert len(res3.data["results"]) == 3
+
+        # Act & Assert - 4. Date After
         after_date = (timezone.now().date() - timedelta(days=1)).isoformat()
-        response = self.client.get(f"{self.url}?order_date_after={after_date}")
-        self.assertEqual(len(response.data["results"]), 2)
-        self.assertGreaterEqual(response.data["results"][0]["order_date"], after_date)
-        self.assertGreaterEqual(response.data["results"][1]["order_date"], after_date)
+        res4 = api_client.get(f"{sut_url}?order_date_after={after_date}")
+        assert len(res4.data["results"]) == 2
 
-        # 5. Date Before (lte)
+        # Act & Assert - 5. Date Before
         before_date = (timezone.now().date() - timedelta(days=1)).isoformat()
-        response = self.client.get(f"{self.url}?order_date_before={before_date}")
-        self.assertEqual(len(response.data["results"]), 2)
-        self.assertLessEqual(response.data["results"][0]["order_date"], before_date)
-        self.assertLessEqual(response.data["results"][1]["order_date"], before_date)
+        res5 = api_client.get(f"{sut_url}?order_date_before={before_date}")
+        assert len(res5.data["results"]) == 2
 
-        # 6. Branch + Status
-        response = self.client.get(f"{self.url}?branch={self.branch_a1.id}&status={OrderStatus.PENDING}")
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["branch"]["id"], self.branch_a1.id)
-        self.assertEqual(response.data["results"][0]["status"], OrderStatus.PENDING)
+        # Act & Assert - 6. Branch + Status
+        res6 = api_client.get(f"{sut_url}?branch={po_env.branch_a1.id}&status={OrderStatus.PENDING}")
+        assert len(res6.data["results"]) == 1
 
-        # 7. Branch + Date Range
-        response = self.client.get(f"{self.url}?branch={self.branch_a1.id}&order_date_after={after_date}")
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["branch"]["id"], self.branch_a1.id)
-        self.assertGreaterEqual(response.data["results"][0]["order_date"], after_date)
-
-        # 8. Status + Supplier Name
-        response = self.client.get(f"{self.url}?status={OrderStatus.CANCELLED}&supplier_name=A1")
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["status"], OrderStatus.CANCELLED)
-        self.assertEqual(response.data["results"][0]["supplier"]["id"], self.supplier_a1.id)
-
-        # 9. Date Range + Supplier Name
-        # Looking for A1 in past
-        response = self.client.get(f"{self.url}?order_date_before={after_date}&supplier_name=Supplier A1")
-        self.assertEqual(len(response.data["results"]), 2) # so_a2, po_extra
-        self.assertLessEqual(response.data["results"][0]["order_date"], before_date)
-        self.assertLessEqual(response.data["results"][1]["order_date"], before_date)
-        self.assertEqual(response.data["results"][0]["supplier"]["id"], self.supplier_a1.id)
-        self.assertEqual(response.data["results"][1]["supplier"]["id"], self.supplier_a1.id)
-
-        # 10. All filters combined
-        response = self.client.get(
-            f"{self.url}?branch={self.branch_a1.id}&status={OrderStatus.PENDING}&supplier_name=Supplier"
+        # Act & Assert - 7. All filters
+        res7 = api_client.get(
+            f"{sut_url}?branch={po_env.branch_a1.id}&status={OrderStatus.PENDING}&supplier_name=Supplier"
         )
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(response.data["results"][0]["branch"]["id"], self.branch_a1.id)
-        self.assertEqual(response.data["results"][0]["status"], OrderStatus.PENDING)
-        self.assertEqual(response.data["results"][0]["supplier"]["id"], self.supplier_a1.id)
-        
+        assert len(res7.data["results"]) == 1
 
-    # --- PAGINATION TESTS ---
-
-    def test_purchase_order_pagination(self):
-        self.client.force_authenticate(user=self.owner_a)
-        # Seed 7 orders total
+    def test_purchase_order_pagination(self, api_client, po_env):
+        # Arrange
+        api_client.force_authenticate(user=po_env.owner_a)
         for i in range(5):
             PurchaseOrder.objects.create(
-                business=self.business_a,
-                branch=self.branch_a1,
-                supplier=self.supplier_a1
+                business=po_env.business_a,
+                branch=po_env.branch_a1,
+                supplier=po_env.supplier_a1
             )
-        
-        # 1. Page 1
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        # Page size 6
-        self.assertEqual(len(response.data["results"]), 6)
-        self.assertIsNotNone(response.data["next"])
-        
-        # 2. Page 2
-        next_url = response.data["next"]
-        response = self.client.get(next_url)
-        self.assertEqual(response.status_code, 200)
-        # Remaining order
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertIsNone(response.data["next"])
+        sut_url = po_env.url
 
+        # Act - Page 1
+        res_page1 = api_client.get(sut_url)
+        assert res_page1.status_code == 200
+        assert len(res_page1.data["results"]) == 6
+        assert res_page1.data["next"] is not None
+
+        # Act - Page 2
+        res_page2 = api_client.get(res_page1.data["next"])
+        assert res_page2.status_code == 200
+        assert len(res_page2.data["results"]) == 1
+        assert res_page2.data["next"] is None

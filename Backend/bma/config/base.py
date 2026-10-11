@@ -183,3 +183,19 @@ LOGGING = {
         'level': env('DJANGO_LOG_LEVEL', default='INFO'),
     },
 }
+
+# Use pytest as the default test runner for `manage.py test`
+TEST_RUNNER = 'bma.runner.PytestTestRunner'
+
+# Fast password hasher for test runs (speeds up user creation by 10x-50x)
+import sys
+if 'test' in sys.argv or 'pytest' in sys.modules or any('pytest' in arg for arg in sys.argv):
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',
+    ]
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
+

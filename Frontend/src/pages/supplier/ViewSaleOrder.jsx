@@ -318,7 +318,8 @@ export default function ViewSaleOrder() {
                     <tr>
                       <th className="px-6 py-3">Product Description</th>
                       <th className="px-6 py-3 text-center">Qty</th>
-                      <th className="px-6 py-3 text-right">Unit Price</th>
+                      <th className="px-6 py-3 text-right">Price</th>
+                      <th className="px-6 py-3 text-right">Tax (GST)</th>
                       <th className="px-6 py-3 text-right">Subtotal</th>
                     </tr>
                   </thead>
@@ -345,7 +346,11 @@ export default function ViewSaleOrder() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right text-slate-600">
-                            {formatCurrency(item.unit_price || item.unit_cost)}
+                            {formatCurrency(item.price)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <p className="text-xs font-bold text-slate-900">{formatCurrency(item.gst?.gst_amount || 0)}</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{item.gst?.gst_rate || 0}% GST</p>
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-slate-900">
                             {formatCurrency(item.subtotal)}
@@ -357,7 +362,7 @@ export default function ViewSaleOrder() {
                   <tfoot className="bg-slate-900 text-white">
                     <tr>
                       <td
-                        colSpan="3"
+                        colSpan="4"
                         className="px-6 py-5 text-right font-bold text-[10px] uppercase tracking-widest text-slate-400"
                       >
                         Grand Total

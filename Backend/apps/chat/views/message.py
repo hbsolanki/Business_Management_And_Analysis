@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from django.core.cache import cache
+from django.http import Http404
 
 from apps.base.views.base_view import BaseViewSet
 from drf_spectacular.utils import extend_schema
@@ -67,6 +68,8 @@ class MessagesViewSet(BaseViewSet,UpdateModelMixin,DestroyModelMixin):
             serializer = self.get_serializer(messages_qs, many=True)
             cache.set(cache_key, serializer.data, timeout=60*2)
             return Response(serializer.data, status=status.HTTP_200_OK)
+        except (Http404, PermissionDenied):
+            raise
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -109,6 +112,8 @@ class MessagesViewSet(BaseViewSet,UpdateModelMixin,DestroyModelMixin):
             )
 
             return Response(data, status=status.HTTP_201_CREATED)
+        except (Http404, PermissionDenied):
+            raise
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -133,5 +138,7 @@ class MessagesViewSet(BaseViewSet,UpdateModelMixin,DestroyModelMixin):
                 {"detail": "Messages deleted successfully"},
                 status=status.HTTP_200_OK
             )
+        except (Http404, PermissionDenied):
+            raise
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

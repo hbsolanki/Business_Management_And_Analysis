@@ -33,6 +33,7 @@ import {
   FaFileExport,
   FaRobot,
   FaThLarge,
+  FaWallet,
 } from "react-icons/fa";
 import LowStockAlert from "@/features/inventory/components/LowStockAlert";
 
@@ -382,6 +383,13 @@ function ManagerDashboard() {
                   label="Invoices"
                   color="text-emerald-600"
                   bg="bg-emerald-50"
+                />
+                <AppCard
+                  to="/payment-dashboard"
+                  icon={FaWallet}
+                  label="Payments"
+                  color="text-violet-600"
+                  bg="bg-violet-50"
                 />
                 <AppCard
                   to="/cost-category"

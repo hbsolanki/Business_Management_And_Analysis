@@ -29,9 +29,8 @@ import { getAssignedBranchesForWork, filterBranchesForRole } from "@/utils/branc
 
 // Lazy Load the Card Component
 const InvoiceCard = lazy(() => import("./components/InvoiceCard"));
-const PaymentModal = lazy(
-  () => import("@/features/payment/components/PaymentModal"),
-);
+
+import { paymentService } from "@/services/paymentService";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -211,20 +210,14 @@ export default function InvoiceList() {
     });
   };
 
-  /* ---------------- Payment Modal State ---------------- */
-  const [paymentModal, setPaymentModal] = useState({
-    isOpen: false,
-    invoiceId: null,
-    amount: 0,
-  });
+  /* ---------------- Stripe Connect Status ---------------- */
+  const [canAcceptOnline, setCanAcceptOnline] = useState(false);
 
-  const handlePayClick = (invoice) => {
-    setPaymentModal({
-      isOpen: true,
-      invoiceId: invoice.id,
-      amount: invoice.total_amount,
-    });
-  };
+  useEffect(() => {
+    paymentService.getConnectStatus()
+      .then(data => setCanAcceptOnline(data?.can_accept_payments === true))
+      .catch(() => setCanAcceptOnline(false));
+  }, []);
 
   /* ---------------- View Modal ---------------- */
   const [viewModal, setViewModal] = useState({
@@ -427,8 +420,9 @@ export default function InvoiceList() {
               <InvoiceCard
                 key={invoice.id}
                 invoice={invoice}
-                onPayClick={handlePayClick}
+                canAcceptOnline={canAcceptOnline}
                 onViewClick={openInvoiceView}
+                onPaymentSuccess={refreshInvoiceList}
               />
             ))}
           </Suspense>
@@ -450,20 +444,7 @@ export default function InvoiceList() {
         )}
       </div>
 
-      {/* Payment Modal */}
-      <Suspense fallback={null}>
-        <PaymentModal
-          isOpen={paymentModal.isOpen}
-          onClose={() =>
-            setPaymentModal((prev) => ({ ...prev, isOpen: false }))
-          }
-          invoiceId={paymentModal.invoiceId}
-          amount={paymentModal.amount}
-          onPaymentSuccess={() => {
-            refreshInvoiceList();
-          }}
-        />
-      </Suspense>
+
 
       {viewModal.isOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
@@ -532,7 +513,7 @@ export default function InvoiceList() {
                         {viewModal.data.customer?.address && (
                           <div className="flex items-center gap-2 text-xs text-slate-500">
                             <FaMapMarkerAlt size={10} />{" "}
-                            {viewModal.data.customer?.address}
+                            {viewModal.data.customer?.address?.address_line_1 || viewModal.data.customer?.address}
                           </div>
                         )}
                       </div>
@@ -642,10 +623,10 @@ export default function InvoiceList() {
                     
                     <div className="p-4 flex items-center justify-between bg-white">
                       <div>
-                        <div className="text-xs text-slate-500">Payment Mode</div>
+                        <div className="text-xs text-slate-500">Payment Status</div>
                         <div className="font-semibold text-slate-900 flex items-center gap-2">
                           <FaCreditCard className="text-slate-500" />
-                          {viewModal.data.payment_mode || "N/A"}
+                          {viewModal.data.payment_status || "UNPAID"}
                         </div>
                       </div>
                       <div className="text-right">

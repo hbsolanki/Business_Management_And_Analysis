@@ -5,12 +5,14 @@ import ProtectedHeader from '@/components/layout/ProtectedHeader';
 import BackButton from '@/components/shared/BackButton';
 import { tokenService } from '@/services/tokenService';
 import taskService from '@/features/task/services/taskService';
+import taskGroupService from '@/features/task/services/taskGroupService';
 import api from '@/services/api';
 import toast from 'react-hot-toast';
 
 const CreateTask = () => {
     const navigate = useNavigate();
     const role = tokenService.getRole();
+    const currentUserId = parseInt(tokenService.getId(), 10);
     const canManageTasks = ['OWNER', 'MANAGER'].includes(role);
 
     const [title, setTitle] = useState('');
@@ -25,6 +27,12 @@ const CreateTask = () => {
     const [loadingSearch, setLoadingSearch] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [saving, setSaving] = useState(false);
+
+    // Group Assignment
+    const [assigneeType, setAssigneeType] = useState('USER'); // 'USER' or 'GROUP'
+    const [groups, setGroups] = useState([]);
+    const [loadingGroups, setLoadingGroups] = useState(false);
+    const [assigneeGroupId, setAssigneeGroupId] = useState(null);
 
     // Errors
     const [errors, setErrors] = useState({});
@@ -71,6 +79,16 @@ const CreateTask = () => {
         return () => clearTimeout(timer);
     }, [searchQuery, selectedUser]);
 
+    useEffect(() => {
+        if (assigneeType === 'GROUP' && groups.length === 0) {
+            setLoadingGroups(true);
+            taskGroupService.getGroups()
+                .then(data => setGroups(data.results || data))
+                .catch(err => console.error("Failed to fetch groups", err))
+                .finally(() => setLoadingGroups(false));
+        }
+    }, [assigneeType, groups.length]);
+
     const handleSelectUser = (user) => {
         setSelectedUser(user);
         setAssigneeId(user.id);
@@ -83,20 +101,26 @@ const CreateTask = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!title || !description || !assigneeId) return;
+        if (!title || !description) return;
+        if (assigneeType === 'USER' && !assigneeId) return;
+        if (assigneeType === 'GROUP' && !assigneeGroupId) return;
 
         setSaving(true);
         setErrors({});
         setFormError('');
         try {
-            await taskService.createTask({
+            const payload = {
                 title,
                 description,
                 remarks: remarks || undefined,
                 status,
-                assignee_id: assigneeId,
                 deadline: deadline || undefined,
-            });
+            };
+            payload.task_assignment = {};
+            if (assigneeType === 'USER') payload.task_assignment.assignee_id = assigneeId;
+            if (assigneeType === 'GROUP') payload.task_assignment.assignee_group_id = assigneeGroupId;
+            
+            await taskService.createTask(payload);
             toast.success('Task created successfully');
             navigate(-1);
         } catch (error) {
@@ -199,8 +223,28 @@ const CreateTask = () => {
 
                         {/* Assignee */}
                         <div className="relative">
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Assignee <span className="text-red-500">*</span></label>
-                            {selectedUser ? (
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Assignee <span className="text-red-500">*</span></label>
+                                <div className="flex bg-slate-100 rounded-lg p-0.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setAssigneeType('USER')}
+                                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${assigneeType === 'USER' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Individual
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAssigneeType('GROUP')}
+                                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${assigneeType === 'GROUP' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Team Group
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {assigneeType === 'USER' ? (
+                                selectedUser ? (
                                 <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 flex items-center justify-between gap-3 animate-fade-in">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-lg overflow-hidden border-2 border-white shadow-sm">
@@ -248,6 +292,33 @@ const CreateTask = () => {
                                         <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                                             <div className="animate-spin h-3.5 w-3.5 border-2 border-slate-300 border-t-slate-900 rounded-full" />
                                         </div>
+                                    )}
+                                </div>
+                                )
+                            ) : (
+                                <div>
+                                    {loadingGroups ? (
+                                        <div className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 flex items-center justify-center">Loading groups...</div>
+                                    ) : groups.length === 0 ? (
+                                        <div className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 flex items-center justify-center">No task groups found. Create one in the Task Groups tab.</div>
+                                    ) : (
+                                        <select
+                                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-slate-900 focus:bg-white text-slate-900 transition-all outline-none text-sm font-medium"
+                                            value={assigneeGroupId || ''}
+                                            onChange={(e) => setAssigneeGroupId(e.target.value)}
+                                            required={assigneeType === 'GROUP'}
+                                        >
+                                            <option value="" disabled>Select a Task Group</option>
+                                            {groups.map(g => {
+                                                const isCreator = g.created_by?.id === currentUserId;
+                                                const isDisabled = g.is_private && !isCreator;
+                                                return (
+                                                    <option key={g.id} value={g.id} disabled={isDisabled}>
+                                                        {g.name} ({g.is_private ? 'Private' : 'Public'} - {g.members?.length || 0} members) {isDisabled ? '(Creator only)' : ''}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
                                     )}
                                 </div>
                             )}
@@ -354,7 +425,7 @@ const CreateTask = () => {
                             </button>
                             <button
                                 type="submit"
-                                disabled={saving || !title || !description || !assigneeId}
+                                disabled={saving || !title || !description || (assigneeType === 'USER' ? !assigneeId : !assigneeGroupId)}
                                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white bg-slate-900 hover:bg-black shadow-lg shadow-slate-200 transition-all disabled:opacity-50 disabled:shadow-none text-sm"
                             >
                                 {saving ? (

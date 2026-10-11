@@ -86,8 +86,8 @@ class SubscriptionPaymentService:
         payment = payment_serializer.save()
 
         sub_payment_serializer = SubscriptionPaymentSerializer(data={
-            "payment": payment.id,
-            "subscription": subscription.id,
+            "payment_id": payment.id,
+            "subscription_id": subscription.id,
         })
         sub_payment_serializer.is_valid(raise_exception=True)
         sub_payment_serializer.save()

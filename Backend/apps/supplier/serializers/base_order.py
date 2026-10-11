@@ -9,6 +9,7 @@ from apps.product.models import Product
 from apps.product.serializers.product import ProductSerializer
 
 class BaseOrderItemSerializer(BaseSerializer):
+    id = serializers.IntegerField(required=False)
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.filter(is_active=True), write_only=True
     )

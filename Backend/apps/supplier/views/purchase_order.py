@@ -1,9 +1,11 @@
 from django.core.cache import cache
 from django.db import transaction
+from django.http import Http404
 from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
@@ -66,6 +68,8 @@ class PurchaseOrderViewSet(BaseOrderViewSetMixin, CreateReminderMixin, ActivityL
             invalidate_cache("purchase_order", "list", self.request.user)
 
             return Response({"message": "Purchase order received and inventory updated"}, status=status.HTTP_200_OK)
+        except (Http404, PermissionDenied):
+            raise
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

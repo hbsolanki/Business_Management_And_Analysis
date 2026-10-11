@@ -1,88 +1,123 @@
+import pytest
 from rest_framework import status
 from django.urls import reverse
+from rest_framework.test import APIClient
 from apps.base.tests import BaseTestCase
 from apps.chat.models import Conversation
 
-class ConversationTestCase(BaseTestCase):
+@pytest.fixture
+def api_client():
+    return APIClient()
 
-    def setUp(self):
-        super().setUp()
-        self.setup_full_business_environment(has_chat=True)
-        self.url = reverse('conversation-list')
+@pytest.fixture
+def env():
+    """Fixture to provide the base environment setup."""
+    class Env(BaseTestCase):
+        def __init__(self):
+            pass
+    
+    tc = Env()
+    tc.setup_role_permissions()
+    tc.setup_full_business_environment(has_chat=True)
+    tc.url = reverse('conversation-list')
+    return tc
 
-    def test_conversation_crud(self):
-        # Conversation CRUD Own
-        self.client.force_authenticate(user=self.owner_a)
-        # List (should find conv_a1 and conv_a2)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+@pytest.mark.django_db
+class TestConversation:
 
-        # Read detail
-        detail_url = reverse('conversation-detail', kwargs={'pk': self.conv_a1.id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Delete
-        delete_url = reverse('conversation-detail', kwargs={'pk': self.conv_a2.id})
-        response = self.client.delete(delete_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Conversation.objects.filter(id=self.conv_a2.id).exists())
-
-    def test_conversation_bulk_delete(self):
-        # Conversation Bulk Own
-        self.client.force_authenticate(user=self.owner_a)
-        bulk_delete_url = reverse('conversation-bulk-delete')
-
-        # 1. Test empty list (should be 400 because allow_empty=False in BulkIdSerializer)
-        response = self.client.post(bulk_delete_url, {"ids": []}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        # 2. Delete conv_a1 and conv_a2
-        payload = {"ids": [self.conv_a1.id, self.conv_a2.id]}
-        response = self.client.post(bulk_delete_url, payload, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(Conversation.objects.filter(id=self.conv_a1.id).exists())
-        self.assertFalse(Conversation.objects.filter(id=self.conv_a2.id).exists())
-
-    def test_conversation_crud_by_third_user(self):
-        # Conversation CRUD Third
-        # Authenticate as owner_b (not in conv_a1)
-        self.client.force_authenticate(user=self.owner_b)
+    def test_conversation_crud(self, api_client, env):
+        # Arrange
+        sut_url = env.url
+        api_client.force_authenticate(user=env.owner_a)
         
-        # Try to access conv_a1
-        detail_url = reverse('conversation-detail', kwargs={'pk': self.conv_a1.id})
-        response = self.client.get(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # Act - List
+        sut_response_list = api_client.get(sut_url)
+        
+        # Assert
+        assert sut_response_list.status_code == status.HTTP_200_OK
+        assert len(sut_response_list.data['results']) == 2
 
-        # Try to delete conv_a1
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertTrue(Conversation.objects.filter(id=self.conv_a1.id).exists())
+        # Arrange - Read detail
+        sut_detail_url = reverse('conversation-detail', kwargs={'pk': env.conv_a1.id})
+        
+        # Act
+        sut_response_detail = api_client.get(sut_detail_url)
+        
+        # Assert
+        assert sut_response_detail.status_code == status.HTTP_200_OK
 
-    def test_conversation_bulk_delete_third_user(self):
-        # Conversation Bulk Third
-        # Authenticate as owner_b
-        self.client.force_authenticate(user=self.owner_b)
-        bulk_delete_url = reverse('conversation-bulk-delete')
+        # Arrange - Delete
+        sut_delete_url = reverse('conversation-detail', kwargs={'pk': env.conv_a2.id})
         
-        # Mixed test: one true conv_id (for owner_b) but second is not (owner_a's)
-        payload = {"ids": [self.conv_b1.id, self.conv_a1.id]}
-        response = self.client.post(bulk_delete_url, payload, format='json')
+        # Act
+        sut_response_delete = api_client.delete(sut_delete_url)
         
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Verify conv_b1 is deleted (was authorized) but conv_a1 is not
-        self.assertFalse(Conversation.objects.filter(id=self.conv_b1.id).exists())
-        self.assertTrue(Conversation.objects.filter(id=self.conv_a1.id).exists())
+        # Assert
+        assert sut_response_delete.status_code == status.HTTP_204_NO_CONTENT
+        assert not Conversation.objects.filter(id=env.conv_a2.id).exists()
 
-    def test_conversation_get_or_create_behavior(self):
-        # SO Sync Create
-        self.client.force_authenticate(user=self.owner_a)
-        # Attempt to create conversation with manager_a1 (already exists as conv_a1)
-        payload = {"user_id": self.manager_a1.id}
+    def test_conversation_bulk_delete(self, api_client, env):
+        # Arrange
+        api_client.force_authenticate(user=env.owner_a)
+        sut_url = reverse('conversation-bulk-delete')
+
+        # Act - 1. Test empty list
+        sut_response_empty = api_client.post(sut_url, {"ids": []}, format='json')
         
-        # Should return existing
-        response = self.client.post(self.url, payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Assert
+        assert sut_response_empty.status_code == status.HTTP_400_BAD_REQUEST
+
+        # Arrange - 2. Delete conv_a1 and conv_a2
+        payload = {"ids": [env.conv_a1.id, env.conv_a2.id]}
+        
+        # Act
+        sut_response_bulk = api_client.post(sut_url, payload, format='json')
+
+        # Assert
+        assert sut_response_bulk.status_code == status.HTTP_200_OK
+        assert not Conversation.objects.filter(id=env.conv_a1.id).exists()
+        assert not Conversation.objects.filter(id=env.conv_a2.id).exists()
+
+    def test_conversation_crud_by_third_user(self, api_client, env):
+        # Arrange
+        api_client.force_authenticate(user=env.owner_b)
+        sut_url = reverse('conversation-detail', kwargs={'pk': env.conv_a1.id})
+        
+        # Act - Read
+        sut_response_read = api_client.get(sut_url)
+        
+        # Assert
+        assert sut_response_read.status_code == status.HTTP_404_NOT_FOUND
+
+        # Act - Delete
+        sut_response_delete = api_client.delete(sut_url)
+        
+        # Assert
+        assert sut_response_delete.status_code == status.HTTP_404_NOT_FOUND
+        assert Conversation.objects.filter(id=env.conv_a1.id).exists()
+
+    def test_conversation_bulk_delete_third_user(self, api_client, env):
+        # Arrange
+        api_client.force_authenticate(user=env.owner_b)
+        sut_url = reverse('conversation-bulk-delete')
+        payload = {"ids": [env.conv_b1.id, env.conv_a1.id]}
+        
+        # Act
+        sut_response = api_client.post(sut_url, payload, format='json')
+        
+        # Assert
+        assert sut_response.status_code == status.HTTP_200_OK
+        assert not Conversation.objects.filter(id=env.conv_b1.id).exists()
+        assert Conversation.objects.filter(id=env.conv_a1.id).exists()
+
+    def test_conversation_get_or_create_behavior(self, api_client, env):
+        # Arrange
+        sut_url = env.url
+        api_client.force_authenticate(user=env.owner_a)
+        payload = {"user_id": env.manager_a1.id}
+        
+        # Act
+        sut_response = api_client.post(sut_url, payload, format='json')
+        
+        # Assert
+        assert sut_response.status_code == status.HTTP_201_CREATED

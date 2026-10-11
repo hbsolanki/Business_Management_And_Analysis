@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "@/services/api";
 import { FaCheck, FaCrown, FaUsers, FaBoxOpen, FaFileInvoice, FaCodeBranch, FaChevronRight, FaGem, FaRocket, FaShieldAlt } from "react-icons/fa";
 import toast from "react-hot-toast";
-import PaymentModal from "@/features/payment/components/PaymentModal";
+import { paymentService } from "@/services/paymentService";
 
 export default function PlansSection({ compact = false, title = "Select Your Experience", subtitle = "Choose a plan that fits your business scale. From startups to enterprises, we have you covered.", currentPlan = null, onSuccess, isEmbed = false, onComplete = null }) {
     const [plans, setPlans] = useState([]);
@@ -43,18 +43,22 @@ export default function PlansSection({ compact = false, title = "Select Your Exp
         setPurchasingId(plan.id);
         try {
             const res = await api.post("/subscription/plan/purchase/", { plan_id: plan.id });
+            const { subscription_id } = res.data;
             if (price > 0) {
-                const { subscription_id } = res.data;
-                setSelectedSubscriptionId(subscription_id);
-                setSelectedPlanAmount(price);
-                setIsPaymentModalOpen(true);
+                const successUrl = `${window.location.origin}/subscriptions?session_id={CHECKOUT_SESSION_ID}#current-plan`;
+                const cancelUrl = `${window.location.origin}/subscriptions`;
+                const payData = await paymentService.initiateSubscriptionPayment(subscription_id, successUrl, cancelUrl);
+                if (payData.checkout_url) {
+                    window.location.href = payData.checkout_url;
+                    return;
+                }
             } else {
                 toast.success("Plan activated successfully");
                 if (onSuccess) onSuccess();
                 if (isEmbed && onComplete) onComplete(res.data);
             }
         } catch (err) {
-            toast.error(err?.response?.data?.detail || "Action failed");
+            toast.error(err?.response?.data?.detail || err?.response?.data?.error || "Action failed");
         } finally {
             setPurchasingId(null);
         }
@@ -215,13 +219,7 @@ export default function PlansSection({ compact = false, title = "Select Your Exp
                 </div>
             </div>
 
-            <PaymentModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                subscriptionId={selectedSubscriptionId}
-                amount={selectedPlanAmount}
-                onPaymentSuccess={handlePaymentSuccess}
-            />
+
         </section>
     );
 }
